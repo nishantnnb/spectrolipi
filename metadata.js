@@ -129,11 +129,11 @@
       el('label', { cls: 'meta-label', html: 'Rating' }),
       el('select', { className: 'meta-select', id: 'meta-rating' },
         el('option', { value: '' }, ''),
-        el('option', { value: '1' }, '1: Very Strong target sound, little or no noise'),
-        el('option', { value: '2' }, '2: Strong target sound, limited noise'),
+        el('option', { value: '1' }, '1: Very Weak target sound, High noise'),
+        el('option', { value: '2' }, '2: Weak target sound, significant noise'),
         el('option', { value: '3' }, '3: Good target sound, moderate noise'),
-        el('option', { value: '4' }, '4: Weak target sound, significant noise'),
-        el('option', { value: '5' }, '5: Very Weak target sound, High noise')
+        el('option', { value: '4' }, '4: Strong target sound, limited noise'),
+        el('option', { value: '5' }, '5: Very Strong target sound, little or no noise')
       )
     );
 
@@ -1143,5 +1143,6 @@
       return true;
     } catch (e) { return false; }
   };
+
 
 })();
