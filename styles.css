@@ -1,0 +1,336 @@
+/* Global layout */
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:18px; color:#222; background:#fafafa; }
+#controls { margin-bottom:10px; }
+#viewportWrapper { width:100%; max-width:1440px; height:420px; border:1px solid #bbb; background:#000; display:flex; align-items:stretch; overflow:hidden; position:relative; }
+#axisCanvas { width:70px; flex:0 0 70px; background:#000; }
+#scrollArea { height:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; position:relative; }
+canvas.spectrogram { display:block; height:100%; width:auto; background:#000; }
+label, select, input, button { margin-left:8px; }
+label {
+  color: #fff !important;
+  background: #111 !important;
+  border-radius: 3px;
+  padding: 0 4px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+}
+#info { margin-top:8px; color:#333; }
+input[type=range] { vertical-align: middle; }
+
+/* toolbar layout */
+#annotationControls { margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+/* segmented toggle */
+.seg-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: #121214;
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.seg-option {
+  background: transparent;
+  border: 0;
+  color: #dcdcdc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  min-width: 64px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background .12s, color .12s, transform .06s;
+}
+.seg-option:hover { background: rgba(255,255,255,0.02); }
+.seg-option[aria-pressed="true"] {
+  background: #0a66ff;
+  color: #fff;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.12);
+}
+
+/* === Explicit toolbar icon button base (only these classes) ===
+   Targets only known toolbar classes so other page buttons remain untouched.
+*/
+.anno-btn,
+.meta-open-btn,
+.multi-delete-btn,
+.save-annotations-btn,
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent; /* stable baseline but invisible */
+  padding: 0;
+  border-radius: 6px;
+  color: #111;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  line-height: 0;
+}
+
+/* Single delete sizing (original) */
+.anno-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 6px;
+}
+.anno-btn svg { width: 20px; height: 20px; }
+
+/* Compact multi-delete (optional small variant) */
+.multi-delete-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 4px;
+}
+
+/* Wide multi-delete (dual-trash) — two full 24x24 bins visible */
+.multi-delete-btn.wide {
+  width: 56px;      /* wide enough for two 24px bins + padding */
+  height: 36px;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.multi-delete-btn.wide .multi-trash {
+  width: 48px;
+  height: 20px;
+  display: block;
+}
+
+/* Metadata button sizing preserved */
+.meta-open-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin-left: 6px;
+  border-radius: 4px;
+}
+
+/* Narrow-save reset (targeted) so save buttons behave like toolbar icons */
+button.save-annotations-btn,
+button.save-btn,
+button.save-annotations,
+button[data-role="save"] {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  padding: 6px !important;
+  color: inherit !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+}
+
+/* Disabled appearance for the matched toolbar classes only */
+.anno-btn[disabled],
+.meta-open-btn[disabled],
+.multi-delete-btn[disabled],
+.save-annotations-btn[disabled],
+.save-btn[disabled] {
+  opacity: 0.55;
+  filter: grayscale(20%);
+  pointer-events: none;
+  cursor: default;
+}
+
+/* === Unified hover / focus for toolbar buttons (explicit selectors) ===
+   Ensures identical hover/focus affordance for the mapped toolbar controls.
+*/
+.anno-btn:hover:not([disabled]),
+.meta-open-btn:hover:not([disabled]),
+.multi-delete-btn:hover:not([disabled]),
+.save-annotations-btn:hover:not([disabled]),
+.save-btn:hover:not([disabled]),
+.anno-btn:focus:not([disabled]),
+.meta-open-btn:focus:not([disabled]),
+.multi-delete-btn:focus:not([disabled]),
+.save-annotations-btn:focus:not([disabled]),
+.save-btn:focus:not([disabled]) {
+  background: rgba(0,0,0,0.06);
+  border-color: rgba(0,0,0,0.08);
+  color: #111;
+  outline: none;
+}
+
+/* Keyboard focus ring (consistent) */
+.anno-btn:focus,
+.meta-open-btn:focus,
+.multi-delete-btn:focus,
+.save-annotations-btn:focus,
+.save-btn:focus,
+.seg-option:focus {
+  box-shadow: 0 0 0 3px rgba(11,102,255,0.12), 0 0 0 1px rgba(11,102,255,0.18);
+  outline: none;
+}
+
+/* species control styles (kept unchanged, responsive behavior preserved) */
+.species-search { display:inline-flex; align-items:center; gap:8px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin-left:6px; position:relative; min-width:320px; max-width:720px; }
+.species-search .label {
+  font-size: 13px;
+  color: #fff !important;
+  background: #111 !important;
+  margin-right: 6px;
+  white-space: nowrap;
+  border-radius: 3px;
+  padding: 0 4px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+}
+.species-search .input-wrap { position:relative; min-width:200px; max-width:520px; }
+.species-search input[type="text"] { width:320px; box-sizing:border-box; padding:6px 8px; border-radius:4px; border:1px solid #bbb; }
+.species-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #111;
+  border: 1px solid #2196F3;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  max-height: 220px;
+  overflow: auto;
+  z-index: 99999;
+  display: none;
+  border-radius: 4px;
+}
+.species-suggestions .item {
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: transparent;
+  color: #fff;
+  font-size: 0.95em;
+  transition: background 0.15s, color 0.15s;
+}
+.species-suggestions .item.active {
+  background: #2196F3;
+  color: #fff;
+}
+.species-suggestions .item:not(.active):hover {
+  background: #1565c0;
+  color: #fff;
+}
+.species-suggestions .common {
+  color: #fff;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Make species-result-wrap flexible so it can grow in the toolbar and show longer result */
+.species-result-wrap {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex: 1 1 100px;
+  min-width:160px;
+  max-width:420px;
+  overflow:hidden;
+  padding:4px 6px;
+  border-radius:6px;
+  transition: border-color 160ms, background 160ms;
+}
+.species-result-wrap.empty { border:2px dashed #e74c3c; background: #fff6f6; min-width:120px; }
+
+/* Increase visible width of species text; keep ellipsis if overflow */
+.species-result {
+  font-weight: 600;
+  color: #fff;
+  background: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  padding-right: 6px;
+  max-width: 320px;
+  border-radius: 3px;
+  padding: 0 4px;
+  height: 28px;
+  align-items: center;
+}
+
+/* Clear button */
+.clear-indicator { background:transparent; border:0; padding:4px 6px; cursor:pointer; color:#888; font-size:14px; display:inline-flex; align-items:center; justify-content:center; border-radius:4px; flex:0 0 auto; margin-left:2px; }
+.clear-indicator:hover { color:#222; background:#f2f2f2; }
+
+/* Responsive adjustments */
+@media (max-width:880px) {
+  #annotationControls { flex-wrap:wrap; gap:8px; }
+  .species-search input[type="text"] { width:220px; }
+  .species-result { max-width:220px; }
+  .species-result-wrap { max-width:320px; }
+}
+
+@media (max-width:520px) {
+  .species-search { min-width:160px; max-width:260px; }
+  .species-search input[type="text"] { width:160px; }
+  .species-result { display:none; } /* compact mobile behavior */
+}
+
+/* wait overlay styles */
+#waitOverlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4,6,12,0.55);
+  /* Must be above the SCC modal which uses ~2.1474836e9 */
+  z-index: 2147483646;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+#waitOverlay .panel {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  padding: 18px 26px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.55);
+  min-width: 420px;
+  min-height: 140px;
+  max-width: 90%;
+}
+#waitOverlay .panel img {
+  width: 100px;
+  height: auto;
+  flex: 0 0 80px;
+  display: block;
+  margin: 0;
+  pointer-events: none;
+  object-fit: contain;
+}
+
+/* logo inside the SCC scan overlay box */
+.scc-scan-logo {
+  width: 100px;
+  height: auto;
+  display: block;
+  margin: 0 auto 0px auto;
+  pointer-events: none;
+}
+#waitOverlay .spinner {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 6px solid rgba(255,255,255,0.12);
+  border-top-color: #1ea7ff;
+  animation: waitspin 1s linear infinite;
+  flex: 0 0 96px;
+}
+@keyframes waitspin { to { transform: rotate(360deg); } }
+#waitOverlay .text { display: flex; flex-direction: column; gap: 6px; }
+#waitOverlay .title { font-weight: 600; font-size: 15px; color: #e7f6ff; }
+#waitOverlay .msg { font-size: 13px; color: #cfeeff; opacity: 0.95; }
+#waitOverlay .meta { font-size: 12px; color: #9fc8e6; opacity: 0.9; }
+

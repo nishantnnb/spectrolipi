@@ -1,0 +1,1078 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Spectrogram & Annotations</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Prevent context menu and certain keys
+    (function () {
+      window.addEventListener('contextmenu', function (e) { e.preventDefault(); }, { capture: true, passive: false });
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey) || e.keyCode === 93) { e.preventDefault(); e.stopPropagation(); }
+      }, { capture: true, passive: false });
+    })();
+  </script>
+  <style>
+    /* Defensive: ensure species suggestions sit above overlays */
+    .species-suggestions {
+      z-index: 999999 !important;
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      pointer-events: auto;
+    }
+    /* Toolbar cell background */
+    #annotationControls {
+      background: #111;
+      padding: 6px 0 6px 0;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+    /* Compact button style */
+    .seg-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #2196F3 !important;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 2px 0;
+      font-size: 0.70rem;
+      font-weight: 500;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+      width: 75px;
+      min-width: 75px;
+      max-width: 75px;
+      height: 32px;
+      text-align: center;
+      white-space: normal;
+      word-break: break-word;
+      line-height: 1.1;
+      overflow-wrap: break-word;
+      flex-direction: row;
+      margin: 0 2px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .seg-btn span {
+      display: inline-block;
+      vertical-align: middle;
+      max-width: 50px;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      font-size: 0.70rem;
+    }
+    .seg-btn svg {
+      margin-right: 3px;
+      vertical-align: middle;
+      height: 16px;
+      width: 16px;
+      fill: #fff;
+    }
+    .seg-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: #2196F3 !important;
+    }
+    .seg-btn:hover, .seg-btn:focus {
+      background: #1565c0 !important;
+      color: #fff;
+      outline: none;
+    }
+  </style>
+    <!-- Only keep .seg-top-btn for Re-Generate and Play buttons -->
+    <style>
+      .seg-top-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #2196F3 !important;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        padding: 2px 0;
+        font-size: 0.70rem;
+        font-weight: 500;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+        width: 75px;
+        min-width: 75px;
+        max-width: 75px;
+        height: 32px;
+        text-align: center;
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.1;
+        overflow-wrap: break-word;
+        margin: 0 2px;
+        transition: background 0.2s, color 0.2s;
+      }
+      .seg-top-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #2196F3 !important;
+      }
+      .seg-top-btn:hover, .seg-top-btn:focus {
+        background: #1565c0 !important;
+        color: #fff;
+        outline: none;
+      }
+      /* Move top controls right so fixed left hamburger toggle does not overlap the file chooser */
+      #controls { margin-left: 56px; }
+    </style>
+</head>
+<body>
+  <!-- Left-side collapsible overlay (structure only). Does not move existing toolbar buttons. -->
+  <button id="leftHamburgerToggle" aria-label="Open menu" aria-expanded="false" aria-controls="leftOverlay" type="button"
+    style="position:fixed;left:12px;top:12px;z-index:2147483646;width:40px;height:36px;border-radius:6px;border:1px solid rgba(0,0,0,0.12);background:#111;color:#fff;display:inline-flex;align-items:center;justify-content:center;">☰</button>
+
+  <aside id="leftOverlay" class="left-overlay" aria-hidden="true" role="menu">
+    <div class="left-overlay-inner">
+      <div class="left-overlay-header">
+        <!-- auto-close behavior enabled; close button removed to simplify UI -->
+      </div>
+      <nav class="left-overlay-nav" role="navigation" aria-label="Left overlay actions">
+        <!-- Only these four duplicate buttons are present inside the overlay (do NOT move toolbar buttons) -->
+        <button id="metaOpenBtn" type="button" class="left-menu-btn">
+          <svg width="20" height="20" viewBox="0 0 640 512" aria-hidden="true">
+            <path d="M616 0h-192c-13.2 0-31.637 7.637-40.971 16.971l-238.058 238.058c-9.334 9.334-9.334 24.607 0 33.941l206.059 206.059c9.334 9.334 24.607 9.334 33.941 0l238.059-238.059c9.333-9.333 16.97-27.77 16.97-40.97v-192c0-13.2-10.8-24-24-24zM496 192c-26.51 0-48-21.49-48-48s21.49-48 48-48 48 21.49 48 48-21.49 48-48 48z" fill="#fff"/>
+            <path d="M64 272l272-272h-40c-13.2 0-31.637 7.637-40.971 16.971l-238.058 238.058c-9.334 9.334-9.334 24.607 0 33.941l206.059 206.059c9.334 9.334 24.607 9.334 33.941 0l15.029-15.029-208-208z" fill="#fff"/>
+          </svg>
+          <span>Metadata</span>
+        </button>
+
+        <button id="saveMetaBtn" type="button" class="left-menu-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 3v12" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8.5 10.5L12 14l3.5-3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 20h14" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+          </svg>
+          <span>Save Metadata</span>
+        </button>
+
+        <button id="uploadAnnoBtn" type="button" class="left-menu-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 21V9" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8.5 13.5L12 10l3.5 3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 4h14" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+          </svg>
+          <span>Upload Annotations</span>
+        </button>
+
+        <button id="saveAnnoBtn" type="button" class="left-menu-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 3v12" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8.5 10.5L12 14l3.5-3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 20h14" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+          </svg>
+          <span>Save Annotations</span>
+        </button>
+        <!-- Manage species list opens modal containing upload/toggle UI -->
+        <button id="manageSpeciesBtn" type="button" class="left-menu-btn" title="Manage species list">
+          <!-- User's owl SVG normalized to match other menu icons (20x20) and inherit color -->
+          <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="20" height="20" aria-hidden="true" focusable="false" style="vertical-align:middle;margin-right:8px;fill:currentColor;stroke:currentColor;">
+            <title>OWL</title>
+            <circle cx="45.87" cy="64.1" r="1.623"/>
+            <path d="M59.1,73.265a16.1,16.1,0,1,0-13.231,6.943,15.737,15.737,0,0,0,6.4-1.332A16.209,16.209,0,0,0,59.1,73.265ZM45.87,69.723A5.623,5.623,0,1,1,51.493,64.1,5.629,5.629,0,0,1,45.87,69.723Z"/>
+            <path d="M71.71,81.292c-.091-.055-.177-.117-.267-.174-.155-.1-.308-.2-.461-.3q-.421-.281-.826-.584c-.129-.1-.26-.188-.386-.288-.383-.3-.757-.609-1.118-.935-.062-.056-.12-.117-.181-.174q-.457-.423-.887-.873c-.111-.116-.217-.234-.325-.353q-.359-.394-.7-.808c-.1-.119-.2-.237-.292-.359-.285-.365-.56-.738-.821-1.123-.02-.029-.041-.056-.061-.085q-.359-.536-.684-1.1l-.7-.624-.7.624q-.326.562-.687,1.1l-.015.021c-.275.409-.567.8-.87,1.191-.087.111-.178.219-.267.329q-.354.433-.73.845c-.1.108-.2.218-.3.324q-.461.483-.951.936c-.041.037-.078.077-.119.114-.369.334-.752.651-1.145.957-.109.085-.222.165-.333.248q-.438.327-.892.63c-.136.091-.272.18-.411.267-.1.061-.189.127-.287.187L64,89.9Z"/>
+            <path d="M47.25,43.991a1.979,1.979,0,0,1,.582.1A20.127,20.127,0,0,1,64,55.46,20.127,20.127,0,0,1,80.168,44.088a1.979,1.979,0,0,1,.582-.1,38.266,38.266,0,0,0,11.985-1.854,46.69,46.69,0,0,0-18.2-9.187c-.452-.063-.851-.134-1.187-.212a41.429,41.429,0,0,0-18.685,0c-.352.082-.778.155-1.259.22a46.693,46.693,0,0,0-18.166,9.17A38.25,38.25,0,0,0,47.25,43.991Z"/>
+            <path d="M103.994,35.007a18.913,18.913,0,0,0,4.345-9.547q-.462.429-.977.84c-5.241,4.162-13.918,6.058-21.356,6.7a53.643,53.643,0,0,1,10.889,7.417A22.829,22.829,0,0,0,103.994,35.007Z"/>
+            <path d="M75.714,78.87a15.761,15.761,0,0,0,6.412,1.338,16.1,16.1,0,1,0-14.1-8.316h0a16.254,16.254,0,0,0,6.5,6.4Q75.108,78.608,75.714,78.87ZM82.13,58.477A5.623,5.623,0,1,1,76.507,64.1,5.629,5.629,0,0,1,82.13,58.477Z"/>
+            <path d="M111.969,27.657a22.781,22.781,0,0,1-4.937,9.953,29.675,29.675,0,0,1-15.08,8.959,20.1,20.1,0,0,1-9.825,37.64,19.788,19.788,0,0,1-6.63-1.146L65.511,94.2a2,2,0,0,1-1.435.664h-.055a2.012,2.012,0,0,1-.52-.068,1.98,1.98,0,0,1-1.013-.6L52.5,83.062a19.786,19.786,0,0,1-6.63,1.146,20.1,20.1,0,0,1-9.825-37.64,29.675,29.675,0,0,1-15.08-8.959,22.781,22.781,0,0,1-4.937-9.953c-1.258,8.438,2.449,15.164,6.451,19.75a15.154,15.154,0,0,1,3.427,13.36,34.209,34.209,0,0,0-.817,7.485c0,.737.031,1.522.1,2.472,0,.056.005.111,0,.167a186.95,186.95,0,0,0,2.464,20.03c.255,1.519.5,2.989.733,4.493a5.762,5.762,0,0,0,6.8,4.778,11.539,11.539,0,0,1,9.74,2.64l5.445,4.781a5.8,5.8,0,0,0,6.5.766l1.766-.934a11.454,11.454,0,0,1,10.711,0l1.767.934a5.8,5.8,0,0,0,6.5-.766l5.445-4.781a11.546,11.546,0,0,1,9.74-2.64,5.762,5.762,0,0,0,6.8-4.777c.23-1.5.478-2.976.733-4.494A186.933,186.933,0,0,0,102.8,70.889c0-.055,0-.11,0-.165.068-.949.1-1.734.1-2.472a34.207,34.207,0,0,0-.816-7.481,15.155,15.155,0,0,1,3.425-13.363C109.519,42.821,113.226,36.094,111.969,27.657Z"/>
+            <path d="M31.077,40.4a53.638,53.638,0,0,1,10.942-7.44c-7.435-.666-16.127-2.6-21.425-6.81-.335-.266-.651-.539-.952-.817a18.932,18.932,0,0,0,4.364,9.672A22.812,22.812,0,0,0,31.077,40.4Z"/>
+            <circle cx="82.13" cy="64.1" r="1.623"/>
+          </svg>
+          <span>Manage species list</span>
+        </button>
+      </nav>
+      <!-- Footer area for the left overlay: larger logo shown at bottom of hamburger menu (non-clickable) -->
+      <div class="left-overlay-footer" style="margin-top:auto;padding:14px 12px 24px 12px;text-align:center;">
+        <img id="menuLogo" src="001Logo%26name.png" alt="Logo" style="height:200px;max-width:200%;object-fit:contain;pointer-events:none;user-select:none;display:block;margin:0 auto;" />
+      </div>
+    </div>
+  </aside>
+
+  <style>
+    /* Left overlay structural styles (kept local and defensive) */
+    .left-overlay { position: fixed; left: 0; top: 0; bottom: 0; width: 0; overflow: hidden; background: rgba(17,17,17,0.98); color: #fff; transition: width 220ms ease; z-index:2147483645; }
+    .left-overlay.open { width: 300px; box-shadow: 4px 0 24px rgba(0,0,0,0.6); }
+  /* Add top padding so overlay content does not sit under the fixed hamburger toggle */
+  /* Reduced to 40px to avoid excessive gap while keeping content clear of the fixed toggle */
+  .left-overlay-inner { height: 100%; display:flex; flex-direction:column; padding-top:20px; box-sizing:border-box; }
+    .left-overlay-header { display:flex; align-items:center; justify-content:flex-end; padding:12px; }
+    .left-close { background:transparent; border:0; color:#fff; font-size:18px; cursor:pointer; }
+  /* Reduce left menu button height by ~25%: decrease vertical padding and slightly reduce font-size */
+  .left-overlay-nav { display:flex; flex-direction:column; gap:8px; padding:12px; }
+  /* Use flex layout for menu buttons so icons and labels vertically center consistently */
+  .left-menu-btn { display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:6px 10px; background:transparent; border:1px solid rgba(255,255,255,0.06); color:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
+  .left-menu-btn svg { width:20px; height:20px; flex:0 0 20px; }
+  /* Hover or explicit active state shows blue; do not change background on focus to avoid always-blue when focused */
+  .left-menu-btn:hover, .left-menu-btn.active { background: #1565c0; color: #fff; outline: none; }
+    .left-menu-btn[disabled] { opacity:0.5; cursor:not-allowed; }
+    /* Ensure overlay content does not capture focus when closed */
+    .left-overlay[aria-hidden="true"] { pointer-events: none; }
+  /* Keep the owl icon's original brown tint so it remains visually distinct */
+  #manageSpeciesBtn svg, #manageSpeciesBtn svg path, #manageSpeciesBtn svg g, #manageSpeciesBtn svg circle, #manageSpeciesBtn svg rect { fill: #bf947a !important; stroke: #bf947a !important; }
+  </style>
+  <div id="controls">
+    <input id="file" type="file" accept="audio/*" />
+
+    <!-- Confirmation interceptor for file chooser -->
+    <script>
+    (function () {
+      const file = document.getElementById('file');
+      if (!file) return;
+      const CONFIRM_MSG = 'Unsaved Metadata and Annotations will be lost. Continue?';
+      let programmaticOpen = false;
+      let lastFileKey = null;
+      function getFileKey(f) {
+        return f ? `${f.name}|${f.size}|${f.lastModified}` : null;
+      }
+      function openFilePicker() {
+        programmaticOpen = true;
+        try { file.click(); }
+        finally { setTimeout(() => { programmaticOpen = false; }, 300); }
+      }
+      file.addEventListener('click', function (ev) {
+        if (programmaticOpen) return;
+        ev.preventDefault();
+        const ok = window.confirm(CONFIRM_MSG);
+        if (ok) openFilePicker();
+      }, true);
+      file.addEventListener('keydown', function (ev) {
+        if (programmaticOpen) return;
+        const k = ev.key;
+        if (k === 'Enter' || k === ' ' || k === 'Spacebar') {
+          ev.preventDefault();
+          const ok = window.confirm(CONFIRM_MSG);
+          if (ok) openFilePicker();
+        }
+      }, true);
+      file.addEventListener('change', function () {
+        try { window.__lastMetadata = null; } catch (e) {}
+        const ov = document.getElementById('metaOverlay');
+        if (ov) ov.remove();
+
+        // Only clear annotations if a new file is selected
+        const f = file.files && file.files[0];
+        const newFileKey = getFileKey(f);
+        if (newFileKey && newFileKey !== lastFileKey) {
+          if (typeof window.__clearAllAnnotations === 'function') {
+            window.__clearAllAnnotations();
+          }
+        }
+        lastFileKey = newFileKey;
+        // When a new file is loaded, switch to Create mode by default so users can start annotating immediately.
+        try {
+          const wrap = document.getElementById('createEditToggle');
+          if (wrap) wrap.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'create' }, bubbles: true }));
+        } catch (e) {}
+        // Move focus to Play/Pause button for immediate playback control and blur the file input
+        try {
+          const play = document.getElementById('playPause');
+          if (play && typeof play.focus === 'function') play.focus();
+          if (file && typeof file.blur === 'function') file.blur();
+        } catch (e) {}
+      }, true);
+    })();
+    </script>
+
+    <!-- Removed legacy zoom controls (X zoom, Y max, Re-Generate button) now replaced by zoom_controls.js toolbar -->
+    <!--
+    <label for="xzoom">X zoom</label>
+    <select id="xzoom">...</select>
+    <label for="ymax">Y max (kHz)</label>
+    <input id="ymax" type="number" ... />
+    <button id="go" class="seg-top-btn">Re-Generate</button>
+    -->
+    <script>
+    // Listen for spectrogram-generated event and redraw annotation overlay
+    window.addEventListener('spectrogram-generated', function() {
+      if (window.renderAllAnnotations) {
+        try { window.renderAllAnnotations(); } catch (e) {}
+      } else if (window.create_annotations && typeof window.create_annotations.renderAllAnnotations === 'function') {
+        try { window.create_annotations.renderAllAnnotations(); } catch (e) {}
+      }
+    });
+    </script>
+    
+    <label for="cmap">Colormap</label>
+    <select id="cmap">
+      <option value="custom">Custom</option>
+      <option value="viridis" selected>Viridis</option>
+      <option value="magma">Magma</option>
+      <option value="grayscale">Grayscale</option>
+      <option value="jet">Jet</option>
+      <option value="cividis">Cividis</option>
+    </select>
+
+    <label for="gain">Gain</label>
+    <input id="gain" type="range" min="0.1" max="10" step="0.1" value="1" />
+    <span id="gainVal">1.0×</span>
+
+    <!-- Play/Pause button moved here, immediately after Gain control -->
+  <button id="playPause" class="seg-top-btn" style="margin-left:8px" title="Press Space for Play/Pause">Play</button>
+    <!-- Declarative zoom controls (Y then X). JS will attach handlers to these elements if present. -->
+    <div id="zoomToolbarPlaceholder" class="zoom-toolbar" role="toolbar" aria-label="Zoom controls" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px">
+      <div id="zoomToolbar" style="display:inline-flex;align-items:center;gap:16px;">
+        <!-- Y spinner -->
+  <div class="zoom-spinner" data-which="y" style="display:flex;align-items:center;gap:2px;">
+          <div class="z-label" style="color:Black;font-size:16px;width:5px">Y</div>
+          <div class="z-box" style="display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,0.10);border-radius:6px;overflow:hidden">
+            <button id="yMinus" class="z-btn" title="Decrease Y" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">-</button>
+            <div id="yMid" style="min-width:16px;height:32px;padding:0 6px;display:flex;align-items:center;justify-content:center;background:#fff;color:#000;font-size:14px;font-weight:600;box-sizing:border-box">1</div>
+            <button id="yPlus" class="z-btn" title="Increase Y" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">+</button>
+          </div>
+          <button id="yReset" class="z-reset" title="Reset Y" aria-label="Reset Y" style="width:32px;height:32px;border:1px solid rgba(255,255,255,0.10);border-radius:6px;background:#1e88e5;color:#fff;display:inline-flex;align-items:center;justify-content:center;padding:0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" fill="#fff"/></svg>
+          </button>
+        </div>
+  <div></div>
+        <!-- X spinner -->
+  <div class="zoom-spinner" data-which="x" style="display:flex;align-items:center;gap:2px;">
+          <div class="z-label" style="color:Black;font-size:16px;width:5px">X</div>
+          <div class="z-box" style="display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,0.10);border-radius:6px;overflow:hidden">
+            <button id="xMinus" class="z-btn" title="Decrease X" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">-</button>
+            <div id="xMid" style="min-width:16px;height:32px;padding:0 6px;display:flex;align-items:center;justify-content:center;background:#fff;color:#000;font-size:14px;font-weight:600;box-sizing:border-box">2</div>
+            <button id="xPlus" class="z-btn" title="Increase X" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">+</button>
+          </div>
+          <button id="xReset" class="z-reset" title="Reset X" aria-label="Reset X" style="width:32px;height:32px;border:1px solid rgba(255,255,255,0.10);border-radius:6px;background:#1e88e5;color:#fff;display:inline-flex;align-items:center;justify-content:center;padding:0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" fill="#fff"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- wait overlay (keep minimal markup in index.html) -->
+  <div id="waitOverlay" role="status" aria-live="polite" aria-hidden="true">
+    <div class="panel" role="presentation">
+      <div class="spinner" aria-hidden="true"></div>
+  <!-- Logo shown on the wait overlay (non-clickable) -->
+  <img id="waitOverlayLogo" src="001Logo%26name.png" alt="Logo" />
+      <div class="text">
+        <div class="title">Generating spectrogram</div>
+        <div class="msg">Processing image — this may take a few seconds.</div>
+        <div class="meta" id="waitOverlayMeta" style="display:none"><span id="waitOverlayETA"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewportWrapper" role="region" aria-label="Spectrogram viewport">
+    <canvas id="axisCanvas" width="70" height="420" role="img" aria-label="Frequency axis"></canvas>
+    <div id="scrollArea">
+      <canvas id="spectrogramCanvas" class="spectrogram" width="800" height="420" role="img" aria-label="Spectrogram"></canvas>
+    </div>
+  </div>
+
+  <!-- Annotation toolbar: segmented toggle authoritative -->
+  <div id="annotationControls" role="toolbar" aria-label="Annotation tools">
+    
+    <!-- Species search with label (in-toolbar) -->
+    <div class="species-search" aria-label="Species search">
+      <div class="label">Species</div>
+      <div class="input-wrap">
+        <input id="speciesKwInput" type="text" placeholder="Type key (2+ chars) to search species…" aria-label="Species key search" autocomplete="off" />
+        <div id="speciesSuggest" class="species-suggestions" role="listbox" aria-label="Species suggestions" style="display:none"></div>
+      </div>
+      <div class="species-result-wrap empty" title="Selected species">
+        <div id="speciesResult" class="species-result" aria-live="polite"></div>
+        <button id="speciesClearBtn" class="clear-indicator" aria-label="Clear selection" title="Clear selection" style="display:none;">✕</button>
+      </div>
+      <input type="hidden" id="selectedSpeciesKey" value="" />
+    </div>
+	
+	<!-- Segmented Create/Edit toggle (authoritative mode source) -->
+    <!-- Bulk Update Species button inserted between Species control and Create/Edit toggle -->
+    <button id="bulkUpdateSpeciesBtn" type="button" class="seg-btn" title="Update Species in the selected row(s)." aria-label="Update species in selected rows" disabled style="margin-right:8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M6 10h12" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <span>Update<br>Species</span>
+    </button>
+
+    <div id="createEditToggle" class="seg-toggle" role="group" aria-label="Annotation mode" data-mode="create">
+      <button type="button" id="toggleCreate" class="seg-option" data-mode="create" aria-pressed="true">Create</button>
+      <button type="button" id="toggleEdit" class="seg-option" data-mode="edit" aria-pressed="false">Edit</button>
+    </div>
+
+  <!-- Single Delete -->
+  <button id="annoDeleteBtn" type="button" title="Delete a Box in edit mode" aria-label="Delete annotation" class="seg-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M3 6h18" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Delete<br>Box</span>
+  </button>
+
+  <!-- Multi-delete -->
+  <button id="multiDeleteBtn" type="button" title="Select row(s) & delete" aria-label="Multi-delete selected rows" class="seg-btn">
+    <svg width="20" height="20" viewBox="0 0 36 24" aria-hidden="true">
+      <g transform="translate(0,0)" fill="#fff" stroke="#fff" stroke-width="1.5">
+        <path d="M3 6h18" stroke-linecap="round"/>
+        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g transform="translate(14,0)" fill="#fff" stroke="#fff" stroke-width="1.5">
+        <path d="M3 6h18" stroke-linecap="round"/>
+        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </svg>
+    <span>Delete<br>rows</span>
+  </button>
+
+  <!-- (Toolbar buttons moved into the left overlay and removed from top toolbar.) -->
+
+  <!-- Run SCC (Spectrogram Cross-Correlation) -->
+  <button id="runSccBtn" type="button" title="Run SCC on selected templates" aria-label="Run SCC" class="seg-btn">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M3 12h18" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M12 3v18" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+      <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.2" fill="none"/>
+    </svg>
+    <span>Run<br>SCC</span>
+  </button>
+
+
+  </div>
+
+
+  <!-- Place grid below toolbar/buttons -->
+  <div id="annotationGrid"></div>
+  <!-- Manage species modal (hidden by default). Contains file selector, toggle, clear, and status. Backdrop prevents background interaction. -->
+  <div id="manageSpeciesBackdrop" style="display:none;position:fixed;inset:0;background:rgba(18,22,26,0.6);z-index:2147483650;align-items:center;justify-content:center;">
+    <div id="manageSpeciesModal" role="dialog" aria-modal="true" aria-hidden="true" style="display:block;max-width:520px;width:100%;background:#111;color:#fff;border-radius:8px;padding:16px;box-shadow:0 6px 24px rgba(0,0,0,0.6);">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:16px;font-weight:600;">Manage species list</div>
+          <button id="manageSpeciesClose" aria-label="Close" style="background:transparent;border:0;color:#ddd;font-size:20px;line-height:1;cursor:pointer;padding:6px;border-radius:6px;">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <label for="ownSpeciesFile" style="font-size:14px;color:#ddd;margin:0;">Upload own species list</label>
+          <input id="ownSpeciesFile" type="file" accept=".csv,text/csv,text/plain" style="display:block;width:100%;" />
+          <div style="margin-top:6px;font-size:13px;color:#ccc;">
+            <span id="ownSpeciesFileName" title="Selected species file"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label style="display:flex;align-items:center;gap:8px;color:#ddd;margin:0;font-size:14px;">
+              <input id="useOwnSpeciesToggle" type="checkbox" disabled />
+              <span id="useOwnSpeciesLabel" style="font-size:14px;">Use Own species list?</span>
+            </label>
+            <button id="ownSpeciesClear" class="seg-btn" style="padding:6px 8px;font-size:13px;" disabled>Clear</button>
+            <button id="downloadDefaultSpeciesBtn" class="seg-btn" style="padding:6px 8px;font-size:13px;" title="Download default species list as CSV">Default species</button>
+          </div>
+          <div id="ownSpeciesStatus" style="margin-top:6px;font-size:14px;color:#ddd">Using default species list</div>
+          <div style="margin-top:6px;font-size:12px;color:#ddd">Note: switching sources updates the species dropdowns and metadata list only. Existing annotation rows are not modified unless you explicitly apply changes.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const openBtn = document.getElementById('manageSpeciesBtn');
+      const backdrop = document.getElementById('manageSpeciesBackdrop');
+      const modal = document.getElementById('manageSpeciesModal');
+      if (!openBtn || !backdrop || !modal) return;
+      function openModal(){ backdrop.style.display='flex'; backdrop.setAttribute('aria-hidden','false'); try{ const cb = modal.querySelector('#useOwnSpeciesToggle'); if(cb) cb.focus(); }catch(e){} }
+      function closeModal(){ backdrop.style.display='none'; backdrop.setAttribute('aria-hidden','true'); try{ openBtn.focus(); }catch(e){} }
+      openBtn.addEventListener('click', (ev)=>{ ev.preventDefault(); ev.stopPropagation(); openModal(); });
+      // close button inside modal
+      try {
+        const closeBtn = modal.querySelector('#manageSpeciesClose');
+        if (closeBtn) closeBtn.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); closeModal(); });
+      } catch (e) {}
+      // Close on Escape
+      document.addEventListener('keydown', (ev)=>{ if (ev.key === 'Escape' && backdrop && backdrop.style.display === 'flex') { ev.preventDefault(); closeModal(); } });
+      // clicking backdrop closes
+      backdrop.addEventListener('click', (ev)=>{ if (ev.target === backdrop) closeModal(); });
+    })();
+  </script>
+  <script src="species-data.js"></script>
+
+    <!-- Tabulator grid setup -->
+    <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+    <script>
+      // Create Tabulator grid with specified columns
+      const gridColumns = [
+        {title: "", field: "_select", formatter: "rowSelection", titleFormatter: "rowSelection", titleFormatterParams: {rowRange: "active"}, headerSort: false, frozen: true, width: 40, resizable: false},
+        {title: "ID", field: "id", headerSort: true, frozen: true, resizable: true},
+          {title: "SCC Template", field: "sccTemplate", headerSort: true, resizable: true, width: 130, hozAlign: "center",
+            // Render an actual checkbox element so it's always visible like the row-selection checkbox.
+            formatter: function(cell, formatterParams, onRendered){
+              const v = !!cell.getValue();
+              // Use onRendered to attach handlers directly to the checkbox element so
+              // clicks on the checkbox do not propagate to the row and toggle the
+              // row-selection checkbox. The input click will toggle only the field.
+              try {
+                onRendered && onRendered(function(){
+                  try {
+                    const el = cell.getElement && cell.getElement().querySelector && cell.getElement().querySelector('.scc-template-checkbox');
+                    if (!el) return;
+                    // Capture-phase listener so we stop propagation as early as possible
+                    el.addEventListener('click', function(ev){
+                      try { ev.stopPropagation(); } catch (e) {}
+                      try { const newVal = !cell.getValue(); cell.setValue(!!newVal); } catch (e) {}
+                    }, true);
+                  } catch (e) {}
+                });
+              } catch (e) {}
+              // Return HTML; Tabulator will render the checkbox.
+              return `<input type="checkbox" class="scc-template-checkbox" ${v ? 'checked' : ''} />`;
+            },
+            // Prevent row selection when clicking inside this cell (final defensive stop)
+            cellClick: function(e, cell){
+              try { e.stopPropagation(); } catch(e){}
+            },
+            headerFilter: "select", headerFilterParams: {values: {"": "All", "Yes": "Yes", "No": "No"}},
+            headerFilterFunc: function(headerValue, rowValue){
+              if (!headerValue) return true;
+              const v = !!rowValue; // coerce to boolean
+              if (headerValue === 'Yes') return v === true;
+              if (headerValue === 'No') return v === false;
+              return true;
+            },
+            mutator: function(value){ return !!value; }
+          },
+        {title: "Selection", field: "Selection", headerSort: true, resizable: true},
+        {title: "Begin Time (s)", field: "beginTime", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+        {title: "End Time (s)", field: "endTime", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+        {title: "Low Freq (Hz)", field: "lowFreq", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+        {title: "High Freq (Hz)", field: "highFreq", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+  {title: "Common name", field: "species", headerSort: true, width: 250, resizable: true},
+  {title: "Scientific name", field: "scientificName", headerSort: true, width: 250, resizable: true},
+          {title: "Notes", field: "notes", headerSort: true, editor: "input", width: 250, resizable: true},
+          {title: "SCC run no.", field: "runNo", headerSort: true, resizable: true, width: 120, hozAlign: "right", editable: false, headerFilter: true, headerFilterPlaceholder: 'e.g. 1 or >2',
+            headerFilterFunc: function(headerValue, rowValue){ if (headerValue == null || String(headerValue||'').trim()==='') return true; const hv = String(headerValue).trim(); const m = hv.match(/^\s*(<=|>=|<|>|=|==)?\s*([0-9]+)\s*$/); if (!m) return true; const op = m[1] || '='; const val = Number(m[2]); const cellVal = Number(rowValue); switch(op){ case '<': return cellVal < val; case '<=': return cellVal <= val; case '>': return cellVal > val; case '>=': return cellVal >= val; case '=': case '==': return cellVal === val; default: return false; } },
+          },
+          {title: "SCC score %", field: "sccScore", headerSort: true, resizable: true, width: 120, hozAlign: "right", editable: false,
+            formatter: function(cell){ const v = cell.getValue(); if (v == null || v === '') return ''; try { return String(Math.round(Math.max(0, Number(v)) * 100)); } catch(e){ return ''; } },
+            headerFilter: true,
+            headerFilterPlaceholder: '<40',
+            headerFilterFunc: function(headerValue, rowValue){ if (headerValue == null || String(headerValue||'').trim()==='') return true; const hv = String(headerValue).trim(); // accept operator + integer percent e.g. '<40' or '>=75'
+              const m = hv.match(/^\s*(<=|>=|<|>|=|==)?\s*([0-9]+)\s*$/);
+              if (!m) return true; const op = m[1] || '='; const val = Number(m[2]); const cellNum = (rowValue == null || rowValue === '') ? NaN : Number(rowValue) * 100; if (!isFinite(cellNum)) return false; switch(op){ case '<': return cellNum < val; case '<=': return cellNum <= val; case '>': return cellNum > val; case '>=': return cellNum >= val; case '=': case '==': return Math.abs(cellNum - val) < 1e-6; default: return false; } },
+          }
+      ];
+  window.annotationGrid = new Tabulator("#annotationGrid", {
+        columns: gridColumns,
+        layout: "fitData",
+        movableColumns: true,
+        headerVisible: true,
+    height: "300px",
+    // Enable row selection so the selection checkbox formatter works and events fire
+    selectable: true,
+    // Use the 'id' field as the Tabulator row index so getRow(id)/selectRow(id) target the correct row
+    index: 'id',
+    // Slow down live filtering to reduce rapid re-renders while typing
+    headerFilterLiveFilter: true,
+    headerFilterLiveFilterDelay: 250
+      });
+      // After grid is created, attach operator dropdowns next to numeric header filters
+      (function attachHeaderOps(){
+        try {
+          const attach = (field)=>{
+            const col = document.querySelector('.tabulator-col[data-field="'+field+'"]');
+            if (!col) return;
+            const hf = col.querySelector('.tabulator-header-filter');
+            if (!hf) return;
+            // avoid re-adding
+            if (hf.querySelector('.scc-op-select')) return;
+            const sel = document.createElement('select');
+            sel.className = 'scc-op-select';
+            sel.style.marginRight = '6px'; sel.title = 'Operator';
+            ['=','<','<=','>','>='].forEach(op=>{ const o=document.createElement('option'); o.value=op; o.textContent=op; sel.appendChild(o); });
+            // place before input
+            hf.insertBefore(sel, hf.firstChild);
+            // restrict input to numeric characters
+            const input = hf.querySelector('input');
+            if (input) {
+              input.addEventListener('input', ()=>{ input.value = input.value.replace(/[^0-9\-<>=%\s]/g,'').trim(); });
+            }
+            // when select changes, trigger header filter update
+            sel.addEventListener('change', ()=>{ try { // simulate filter change by re-applying header filter value
+                const ev = new Event('input',{bubbles:true}); if (hf.querySelector('input')) hf.querySelector('input').dispatchEvent(ev); } catch(e){} });
+          };
+          attach('runNo'); attach('sccScore');
+        } catch(e){}
+      })();
+
+      // Deselect all rows after any filtering completes
+      try {
+        // When filters change, only deselect rows that are no longer visible in the filtered result.
+        // This avoids aggressive deselection on every keystroke which can steal focus from the
+        // header filter input. We only deselect rows whose id is not present in the visible rows.
+        annotationGrid.on && annotationGrid.on('dataFiltered', function(filters, rows){
+          try {
+            const getSelected = annotationGrid.getSelectedRows && annotationGrid.getSelectedRows();
+            if (!Array.isArray(getSelected) || getSelected.length === 0) return;
+            // Build set of visible ids from the rows (RowComponent objects)
+            const visibleIds = new Set();
+            try {
+              rows.forEach(r => { try { const d = (typeof r.getData === 'function') ? r.getData() : (r && r._row && r._row.data) || r; if (d && (d.id !== undefined)) visibleIds.add(d.id); } catch(e){} });
+            } catch(e){}
+            // If all selected rows remain visible, do nothing
+            let needDeselect = false;
+            for (const selRow of getSelected) {
+              try { const d = (typeof selRow.getData === 'function') ? selRow.getData() : (selRow && selRow._row && selRow._row.data) || selRow; if (!d || d.id === undefined || !visibleIds.has(d.id)) { needDeselect = true; break; } } catch(e){ needDeselect = true; break; }
+            }
+            if (!needDeselect) return;
+            // Deselect only those selected rows that are no longer visible
+            getSelected.forEach(r => {
+              try {
+                const d = (typeof r.getData === 'function') ? r.getData() : (r && r._row && r._row.data) || r;
+                if (!d || d.id === undefined || !visibleIds.has(d.id)) {
+                  if (typeof r.deselect === 'function') r.deselect();
+                  else if (annotationGrid.deselectRow) annotationGrid.deselectRow(r);
+                }
+              } catch(e){}
+            });
+          } catch(e){}
+        });
+      } catch(e){}
+      // Example: Add new column via code
+      // annotationGrid.addColumn({title: "New Col", field: "NewCol", headerSort: true});
+    </script>
+
+  <script src="spectrogram.js"></script>
+  <script src="playback.js"></script>
+  <script src="mouse.js"></script>
+  <!-- Zoom controls add-on (non-invasive; relies on globals populated by spectrogram.js) -->
+  <script src="zoom_controls.js"></script>
+
+  <!-- Wire segmented toggle so scripts can read mode via #createEditToggle.dataset.mode and receive mode-change events -->
+  <script>
+  (function wireCreateEditToggle() {
+    const wrap = document.getElementById('createEditToggle');
+    if (!wrap) return;
+    const btnCreate = document.getElementById('toggleCreate');
+    const btnEdit = document.getElementById('toggleEdit');
+
+    function setMode(mode, options = {}) {
+      const createIs = mode === 'create';
+      if (btnCreate) btnCreate.setAttribute('aria-pressed', createIs ? 'true' : 'false');
+      if (btnEdit) btnEdit.setAttribute('aria-pressed', createIs ? 'false' : 'true');
+      wrap.dataset.mode = mode;
+      wrap.dispatchEvent(new CustomEvent('mode-change', { detail: { mode }, bubbles: true }));
+      if (!options.silent) console.debug && console.debug('mode-change', mode);
+    }
+
+    btnCreate && btnCreate.addEventListener('click', () => setMode('create'));
+    btnEdit && btnEdit.addEventListener('click', () => setMode('edit'));
+
+    [btnCreate, btnEdit].forEach(b => {
+      if (!b) return;
+      b.addEventListener('keydown', (ev) => {
+        if (ev.key === 'ArrowLeft') { setMode('create'); btnCreate && btnCreate.focus(); ev.preventDefault(); }
+        if (ev.key === 'ArrowRight') { setMode('edit'); btnEdit && btnEdit.focus(); ev.preventDefault(); }
+      });
+    });
+
+    if (!wrap.dataset.mode) setMode('create', { silent: true });
+  })();
+  </script>
+
+	<script>
+	(function wireCancelOnModeSwitch() {
+	  const wrap = document.getElementById('createEditToggle');
+	  if (!wrap) return;
+
+	  wrap.addEventListener('mode-change', (ev) => {
+		try {
+		  const mode = ev && ev.detail && ev.detail.mode;
+		  if (mode === 'edit') {
+			// Broadcast event for modules to listen
+			window.dispatchEvent(new CustomEvent('cancel-pending-create', { detail: { reason: 'mode-switch' }, bubbles: true }));
+			// Also call direct API if available
+			if (typeof window.__cancelPendingCreate === 'function') {
+			  try { window.__cancelPendingCreate(); } catch (e) { console.warn('__cancelPendingCreate threw', e); }
+			}
+		  }
+		} catch (err) { console.error('mode-change cancel handler', err); }
+	  }, false);
+	})();
+	</script>
+
+  <!-- create_annotations must load after toggle is wired -->
+  <script src="create_annotations.js"></script>
+
+  <script src="edit_annotations.js"></script>
+  <script src="species_bulkedit.js"></script>
+  <script src="display_label.js"></script>
+
+  <!-- Patched species control (robust, uses bubbling so clicks on suggestions work) -->
+  <script>
+  (function () {
+    const MIN_CHARS = 2;
+    const DEBOUNCE_MS = 120;
+    const MAX_RESULTS = 7;
+
+    function norm(s) { return (s || '').toString().normalize().toLowerCase(); }
+    function escapeHtml(s) { return s.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'" :'&#39;'})[c] || '&amp;'); }
+
+    function score(rec, q) {
+      const nq = norm(q);
+      const k = norm(rec.key || '');
+      const c = norm(rec.common || '');
+      let s = 0;
+      if (k.startsWith(nq)) s += 120;
+      else if (k.includes(nq)) s += 80;
+      if (c.startsWith(nq)) s += 60;
+      else if (c.includes(nq)) s += 30;
+      s += Math.max(0, 10 - Math.min(9, (k.length||0) / 10));
+      return s;
+    }
+
+    function highlight(orig, q) {
+      if (!q) return escapeHtml(orig || '');
+      const o = orig || '';
+      const lower = norm(o);
+      const nq = norm(q);
+      const idx = lower.indexOf(nq);
+      if (idx < 0) return escapeHtml(o);
+      const before = o.slice(0, idx), match = o.slice(idx, idx + q.length), after = o.slice(idx + q.length);
+      return escapeHtml(before) + '<span class="species-mark">' + escapeHtml(match) + '</span>' + escapeHtml(after);
+    }
+
+    const input = () => document.getElementById('speciesKwInput');
+    const suggest = () => document.getElementById('speciesSuggest');
+    const result = () => document.getElementById('speciesResult');
+    const clearBtn = () => document.getElementById('speciesClearBtn');
+    const resultWrap = () => document.querySelector('.species-result-wrap');
+    const hidden = () => document.getElementById('selectedSpeciesKey');
+
+    function whenReady(cb) {
+      if (document.readyState === 'interactive' || document.readyState === 'complete') setTimeout(cb, 0);
+      else window.addEventListener('DOMContentLoaded', () => setTimeout(cb, 0));
+    }
+
+    whenReady(() => {
+      const MAX_TRIES = 40;
+      let tries = 0;
+      const t = setInterval(() => {
+        tries++;
+        if (Array.isArray(window.__speciesRecords)) {
+          clearInterval(t);
+          // initial wire and expose refresh hook
+          window.wireSpeciesControl = function(records) { try { wireSpeciesControl(records); } catch(e){ console.warn('wireSpeciesControl wrapper failed', e); } };
+          wireSpeciesControl(window.__speciesRecords);
+        } else if (tries >= MAX_TRIES) {
+          clearInterval(t);
+          console.warn('species-data.js not found or window.__speciesRecords not defined; control will wire empty.');
+          wireSpeciesControl([]);
+        }
+      }, 80);
+    });
+
+    // respond to external source changes
+    window.addEventListener('species-source-changed', function() {
+      try { if (typeof window.wireSpeciesControl === 'function') window.wireSpeciesControl(window.__speciesRecords || []); } catch(e) { console.warn('species-source-changed handler failed', e); }
+    });
+
+    function wireSpeciesControl(records) {
+      const recs = Array.isArray(records) ? records : (window.__speciesRecords || []);
+      window.__speciesRecords = recs;
+
+      const elInput = input();
+      const elSuggest = suggest();
+      const elResult = result();
+      const elClear = clearBtn();
+      const elResultWrap = resultWrap();
+      const elHidden = hidden();
+
+      if (!elInput || !elSuggest || !elResult || !elHidden || !elResultWrap) {
+        setTimeout(() => wireSpeciesControl(recs), 120);
+        return;
+      }
+
+      elHidden.value = '';
+      elResult.textContent = '';
+      elClear.style.display = 'none';
+      elResultWrap.classList.add('empty');
+
+      let debounceTimer = null;
+      let lastQuery = '';
+      let activeIdx = -1;
+
+      function close() { elSuggest.innerHTML = ''; elSuggest.style.display = 'none'; activeIdx = -1; }
+
+      function render(q) {
+        lastQuery = q;
+        activeIdx = -1;
+        elSuggest.innerHTML = '';
+        elSuggest.style.display = 'none';
+        if (!q || q.length < MIN_CHARS) { return; }
+        const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        const cand = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a,b) => b.s - a.s).slice(0, MAX_RESULTS);
+        if (!cand.length) return;
+        cand.forEach((cobj, i) => {
+          const r = cobj.r;
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.style.display = 'flex';
+          div.style.gap = '8px';
+          div.style.padding = '8px 10px';
+          div.style.cursor = 'pointer';
+          div.dataset.idx = i;
+          div.innerHTML = '<div class="common">' + highlight(r.common||'', q) + '</div>';
+          div.addEventListener('click', (ev) => { ev.preventDefault(); pick(i); });
+          elSuggest.appendChild(div);
+        });
+        elSuggest.style.display = 'block';
+      }
+
+      function applySelection(chosen) {
+        elHidden.value = chosen.key || '';
+        elResult.textContent = chosen.common || '';
+        elClear.style.display = 'inline-flex';
+        elResultWrap.classList.remove('empty');
+        elHidden.dispatchEvent(new Event('input', { bubbles: true }));
+        const wrapper = elResultWrap.closest('.species-search') || document.querySelector('.species-search');
+        if (wrapper) wrapper.dispatchEvent(new CustomEvent('species-select', { detail: { key: chosen.key, common: chosen.common, scientific: chosen.scientific }, bubbles: true }));
+      }
+
+      function clearSelection() {
+        const prev = elHidden.value || null;
+        elHidden.value = '';
+        elResult.textContent = '';
+        elClear.style.display = 'none';
+        elResultWrap.classList.add('empty');
+        elHidden.dispatchEvent(new Event('input', { bubbles: true }));
+        const wrapper = elResultWrap.closest('.species-search') || document.querySelector('.species-search');
+        if (wrapper) wrapper.dispatchEvent(new CustomEvent('species-select-cleared', { detail: { previousKey: prev }, bubbles: true }));
+      }
+
+      function pick(idx) {
+        const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        const cand = records.map(r => ({ r, s: score(r, lastQuery) })).filter(x => x.s > 0).sort((a,b) => b.s - a.s).slice(0, MAX_RESULTS);
+        const chosen = (cand[idx] && cand[idx].r) || null;
+        if (!chosen) return;
+        applySelection(chosen);
+        elInput.value = '';
+        close();
+        elInput.focus();
+      }
+
+      function acceptTop() {
+        const q = elInput.value.trim();
+        if (!q) return;
+        const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        const best = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a,b)=>b.s-a.s)[0];
+        if (!best) return;
+        applySelection(best.r);
+        elInput.value = '';
+        close();
+      }
+
+      function updateActive(items) {
+        items.forEach((it, i) => {
+          if (i === activeIdx) {
+            it.classList.add('active');
+            it.scrollIntoView({ block: 'nearest' });
+          } else {
+            it.classList.remove('active');
+          }
+        });
+      }
+
+      elResultWrap.addEventListener('mouseenter', () => { if (elHidden.value) elClear.style.display = 'inline-flex'; });
+      elResultWrap.addEventListener('mouseleave', () => { if (elHidden.value) elClear.style.display = 'none'; });
+
+      elClear.addEventListener('click', (e) => { e.preventDefault(); clearSelection(); elInput.focus(); });
+
+      elInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elInput.value.trim() === '') {
+          e.preventDefault();
+          clearSelection();
+        }
+      });
+
+      elInput.addEventListener('input', () => {
+        const q = elInput.value.trim();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => render(q), DEBOUNCE_MS);
+      });
+
+      elInput.addEventListener('keydown', (e) => {
+        const items = elSuggest.querySelectorAll('.item');
+        if (elSuggest.style.display === 'block' && items.length) {
+          if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(items.length - 1, activeIdx + 1); updateActive(items); return; }
+          if (e.key === 'ArrowUp')   { e.preventDefault(); activeIdx = Math.max(0, activeIdx - 1); updateActive(items); return; }
+          if (e.key === 'Enter') {
+            if (activeIdx >= 0 && activeIdx < items.length) { e.preventDefault(); pick(activeIdx); return; }
+            e.preventDefault(); acceptTop(); return;
+          }
+          if (e.key === 'Escape') { close(); return; }
+        } else {
+          if (e.key === 'Enter') { e.preventDefault(); acceptTop(); return; }
+        }
+      });
+
+      // OUTSIDE CLICK: use bubble phase so clicks on suggestion items occur first
+      document.addEventListener('click', (ev) => {
+        try {
+          const path = (ev.composedPath && ev.composedPath()) || ev.path || [];
+          const inside = path.some(node => {
+            try { return node && node.classList && node.classList.contains && node.classList.contains('species-search'); } catch (e) { return false; }
+          });
+          if (!inside) close();
+        } catch (err) {
+          // fallback conservative check
+          try {
+            if (!elInput.closest('.species-search') && !document.querySelector('.species-search').contains(ev.target)) close();
+          } catch (e) { /* ignore */ }
+        }
+      }, false);
+
+      // ensure suggestions are above overlays (defensive if CSS not present)
+      elSuggest.style.zIndex = elSuggest.style.zIndex || '999999';
+    }
+  })();
+  </script>
+
+  <script>
+  (function () {
+    const FILE_ID = 'file';
+    const META_BTN_ID = 'metaOpenBtn';
+
+    function findFile() { return document.getElementById(FILE_ID); }
+    function findMetaBtn() { return document.getElementById(META_BTN_ID); }
+
+    function updateMetaBtnState() {
+      const btn = findMetaBtn();
+      const file = findFile();
+      if (!btn) return;
+      try {
+        const hasFile = file && file.files && file.files.length > 0;
+        btn.disabled = !hasFile;
+      } catch (e) {
+        btn.disabled = true;
+      }
+    }
+
+    function wireMetaButtonOnce() {
+      const btn = findMetaBtn();
+      if (!btn) return;
+      if (btn.__indexMetaWired) return;
+      btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (btn.disabled) return;
+        if (typeof window.__openMetadataModal === 'function') {
+          try { window.__openMetadataModal(); } catch (err) { console.error('Open metadata failed', err); }
+        } else {
+          console.warn('Metadata API not available: window.__openMetadataModal');
+        }
+      }, true);
+      btn.__indexMetaWired = true;
+    }
+
+    function observeFileInput() {
+      const file = findFile();
+      if (!file) {
+        setTimeout(observeFileInput, 120);
+        return;
+      }
+      updateMetaBtnState();
+      file.addEventListener('change', () => {
+        try { window.__lastMetadata = null; } catch (e) {}
+        const ov = document.getElementById('metaOverlay');
+        if (ov) ov.remove();
+        updateMetaBtnState();
+      }, true);
+      const mo = new MutationObserver(() => updateMetaBtnState());
+      mo.observe(file, { attributes: true, attributeFilter: ['value'] });
+    }
+
+    function init() {
+      wireMetaButtonOnce();
+      observeFileInput();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else init();
+
+    (function waitForBtn(timeout = 8000) {
+      const btn = findMetaBtn();
+      if (!btn) {
+        setTimeout(() => waitForBtn(Math.max(1000, timeout - 1000)), 400);
+      } else {
+        wireMetaButtonOnce();
+        updateMetaBtnState();
+      }
+    })();
+  })();
+  </script>
+
+  
+
+  <script src="metadata.js"></script>
+  <script src="upload_annotations.js"></script>
+  <script src="download_metadata.js"></script>
+  <script src="download_annotations.js"></script>
+  <script src="scc.js"></script>
+  <script src="annotation-highlight.js"></script>
+  
+  <script>
+  // Left overlay toggle wiring (structure only)
+  (function () {
+    function $(id){return document.getElementById(id);} 
+    const toggle = $('leftHamburgerToggle');
+    const overlay = $('leftOverlay');
+    const closeBtn = $('leftHamburgerClose');
+    if (!overlay || !toggle) return; // nothing to wire
+
+    function open() {
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden','false');
+      toggle.setAttribute('aria-expanded','true');
+      // Focus the close button so the overlay does not show a permanently-blue first item on open
+      const cb = closeBtn || overlay.querySelector('.left-close');
+      if (cb) try { cb.focus(); } catch(e){}
+    }
+    function close() {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden','true');
+      toggle.setAttribute('aria-expanded','false');
+      try { toggle.focus(); } catch(e){}
+    }
+
+  toggle.addEventListener('click', (ev) => { ev.stopPropagation(); const isOpen = overlay.classList.contains('open'); if (isOpen) close(); else open(); });
+    if (closeBtn) closeBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); close(); });
+
+    // Close on Escape
+    document.addEventListener('keydown', (ev)=>{ if (ev.key === 'Escape' && overlay.classList.contains('open')) { ev.preventDefault(); close(); } });
+
+    // Auto-collapse when mouse leaves the overlay (small delay to avoid flicker)
+    let closeTimer = null;
+    overlay.addEventListener('mouseleave', (ev) => {
+      try { closeTimer = setTimeout(() => { close(); closeTimer = null; }, 350); } catch (e) { close(); }
+    });
+    overlay.addEventListener('mouseenter', (ev) => { try { if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; } } catch (e) {} });
+
+    // Mirror clicks to existing toolbar buttons (non-destructive duplicates)
+    Array.from(overlay.querySelectorAll('.left-menu-btn')).forEach(b=>{
+      b.addEventListener('click', (ev)=>{
+        ev.preventDefault(); ev.stopPropagation();
+        const targetId = b.dataset.target;
+        if (!targetId) return;
+        const target = document.getElementById(targetId);
+        if (target && typeof target.click === 'function' && !target.disabled) {
+          try { target.click(); } catch(e){}
+        }
+      });
+    });
+  })();
+  </script>
+</body>
+</html>
