@@ -6,14 +6,18 @@ A tool for managing annotations for Bioacoustics.
 
 	Features:
 
+	Playback of spectrogram generated for the sound file.
+
+	Spectrogram views management.
+	
 	Create/Edit/Export/Import box type annotations.
 
 	Assistance to create automatic annotations based on template.
 
-	File level Metatda - Create/Edit/Export.
+	Overall ease of use.
 	
-	Selection of species with predfined or custom list. Search based on keywords. Common name, Scientific name.
+	File level Metadata - Create/Edit/Export.
 	
-	Spectrogram views management.
+	Selection of species with predefined or custom list. Search based on keywords. Common name, Scientific name.
 
 	
