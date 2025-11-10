@@ -1,4 +1,4 @@
-// upload_annotations.js
+// upload_annotations.js commens.
 // Upload annotations (TSV/CSV). Defensive wiring: ensures upload button stays enabled and click handler is attached.
 // Integrates with globalThis._annotations.import when available. Validates numeric fields and assigns canonical ids.
 // Uses an accessible in-DOM modal (Merge / Replace / Cancel) shown every time when existing annotations are present.
@@ -858,3 +858,4 @@
     showThreeOptionModal: showThreeOptionModal
   };
 })();
+
