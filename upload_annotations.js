@@ -348,8 +348,8 @@
         } else if (nh === normalizeHeaderKey('Selection')) {
           obj.Selection = raw;
         } else {
-          // Explicitly ignore 'View' and 'Channel' columns (do not import them)
-          if (nh === 'view' || nh === 'channel') return;
+          // Explicitly ignore 'View', 'Channel' and 'File' columns (do not import them)
+          if (nh === 'view' || nh === 'channel' || nh === 'file') return;
           // keep any other column under original header name for DOM fallback
           obj[h] = raw;
         }
@@ -665,7 +665,7 @@
           const header = (h || '').trim();
           if (!header) return;
           const nh = normalizeHeaderKey(header);
-          if (nh === 'view' || nh === 'channel') return; // never treat these as new/imported columns
+          if (nh === 'view' || nh === 'channel' || nh === 'file') return; // never treat these as new/imported columns
           if (header === '_select') return; // ignore selection checkbox
           // If header matches any existing grid column title, it's not new
           if (currentTitles.some(t => String(t).trim() === header)) return;
@@ -748,7 +748,7 @@
             if (requiredSet.has(k)) return;
             if (isKnownHeaderName(k)) return; // don't duplicate known headers like "Begin Time (s)"
             const nk = normalizeHeaderKey(k);
-            if (nk === 'view' || nk === 'channel') return; // explicitly skip these columns
+            if (nk === 'view' || nk === 'channel' || nk === 'file') return; // explicitly skip these columns
             base[k] = obj[k];
           });
           return base;
