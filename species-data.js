@@ -6879,4 +6879,10 @@ window.__speciesRecords = [
     "common": "Tristram's Bunting",
     "scientific": "Emberiza tristrami"
   }
+  {
+    "key": "NOIS",
+    "common": "Noise / Background sound",
+    "scientific": "Noise / Background sound"
+  }
 ];
+
