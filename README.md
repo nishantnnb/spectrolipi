@@ -4,6 +4,8 @@
 # Spectrolipi
 A tool for managing annotations for Bioacoustics.
 
+Link: https://nishantnnb.github.io/spectrolipi/
+
 	Features:
 
 	Playback of spectrogram generated for the sound file.
@@ -20,4 +22,4 @@ A tool for managing annotations for Bioacoustics.
 	
 	Selection of species with predefined or custom list. Search based on keywords. Common name, Scientific name.
 
-	
+Please refer 'Spectrolipi - Guide.docx' and 'Spectrolipi - FAQ.docx' to read details about this tool.
