@@ -865,7 +865,14 @@
     editModeActive = false;
     hoverEnabled = false;
     highlightedId = null;
-    if (editSession) cancelAndEndEditSession();
+    if (editSession) {
+      try {
+        // Commit in-progress edits when switching modes so adjustments persist.
+        commitEditSessionAndEnd();
+      } catch (e) {
+        cancelAndEndEditSession();
+      }
+    }
     detachEditModeListeners();
     clearHighlightCanvas();
     // sync visual to toggle if present
