@@ -90,6 +90,24 @@
       outline: none;
     }
   </style>
+  <style>
+    /* Compact icon-only toolbar buttons (keeps seg-top-btn state classes) */
+    .seg-compact-btn {
+      position:relative; display:inline-flex; align-items:center; justify-content:center;
+      width:36px; height:32px; padding:4px 0; margin-left:6px; overflow:visible;
+      background: #000000 !important; /* dark background for contrast */
+      color:#fff; border: none; border-radius:6px;
+      cursor:pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    }
+    /* Position SVGs absolutely so they can be larger than the button while the button keeps a narrow width */
+    .seg-compact-btn svg {
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:40px; height:auto; display:block; pointer-events:none;
+    }
+    .seg-compact-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .seg-compact-btn:hover, .seg-compact-btn:focus { background:#222 !important; }
+    .sr-only { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
+  </style>
     <!-- Only keep .seg-top-btn for Re-Generate and Play buttons -->
     <style>
       .seg-top-btn {
@@ -127,8 +145,23 @@
         color: #fff;
         outline: none;
       }
+      /* Select button visual states (do not change disabled appearance) */
+      .seg-top-btn.selection-on { background: #43a047 !important; /* green when selection mode ON */ }
+      .seg-top-btn.selection-off { background: #1976d2 !important; /* slightly darker blue for explicit OFF state */ }
       /* Move top controls right so fixed left hamburger toggle does not overlap the file chooser */
       #controls { margin-left: 56px; }
+    </style>
+    <style>
+      /* Specific override: when a button has both seg-top-btn and seg-compact-btn,
+         make sure compact variant stays black. This overrides the earlier
+         .seg-top-btn rules (same specificity but placed later), and is more
+         explicit so the compact toolbar shows black backgrounds as requested. */
+      .seg-top-btn.seg-compact-btn { background: #000000 !important; color: #fff !important; width:36px !important; min-width:36px !important; max-width:36px !important; padding:4px 0 !important; }
+      .seg-top-btn.seg-compact-btn:hover, .seg-top-btn.seg-compact-btn:focus { background: #222 !important; }
+      .seg-top-btn.seg-compact-btn:disabled { background: #000000 !important; opacity: 0.5; }
+      /* When selection mode is ON, show a chartreuse background for the compact select button */
+      .seg-top-btn.selection-on.seg-compact-btn { background: #7FFF00 !important; color: #000 !important; }
+      .seg-top-btn.selection-on.seg-compact-btn svg * { /* keep icon contrast if needed */ fill: inherit; stroke: inherit; }
     </style>
 </head>
 <body>
@@ -178,7 +211,7 @@
           <span>Save Annotations</span>
         </button>
         <!-- Manage species list opens modal containing upload/toggle UI -->
-        <button id="manageSpeciesBtn" type="button" class="left-menu-btn" title="Manage species list">
+  <button id="manageSpeciesBtn" type="button" class="left-menu-btn" title="Manage species list">
           <!-- User's owl SVG normalized to match other menu icons (20x20) and inherit color -->
           <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="20" height="20" aria-hidden="true" focusable="false" style="vertical-align:middle;margin-right:8px;fill:currentColor;stroke:currentColor;">
             <title>OWL</title>
@@ -193,6 +226,14 @@
             <circle cx="82.13" cy="64.1" r="1.623"/>
           </svg>
           <span>Manage species list</span>
+        </button>
+        <button id="exportBtn" type="button" class="left-menu-btn" title="Export audio">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 3v10" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 8l5-5 5 5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 21h14" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+          </svg>
+          <span>Export Audio</span>
         </button>
       </nav>
       <!-- Footer area for the left overlay: larger logo shown at bottom of hamburger menu (non-clickable) -->
@@ -322,6 +363,11 @@
 
     <!-- Play/Pause button moved here, immediately after Gain control -->
   <button id="playPause" class="seg-top-btn" style="margin-left:8px" title="Press Space for Play/Pause">Play</button>
+  <!-- Mouse position readout (time & frequency) -->
+  <div id="mousePosToolbar" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px">
+    <div id="toolbarMouseTime" class="toolbar-mouse" title="Mouse position X axis (Time)" style="background:rgba(0,0,0,0.6);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;min-width:40px;text-align:left;font-variant-numeric:tabular-nums">T: -</div>
+    <div id="toolbarMouseFreq" class="toolbar-mouse" title="Mouse position Y axis (Frequency)" style="background:rgba(0,0,0,0.6);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;min-width:60px;text-align:left;font-variant-numeric:tabular-nums">F: -</div>
+  </div>
     <!-- Declarative zoom controls (Y then X). JS will attach handlers to these elements if present. -->
     <div id="zoomToolbarPlaceholder" class="zoom-toolbar" role="toolbar" aria-label="Zoom controls" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px">
       <div id="zoomToolbar" style="display:inline-flex;align-items:center;gap:16px;">
@@ -355,18 +401,61 @@
 
   </div>
 
-  <!-- wait overlay (keep minimal markup in index.html) -->
-  <div id="waitOverlay" role="status" aria-live="polite" aria-hidden="true">
-    <div class="panel" role="presentation">
-      <div class="spinner" aria-hidden="true"></div>
-  <!-- Logo shown on the wait overlay (non-clickable) -->
-  <img id="waitOverlayLogo" src="001Logo%26name.png" alt="Logo" />
-      <div class="text">
-        <div class="title">Generating spectrogram</div>
-        <div class="msg">Processing image — this may take a few seconds.</div>
+  <!-- wait overlay (keep minimal markup in index.html). Inline style ensures it sits above all modals. -->
+  <div id="waitOverlay" role="status" aria-live="polite" aria-hidden="true" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:2147483660;pointer-events:auto;background:rgba(0,0,0,0.6);">
+    <div class="panel" role="presentation" style="max-width:520px;min-width:240px;padding:20px;border-radius:10px;background:transparent;color:#fff;display:flex;flex-direction:column;align-items:center;gap:12px;">
+      <div class="spinner" aria-hidden="true" style="width:36px;height:36px;border-radius:50%;border:4px solid rgba(255,255,255,0.15);border-top-color:#fff;animation:spin 900ms linear infinite"></div>
+      <!-- Logo shown on the wait overlay (non-clickable) -->
+      <img id="waitOverlayLogo" src="001Logo%26name.png" alt="Logo" style="height:56px;pointer-events:none;user-select:none;" />
+      <div class="text" style="text-align:center;">
+        <div class="title" style="font-weight:700;font-size:16px;">Generating spectrogram</div>
+        <div class="msg" style="font-size:13px;color:#ddd">Processing image — this may take a few seconds.</div>
         <div class="meta" id="waitOverlayMeta" style="display:none"><span id="waitOverlayETA"></span></div>
       </div>
     </div>
+  </div>
+
+  <style>
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+
+  <!-- Optional minimal styles for Cut selection overlay -->
+  <style>
+    #spectroSelectionOverlay{ position:absolute; pointer-events:none; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); z-index: 999; display:none; }
+    #spectroSelectionLabel{ position:absolute; pointer-events:none; background:rgba(0,0,0,0.7); color:#fff; font-size:12px; padding:2px 6px; border-radius:3px; z-index:1000; display:none; }
+    #spectroCutGlass{ position:absolute; left:0; top:0; right:0; bottom:0; cursor:crosshair; z-index: 998; display:none; }
+    /* Export modal */
+    #exportModal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #0f0f0f; color:#fff; padding:14px; border-radius:8px; z-index:2147483650; box-shadow: 0 6px 30px rgba(0,0,0,0.6); display:none; width:360px; }
+    #exportModal h3 { margin:0 0 8px 0; font-size:1rem; }
+    #exportModal label { display:block; font-size:0.85rem; margin-top:8px; color:#ddd; }
+    #exportModal select, #exportModal input { width:100%; margin-top:6px; padding:6px; background:#111; border:1px solid rgba(255,255,255,0.06); color:#fff; border-radius:4px; }
+    #exportModal .actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+    #exportModal .note { font-size:0.8rem; color:#bbb; margin-top:8px; }
+  </style>
+
+  <!-- Export modal markup (hidden until used) -->
+  <div id="exportModal" role="dialog" aria-modal="true">
+    <h3>Export audio (WAV)</h3>
+    <div id="exportInfo" style="font-size:0.85rem;color:#ccc">Preparing...</div>
+    <label>Format</label>
+    <div style="padding:6px 8px;background:#111;border-radius:4px;color:#fff">WAV (PCM)</div>
+    <label for="exportSampleRate">Sample rate</label>
+    <select id="exportSampleRate">
+      <option value="orig">Original</option>
+      <option value="192000">192000 Hz</option>
+      <option value="96000">96000 Hz</option>
+      <option value="48000">48000 Hz</option>
+      <option value="44100">44100 Hz</option>
+    </select>
+    <label for="exportEncoding">Encoding / Bit depth</label>
+    <select id="exportEncoding">
+      <option value="24">24-bit PCM (recommended)</option>
+      <option value="16">16-bit PCM (smaller)</option>
+      <option value="32f">32-bit float PCM</option>
+    </select>
+    <div class="note" id="exportEstimate">Estimated size: —</div>
+    <div class="note" id="exportFoot">Audio will be exported to your browser's Downloads folder.</div>
+    <div class="actions"><button id="exportCancel" class="seg-top-btn" type="button">Cancel</button><button id="exportDo" class="seg-top-btn" type="button">Export</button></div>
   </div>
 
   <div id="viewportWrapper" role="region" aria-label="Spectrogram viewport">
@@ -404,7 +493,6 @@
       <button type="button" id="toggleCreate" class="seg-option" data-mode="create" aria-pressed="true">Create</button>
       <button type="button" id="toggleEdit" class="seg-option" data-mode="edit" aria-pressed="false">Edit</button>
     </div>
-
   <!-- Single Delete -->
   <button id="annoDeleteBtn" type="button" title="Delete a Box in edit mode" aria-label="Delete annotation" class="seg-btn">
     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -443,6 +531,66 @@
     </svg>
     <span>Run<br>SCC</span>
   </button>
+
+    <!-- Compact action buttons moved here from the top toolbar (Select / Cut / Silence / Filter / Normalize / Undo) -->
+    <div id="compactActionButtons" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;">
+      <button id="selectBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Select a time span on the spectrogram" aria-label="Select a time span on the spectrogram">
+        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <rect x="8" y="8" width="24" height="16" fill="#0AA" fill-opacity="0.2" stroke="#0AA" stroke-width="2"/>
+          <path d="M6,6 L12,14 L9,14 L9,20 L7,20 L7,14 L4,14 Z" fill="#E53935"/>
+        </svg>
+        <span class="sr-only">Select</span>
+      </button>
+
+      <button id="cutBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Cut the selection." aria-label="Cut the selection">
+        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <circle cx="10" cy="10" r="5" fill="none" stroke="#0AA" stroke-width="2"/>
+          <circle cx="10" cy="22" r="5" fill="none" stroke="#0AA" stroke-width="2"/>
+          <line x1="14" y1="10" x2="18" y2="14" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="22" x2="18" y2="18" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="19" cy="16" r="2" fill="#0AA"/>
+          <path d="M19 16 L34 8" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
+          <path d="M19 16 L34 24" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
+          <line x1="36" y1="8" x2="36" y2="24" stroke="#999" stroke-width="2" stroke-dasharray="3 2"/>
+        </svg>
+        <span class="sr-only">Cut</span>
+      </button>
+
+      <button id="silenceBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Silence the selection or specific duration." aria-label="Silence the selection or specific duration">
+        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <polygon points="6,12 12,12 18,6 18,26 12,20 6,20" fill="#0AA"/>
+          <line x1="22" y1="10" x2="34" y2="22" stroke="#E53935" stroke-width="3"/>
+          <line x1="34" y1="10" x2="22" y2="22" stroke="#E53935" stroke-width="3"/>
+        </svg>
+        <span class="sr-only">Silence</span>
+      </button>
+
+      <button id="filtersBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="High pass / Low pass filters" aria-label="High pass or Low pass filters">
+        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <path d="M6 6 H34 L22 18 V26 H18 V18 Z" fill="#0AA" stroke="#0AA" stroke-width="2"/>
+        </svg>
+        <span class="sr-only">Filter</span>
+      </button>
+
+      <button id="normalizeBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Normalize selection or whole audio to a target peak level" aria-label="Normalize selection or whole audio to a target peak level">
+        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <line x1="2" y1="10" x2="38" y2="10" stroke="#6C63FF" stroke-width="2" stroke-dasharray="4 3"/>
+          <path d="M2,20 C6,6 9,26 13,8 C17,22 20,6 24,20 C28,12 31,24 35,12 C36,8 38,26 38,14" fill="none" stroke="#999" stroke-width="2"/>
+          <path d="M10,22 L10,28 M8,26 L10,22 L12,26" stroke="#0AA" stroke-width="2" fill="none"/>
+          <path d="M30,6 L30,0 M28,2 L30,6 L32,2" stroke="#0AA" stroke-width="2" fill="none"/>
+        </svg>
+        <span class="sr-only">Normalize</span>
+      </button>
+
+      <button id="undoCutBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Undo last one edit." aria-label="Undo last edit">
+        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <path d="M18 8 L8 16 L18 24 V18 H26 C30 18 34 22 34 26" fill="none" stroke="#0AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="30" cy="10" r="6" fill="#E53935"/>
+          <text x="30" y="13" text-anchor="middle" font-size="8" fill="#fff" font-family="Arial">1</text>
+        </svg>
+        <span class="sr-only">Undo</span>
+      </button>
+    </div>
 
 
   </div>
@@ -646,6 +794,9 @@
     </script>
 
   <script src="spectrogram.js"></script>
+    <script src="export_sound.js"></script>
+  <script src="filters.js"></script>
+  <script src="normalize.js"></script>
   <script src="playback.js"></script>
   <script src="mouse.js"></script>
   <!-- Zoom controls add-on (non-invasive; relies on globals populated by spectrogram.js) -->
