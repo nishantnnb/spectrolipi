@@ -92,11 +92,17 @@
 
     // Update authoritative globals consistent with existing code
     globalThis._spectroTiles = tiles;
-    globalThis._spectroImageWidth = imageW;
     globalThis._spectroPxPerFrame = pxpf;
-    // Prefer direct computation for px/sec
     const duration = Number(globalThis._spectroDuration || (numFrames/framesPerSec));
-    globalThis._spectroPxPerSec = isFinite(duration) && duration > 0 ? (imageW / duration) : (framesPerSec * pxpf);
+    if (typeof globalThis._spectroApplyDisplayScaleFromIntrinsic === 'function') {
+      globalThis._spectroApplyDisplayScaleFromIntrinsic(imageW);
+    } else {
+      globalThis._spectroImageWidth = imageW;
+      globalThis._spectroImageIntrinsicWidth = imageW;
+      globalThis._spectroDisplayScaleX = 1;
+      globalThis._spectroPxPerSec = isFinite(duration) && duration > 0 ? (imageW / duration) : (framesPerSec * pxpf);
+    }
+    try { globalThis._scheduleAnnotationOverlaySync && globalThis._scheduleAnnotationOverlaySync('zoom-buildTiles'); } catch (e) {}
 
     ensureSpacerWidth(imageW, imageH);
     return true;
