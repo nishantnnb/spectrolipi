@@ -867,7 +867,6 @@
     highlightedId = null;
     if (editSession) {
       try {
-        // Commit in-progress edits when switching modes so adjustments persist.
         commitEditSessionAndEnd();
       } catch (e) {
         cancelAndEndEditSession();
@@ -922,6 +921,7 @@
           deleteBtnLocal.style.opacity = isEdit ? '1.0' : '0.45';
           deleteBtnLocal.style.cursor = isEdit ? 'pointer' : 'default';
         }
+        try { window.dispatchEvent(new CustomEvent('annotation-mode-changed', { detail: { mode: (isEdit ? 'edit' : 'create') } })); } catch(e) {}
       } catch (e) {}
     }
 
@@ -1004,7 +1004,15 @@
   globalThis._editAnnotations = globalThis._editAnnotations || {};
   globalThis._editAnnotations.isEditMode = () => !!editModeActive;
   globalThis._editAnnotations.getEditingId = () => (editSession ? editSession.id : null);
-  globalThis._editAnnotations.cancelEdit = () => { if (editSession) cancelAndEndEditSession(); };
+  globalThis._editAnnotations.cancelEdit = () => {
+    if (editSession) {
+      try {
+        commitEditSessionAndEnd();
+      } catch (e) {
+        cancelAndEndEditSession();
+      }
+    }
+  };
   globalThis._editAnnotations.commitEdit = () => { if (editSession) commitEditSessionAndEnd(); };
   globalThis._editAnnotations.deleteEditing = () => { if (editSession) deleteSelectedAnnotation(); };
 
