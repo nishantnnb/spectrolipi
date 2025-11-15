@@ -156,9 +156,21 @@
     const localX = clientX - scrollRect.left;
     const leftCol = Math.round(scrollArea.scrollLeft || 0);
     const globalX = leftCol + localX;
-    const pxPerSec = (globalThis._spectroMap && typeof globalThis._spectroMap.pxPerSec === 'function')
-      ? globalThis._spectroMap.pxPerSec()
-      : (globalThis._spectroPxPerSec || (globalThis._spectroPxPerFrame && globalThis._spectroFramesPerSec ? globalThis._spectroPxPerFrame * globalThis._spectroFramesPerSec : 1));
+      // Robust pxPerSec: prefer displayed stretched width / duration if both are known.
+      let pxPerSec = 1;
+      try {
+        const dur = globalThis._spectroDuration;
+        const dispW = globalThis._spectroImageWidth;
+        if (isFinite(dur) && dur > 0 && isFinite(dispW) && dispW > 0) {
+          pxPerSec = dispW / dur;
+        } else if (globalThis._spectroMap && typeof globalThis._spectroMap.pxPerSec === 'function') {
+          pxPerSec = globalThis._spectroMap.pxPerSec();
+        } else if (globalThis._spectroPxPerSec) {
+          pxPerSec = globalThis._spectroPxPerSec;
+        } else if (globalThis._spectroPxPerFrame && globalThis._spectroFramesPerSec) {
+          pxPerSec = globalThis._spectroPxPerFrame * globalThis._spectroFramesPerSec;
+        }
+      } catch (e) { pxPerSec = 1; }
     const timeSec = Math.max(0, globalX / Math.max(1, pxPerSec));
 
     const canvasRect = spectrogramCanvas.getBoundingClientRect();
@@ -172,8 +184,13 @@
     const yInImage = localY - AXIS_TOP;
     const t = Math.max(0, Math.min(1, yInImage / Math.max(1, imageHeight - 1)));
     const freqHz = Math.max(0, Math.min(ymaxHz, (1 - t) * ymaxHz));
-
-    return { timeSec, freqHz, globalX, localX, localY, pxPerSec };
+    const out = { timeSec, freqHz, globalX, localX, localY, pxPerSec };
+    try {
+      if (window.DEBUG_ANNOTATION_TIME && window.DEBUG_ANNOTATION_TIME >= 2) {
+        console.log('[annot][map]', out);
+      }
+    } catch(e){}
+    return out;
   }
 
   function clearOverlay() {
@@ -215,7 +232,18 @@
 
   function renderAllAnnotations() {
     clearOverlay();
-    const pxPerSec = (globalThis._spectroMap && typeof globalThis._spectroMap.pxPerSec === 'function') ? globalThis._spectroMap.pxPerSec() : (globalThis._spectroPxPerSec || 1);
+    let pxPerSec = 1;
+    try {
+      const dur = globalThis._spectroDuration;
+      const dispW = globalThis._spectroImageWidth;
+      if (isFinite(dur) && dur > 0 && isFinite(dispW) && dispW > 0) {
+        pxPerSec = dispW / dur;
+      } else if (globalThis._spectroMap && typeof globalThis._spectroMap.pxPerSec === 'function') {
+        pxPerSec = globalThis._spectroMap.pxPerSec();
+      } else if (globalThis._spectroPxPerSec) {
+        pxPerSec = globalThis._spectroPxPerSec;
+      }
+    } catch(e){ pxPerSec = 1; }
     const imageHeight = globalThis._spectroImageHeight || (annotationOverlay.clientHeight || 100);
     const ymaxHz = globalThis._spectroYMax || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
     const duration = (typeof globalThis._spectroDuration === 'number') ? globalThis._spectroDuration : Infinity;
@@ -250,6 +278,19 @@
       const t2 = 1 - (low / ymaxHz);
       const y1 = t1 * imageHeight;
       const y2 = t2 * imageHeight;
+      try {
+        if (window.DEBUG_ANNOTATION_TIME && window.DEBUG_ANNOTATION_TIME >= 1) {
+          console.log('[annot][draw]', {
+            id: a.id,
+            begin, end,
+            beginClamped, endClamped,
+            pxPerSec,
+            scrollLeft: Math.round(scrollArea.scrollLeft || 0),
+            x1, x2,
+            overlayWidth: annotationOverlay.width / (window.devicePixelRatio || 1)
+          });
+        }
+      } catch (dbgErr) {}
       // Always draw base box; selection styling is layered separately
       drawBoxOnOverlay(x1, y1, x2, y2, { fill: COMMITTED_FILL, stroke: COMMITTED_STROKE, dashed: false });
     });
@@ -491,12 +532,25 @@
         window.annotationGrid.addData([rowObj]);
         // remember last created id for right-click cancel behavior
         try { lastCreatedId = nextId; } catch (e) {}
+        try {
+          if (window.DEBUG_ANNOTATION_TIME) {
+            console.log('[annot][commit]', rowObj, {
+              duration: globalThis._spectroDuration,
+              pxPerSec: (globalThis._spectroMap && globalThis._spectroMap.pxPerSec && globalThis._spectroMap.pxPerSec()) || globalThis._spectroPxPerSec,
+              imageWidth: globalThis._spectroImageWidth,
+              viewportWidth: scrollArea && scrollArea.clientWidth,
+              scrollLeft: scrollArea && scrollArea.scrollLeft
+            });
+          }
+        } catch(e){}
       }
     } catch (e) {
       try { window.alert('Failed to add annotation to grid. Annotation not saved.'); } catch (ex) {}
     }
     pending = null;
     renderAllAnnotations();
+    // Simple panel update if enabled
+    try { if (window.__updateSimpleTimeDebug) window.__updateSimpleTimeDebug('[commit]'); } catch(e){}
   }
 
   function cancelPending() {
@@ -547,12 +601,49 @@
   function onPointerMove(ev) {
     if (currentMode() !== 'create') return;
     if (!pointerDown || !pending) return;
-    const cur = clientToTimeAndFreq_local(ev.clientX, ev.clientY);
-    const duration = (typeof globalThis._spectroDuration === 'number') ? globalThis._spectroDuration : Infinity;
-    pending.currentTime = Math.min(cur.timeSec, duration);
-    pending.currentFreq = cur.freqHz;
-    pending.pxPerSec = cur.pxPerSec;
+  let cur = clientToTimeAndFreq_local(ev.clientX, ev.clientY);
+  const duration = (typeof globalThis._spectroDuration === 'number') ? globalThis._spectroDuration : Infinity;
+  pending.currentTime = Math.min(cur.timeSec, duration);
+  pending.currentFreq = cur.freqHz;
+  pending.pxPerSec = cur.pxPerSec;
+
+    // Auto-scroll viewport while dragging near edges so boxes can extend beyond ~viewport seconds
+    try {
+      const imgW = (typeof globalThis._spectroImageWidth === 'number') ? globalThis._spectroImageWidth : 0;
+      const vpW = Math.max(1, scrollArea.clientWidth || 0);
+      if (imgW > vpW) {
+        const rect = scrollArea.getBoundingClientRect();
+        const threshold = Math.max(16, Math.min(64, Math.round(vpW * 0.05))); // 5% of viewport, clamped to 16..64 px
+        const maxScroll = Math.max(0, imgW - vpW);
+        const curScroll = Math.max(0, Math.min(maxScroll, Math.round(scrollArea.scrollLeft || 0)));
+        let nextScroll = curScroll;
+        if (ev.clientX >= rect.right - threshold) {
+          // Scroll right proportional to how deep into the threshold zone the pointer is
+          const depth = Math.max(0, ev.clientX - (rect.right - threshold));
+          const step = Math.max(1, Math.round((depth / threshold) * 24)); // up to 24px per move
+          nextScroll = Math.min(maxScroll, curScroll + step);
+        } else if (ev.clientX <= rect.left + threshold) {
+          const depth = Math.max(0, (rect.left + threshold) - ev.clientX);
+          const step = Math.max(1, Math.round((depth / threshold) * 24));
+          nextScroll = Math.max(0, curScroll - step);
+        }
+        if (nextScroll !== curScroll) {
+          scrollArea.scrollLeft = nextScroll;
+          // Recompute mapping with updated scroll so box keeps extending this frame
+          cur = clientToTimeAndFreq_local(ev.clientX, ev.clientY);
+          pending.currentTime = Math.min(cur.timeSec, duration);
+          pending.currentFreq = cur.freqHz;
+          pending.pxPerSec = cur.pxPerSec;
+        }
+      }
+    } catch (e) { /* non-fatal */ }
+    try {
+      if (window.DEBUG_ANNOTATION_TIME && window.DEBUG_ANNOTATION_TIME >= 3) {
+        console.log('[annot][drag]', {start: pending.startTime, cur: pending.currentTime, duration});
+      }
+    } catch(e){}
     renderAllAnnotations();
+    try { if (window.__updateSimpleTimeDebug) window.__updateSimpleTimeDebug('[drag]'); } catch(e){}
   }
 
   function onPointerUp(ev) {
@@ -627,6 +718,40 @@
     window.renderAllAnnotations = renderAllAnnotations;
     window.resizeAnnotationOverlay = resizeAnnotationOverlay;
     window.renderSelectionOverlay = renderSelectionOverlay;
+    window.__annDebugViewport = function(){
+      try {
+        const viewWidth = Math.max(1, scrollArea && scrollArea.clientWidth ? scrollArea.clientWidth : 0);
+        let pxps = 1;
+        const dur = globalThis._spectroDuration;
+        const dispW = globalThis._spectroImageWidth;
+        if (isFinite(dur) && dur > 0 && isFinite(dispW) && dispW > 0) {
+          pxps = dispW / dur;
+        } else if (globalThis._spectroMap && typeof globalThis._spectroMap.pxPerSec === 'function') {
+          pxps = globalThis._spectroMap.pxPerSec();
+        } else if (globalThis._spectroPxPerSec) {
+          pxps = globalThis._spectroPxPerSec;
+        }
+        const scrollLeft = Math.max(0, scrollArea && typeof scrollArea.scrollLeft === 'number' ? scrollArea.scrollLeft : 0);
+        const coverageSec = viewWidth / Math.max(1e-9, pxps);
+        const leftSec = scrollLeft / Math.max(1e-9, pxps);
+        const rightSec = (scrollLeft + viewWidth) / Math.max(1e-9, pxps);
+        const dbg = {
+          duration: dur,
+          displayedWidthPx: dispW,
+          viewportWidthPx: viewWidth,
+          pxPerSec: pxps,
+          scrollLeftPx: scrollLeft,
+          visibleStartSec: leftSec,
+          visibleEndSec: rightSec,
+          visibleSpanSec: coverageSec
+        };
+        try { console.table(dbg); } catch (err) { console.log('[__annDebugViewport]', dbg); }
+        return dbg;
+      } catch (err) {
+        console.error('__annDebugViewport failed', err);
+        return null;
+      }
+    };
   } catch (e) {}
 
   // Expose authoritative API proxied to GridLib
