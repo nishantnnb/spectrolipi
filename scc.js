@@ -878,7 +878,8 @@
 
   async function runSccWithOptions(opts){
     const sel = getGridSelectedTemplates();
-    if (!sel.length) { alert('Select one or more template rows in the grid first.'); return; }
+    if (!sel.length) { alert('Select one template row in the grid first.'); return; }
+    if (sel.length > 1) { alert('Please select only 1 template row to run SCC.'); return; }
 
     const meta = getSpectroMeta();
     if (!meta.spectra || !meta.bins || !meta.framesPerSec) { alert('Spectrogram not ready. Generate it first.'); return; }
@@ -1066,26 +1067,22 @@
     if (!btn) return;
     if (btn.__sccWired) return;
     btn.addEventListener('click', async () => {
-      // Before opening SCC modal, ensure selected templates belong to a single species.
+      // Before opening SCC modal, ensure exactly one template is selected and species is set.
       try {
         const selRows = getGridSelectedTemplates() || [];
-        if (!selRows || !selRows.length) {
-          alert('Select one or more template rows in the grid first.');
+        if (!selRows || selRows.length !== 1) {
+          alert('Please select only 1 template row to run SCC.');
           return;
         }
         const uniq = Array.from(new Set(selRows.map(r => (r.species||'').trim()).filter(Boolean)));
         if (uniq.length === 0) {
-          alert('Selected templates contain no Species. Please set the Species for your template rows before running SCC.');
-          return;
-        }
-        if (uniq.length > 1) {
-          alert('Selected templates contains more than one type of Species. SCC can run only on 1 type of species.');
+          alert('Selected template contains no Species. Please set the Species for your template row before running SCC.');
           return;
         }
       } catch (e) { /* continue to open modal on unexpected error */ }
-  // pause playback before opening modal to avoid background audio and focus races
-  try { await safePausePlayback(800); } catch (e) {}
-  const modal = _showModal();
+      // pause playback before opening modal to avoid background audio and focus races
+      try { await safePausePlayback(800); } catch (e) {}
+      const modal = _showModal();
       const $ = (id) => document.getElementById(id);
       // Prefill frequency include defaults based on selected templates
       try {
@@ -1163,14 +1160,12 @@
             // Preset definitions
             const presets = [
               { name: 'Quick Scan', opts: { threshold: 0.30, quality: 'fast', pitchTolPct:5, pitchSteps:3, timeTolPct:0, timeSteps:1, composite:'none', energyPct:20, minDurMs:30 } },
-              { name: 'Fast Balanced', opts: { threshold: 0.40, quality: 'balanced', pitchTolPct:10, pitchSteps:5, timeTolPct:5, timeSteps:1, composite:'none', energyPct:10, minDurMs:50 } },
               { name: 'Balanced Accurate', opts: { threshold: 0.55, quality: 'balanced', pitchTolPct:10, pitchSteps:7, timeTolPct:5, timeSteps:1, composite:'mean', energyPct:8, minDurMs:50 } },
-              // Thorough: still accurate but use coarse downsample + caps to bound runtime.
-              { name: 'Thorough', opts: { threshold: 0.65, quality: 'accurate', pitchTolPct:15, pitchSteps:9, timeTolPct:10, timeSteps:3, composite:'none', energyPct:5, minDurMs:40, coarseSX: 2, coarseSY: 2, coarseThresh: 0.05, maxCandidates: 2500, maxRefine: 800 } },
               { name: 'High Recall', opts: { threshold: 0.30, quality: 'balanced', pitchTolPct:20, pitchSteps:11, timeTolPct:10, timeSteps:3, composite:'none', energyPct:0, minDurMs:20 } }
             ];
 
             const rows = [];
+            let stoppedEarly = false;
             // create scan overlay (5 segments) and attach to presets area
             let __overlay = null;
             try { __overlay = createScanOverlay(presetsArea, presets.length); if (__scc_currentScan) __scc_currentScan.overlay = __overlay; } catch (e) { __overlay = null; }
@@ -1185,7 +1180,7 @@
                 // allow low-variance templates during trial runs so the scan reports numbers
                 // even if the template would normally be skipped in a strict run.
                 const res = await detectCandidatesForParams(meta, extractSearch, templatesToUse, pOpts, true, __scc_currentScan);
-                if (__scc_currentScan && __scc_currentScan.cancelled) { presetsArea.innerHTML = '<div style="color:#f59e0b">Search cancelled.</div>'; break; }
+                if (__scc_currentScan && __scc_currentScan.cancelled) { stoppedEarly = true; break; }
                 // compute final dedup+threshold count
                 let dets = res.detections || [];
                 dets.sort((a,b) => (b.score - a.score) || (a.t1 - b.t1) || (a.f1 - b.f1));
@@ -1195,14 +1190,22 @@
                 try { if (__overlay) __overlay.markDone(i); if (__overlay) __overlay.setStatus(`${p.name}: ${final.length} detections`); } catch (e) {}
               // small yield to keep UI responsive
               await new Promise(r=>setTimeout(r,0));
-              if (__scc_currentScan && __scc_currentScan.cancelled) { presetsArea.innerHTML = '<div style="color:#f59e0b">Search cancelled.</div>'; break; }
+              if (__scc_currentScan && __scc_currentScan.cancelled) { stoppedEarly = true; break; }
             }
 
             // store scan rows for later comparison
             __scc_lastScanRows = rows;
 
             // render results as a 2-column grid to reduce vertical scrolling
-            let html = '<div style="color:#cbd5e1;margin-bottom:6px;font-size:13px">Presets results (select one to apply to the form below):</div>';
+            const completedCount = rows.length;
+            const presetCount = presets.length;
+            let introText = 'Presets results (select one to apply to the form below):';
+            if (stoppedEarly && completedCount) {
+              introText = `Scan stopped early. Showing ${completedCount} of ${presetCount} preset${presetCount===1?'':'s'} that finished. You can still apply any completed preset below.`;
+            } else if (stoppedEarly && !completedCount) {
+              introText = 'Scan stopped before any preset finished. No cached detections yet.';
+            }
+            let html = `<div style="color:#cbd5e1;margin-bottom:6px;font-size:13px">${introText}</div>`;
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
             for (let i=0;i<rows.length;i++){ const r=rows[i];
               html += `<label style="display:flex;align-items:flex-start;padding:8px;background:#071722;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"><input type=radio name=scc-preset value=${i} style="margin-right:10px;margin-top:6px"><div style="flex:1"><div style="font-weight:600">${r.name}</div><div style="color:#9ca3af;font-size:12px;margin-top:4px">variants:${r.stats.variantsTried} skippedLow:${r.stats.skippedLowVar} skippedSize:${r.stats.skippedTooLarge}</div></div><div style="text-align:right;font-weight:600;margin-left:8px">${r.count}<div style="color:#9ca3af;font-size:12px;margin-top:4px">coarse:${r.stats.coarse} raw:${r.stats.raw} time:${r.stats.elapsedMs}ms</div></div></label>`;
@@ -1212,9 +1215,7 @@
         html += '<div style="margin-top:8px; display:flex; align-items:center; justify-content:flex-end; gap:12px">'
           + '<button id="scc-apply" class="btn" style="background:#0ea5e9; padding:6px 10px; font-size:13px;" disabled>Apply selected preset</button>'
           + '</div>';
-            if (!(__scc_currentScan && __scc_currentScan.cancelled)) {
-              presetsArea.innerHTML = html;
-            }
+            presetsArea.innerHTML = html;
             try { if (__overlay) __overlay.hide(); } catch (e) {}
 
             // radio change handler fills form values and records selection

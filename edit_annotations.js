@@ -681,29 +681,89 @@
       if (window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function') {
         const selectedRows = window.annotationGrid.getSelectedRows();
         if (!selectedRows.length) { window.alert('No rows selected for Multi-delete'); return; }
-        if (!window.confirm(selectedRows.length === 1 ? 'Delete selected row?' : `Delete ${selectedRows.length} selected rows?`)) return;
+
+        const overlayCtl = (function(){
+          let active = false;
+          return {
+            show(opts) {
+              try {
+                if (window.__spectroWait && typeof window.__spectroWait.show === 'function') {
+                  const etaText = (opts && opts.etaText) || 'Deleting rows…';
+                  const titleText = (opts && opts.titleText) || 'Deleting rows';
+                  const bodyText = (opts && opts.bodyText) || 'Removing selected annotations. Please wait…';
+                  window.__spectroWait.show({ etaText, titleText, bodyText });
+                  active = true;
+                }
+              } catch (e) {}
+            },
+            updateEta(text) {
+              try {
+                if (active && window.__spectroWait && typeof window.__spectroWait.show === 'function') {
+                  window.__spectroWait.show({ etaText: text });
+                }
+              } catch (e) {}
+            },
+            hide() {
+              if (!active) return;
+              try {
+                if (window.__spectroWait && typeof window.__spectroWait.hide === 'function') {
+                  window.__spectroWait.hide();
+                }
+              } catch (e) {}
+              active = false;
+            }
+          };
+        })();
+
+        const totalRows = selectedRows.length;
+        overlayCtl.show({ etaText: totalRows === 1 ? 'Deleting row…' : `Deleting ${totalRows} rows…`, titleText: 'Deleting rows', bodyText: 'Removing selected annotations. Please wait…' });
+
         const ids = selectedRows.map(row => row.getData().id);
-        // Remove from Tabulator grid
-        window.annotationGrid.deleteRow(ids);
-        // Remove from authoritative annotations
-        const anns = getAnnotations();
-        const idSet = new Set(ids.map(String));
-        let remaining = anns.filter(a => !idSet.has(String(a.id)));
-        // Reindex IDs and Selections
-        remaining = remaining.map((a, idx) => ({
-          ...a,
-          id: idx + 1,
-          Selection: String(idx + 1)
-        }));
-        replaceAnnotations(remaining);
-        // Also update Tabulator grid rows
-        if (window.annotationGrid && typeof window.annotationGrid.replaceData === 'function') {
-          window.annotationGrid.replaceData(remaining);
-        }
-        try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'multi-delete', deleted: ids } })); } catch (e) {}
+
+        const deleteInChunks = async () => {
+          try {
+            const chunkSize = 200;
+            for (let i = 0; i < ids.length; i += chunkSize) {
+              const chunk = ids.slice(i, i + chunkSize);
+              window.annotationGrid.deleteRow(chunk);
+              overlayCtl.updateEta(`Deleting rows ${Math.min(ids.length, i + chunkSize)} / ${ids.length}…`);
+              await new Promise(r => setTimeout(r, 0));
+            }
+
+            const anns = getAnnotations();
+            const idSet = new Set(ids.map(String));
+            let remaining = anns.filter(a => !idSet.has(String(a.id)));
+
+            const reindexed = new Array(remaining.length);
+            for (let i = 0; i < remaining.length; i++) {
+              const item = remaining[i];
+              reindexed[i] = {
+                ...item,
+                id: i + 1,
+                Selection: String(i + 1)
+              };
+              if ((i % 500) === 0) await new Promise(r => setTimeout(r, 0));
+            }
+            replaceAnnotations(reindexed);
+            if (window.annotationGrid && typeof window.annotationGrid.replaceData === 'function') {
+              await window.annotationGrid.replaceData(reindexed);
+            }
+            try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'multi-delete', deleted: ids } })); } catch (e) {}
+          } catch (err) {
+            console.error('multi-delete error', err);
+            window.alert('Deletion failed; see console');
+          } finally {
+            overlayCtl.hide();
+          }
+        };
+
+        deleteInChunks();
         return;
       }
-    } catch (err) { console.error('multi-delete error', err); window.alert('Deletion failed; see console'); }
+    } catch (err) {
+      console.error('multi-delete error', err);
+      window.alert('Deletion failed; see console');
+    }
   }
 
   // set delete button enabled/disabled visuals

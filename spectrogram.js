@@ -237,14 +237,17 @@
   // --- wait-overlay control moved into spectrogram.js (index.html keeps markup & styles) ---
   (function () {
     function _els() {
-      return {
-        overlay: document.getElementById('waitOverlay'),
-        meta: document.getElementById('waitOverlayMeta'),
-        eta: document.getElementById('waitOverlayETA')
-      };
+      const overlay = document.getElementById('waitOverlay');
+      const meta = document.getElementById('waitOverlayMeta');
+      const eta = document.getElementById('waitOverlayETA');
+      const title = overlay ? overlay.querySelector('.title') : null;
+      const message = overlay ? overlay.querySelector('.msg') : null;
+      if (title && !title.dataset.defaultText) title.dataset.defaultText = title.textContent || '';
+      if (message && !message.dataset.defaultText) message.dataset.defaultText = message.textContent || '';
+      return { overlay, meta, eta, title, message };
     }
     function showWaitOverlay(opts = {}) {
-      const { overlay, meta, eta } = _els();
+      const { overlay, meta, eta, title, message } = _els();
       if (!overlay) return;
       // Force the overlay into the top-level document and make it visually above dialogs.
       try {
@@ -278,6 +281,11 @@
       } catch (e) {
         // swallow — best-effort placement
       }
+      const titleText = (typeof opts.titleText === 'string' && opts.titleText.length) ? opts.titleText : (title && title.dataset.defaultText) || (title && title.textContent) || '';
+      if (title) title.textContent = titleText;
+      const messageText = (typeof opts.bodyText === 'string' && opts.bodyText.length) ? opts.bodyText : (message && message.dataset.defaultText) || (message && message.textContent) || '';
+      if (message) message.textContent = messageText;
+
       if (opts.etaText) {
         if (eta) eta.textContent = opts.etaText;
         if (meta) meta.style.display = 'block';
@@ -289,12 +297,19 @@
       try { document.documentElement.style.overflow = 'hidden'; } catch (e) {}
     }
     function hideWaitOverlay() {
-      const { overlay, meta } = _els();
+      const { overlay, meta, eta, title, message } = _els();
       if (!overlay) return;
       overlay.style.display = 'none';
       overlay.setAttribute('aria-hidden', 'true');
       try { document.documentElement.style.overflow = ''; } catch (e) {}
       if (meta) meta.style.display = 'none';
+      if (eta) eta.textContent = '';
+      if (title && title.dataset && title.dataset.defaultText !== undefined) {
+        title.textContent = title.dataset.defaultText;
+      }
+      if (message && message.dataset && message.dataset.defaultText !== undefined) {
+        message.textContent = message.dataset.defaultText;
+      }
       // restore any dialogs we temporarily changed
       try {
         const changed = Array.from(document.querySelectorAll('[data-old-z]'));
