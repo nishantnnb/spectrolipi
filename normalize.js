@@ -266,7 +266,7 @@
 
     try {
       if (overlay && typeof overlay.show === 'function') {
-        try { overlay.show({ etaText: 'Normalizing audio...' }); } catch(e){}
+        try { overlay.show({ etaText: 'Normalizing audio...', titleText: 'Normalizing', bodyText: 'Removing DC offset and scaling to target peak. Please wait…' }); } catch(e){}
       }
       if (noteField) noteField.textContent = 'Removing DC offset...';
       await new Promise(r => setTimeout(r, 0));
@@ -308,12 +308,12 @@
 
       if (noteField) noteField.textContent = 'Updating spectrogram...';
       if (overlay && typeof overlay.show === 'function') {
-        try { overlay.show({ etaText: 'Updating spectrogram...' }); } catch(e){}
+        try { overlay.show({ etaText: 'Normalizing... ', titleText: 'Normalizing', bodyText: 'Rebuilding spectrogram tiles for the normalized region. Please wait…' }); } catch(e){}
       }
       await recomputeSpectrogramForSamples(startSample, endSample, {
         progressCb(percent){
           if (overlay && typeof overlay.show === 'function') {
-            try { overlay.show({ etaText: 'Updating spectrogram... ' + percent + '%' }); } catch(e){}
+            try { overlay.show({ etaText: 'Normalizing... ' + percent + '%', titleText: 'Normalizing', bodyText: 'Rebuilding spectrogram tiles for the normalized region. Please wait…' }); } catch(e){}
           }
           if (noteField) {
             try { noteField.textContent = 'Updating spectrogram (' + percent + '%)...'; } catch(e){}

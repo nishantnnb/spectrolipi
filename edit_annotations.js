@@ -699,7 +699,7 @@
             updateEta(text) {
               try {
                 if (active && window.__spectroWait && typeof window.__spectroWait.show === 'function') {
-                  window.__spectroWait.show({ etaText: text });
+                  window.__spectroWait.show({ etaText: text, titleText: 'Deleting rows', bodyText: 'Removing selected annotations. Please wait…' });
                 }
               } catch (e) {}
             },
@@ -757,7 +757,9 @@
           }
         };
 
-        deleteInChunks();
+        // Start deletion on a short timer so the overlay can paint immediately
+        // (avoid blocking the UI before the overlay is visible).
+        setTimeout(deleteInChunks, 20);
         return;
       }
     } catch (err) {

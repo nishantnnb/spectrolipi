@@ -346,8 +346,8 @@
         } else {
           // whole-file edit: recompute spectra from the (modified) audio buffer and rebuild the image.
             try {
-              // show same wait overlay used for initial generation
-              try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Recomputing spectrogram...' }); } catch(e){}
+              // show same wait overlay used for initial generation (provide explicit title/body)
+              try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Recomputing spectrogram...', titleText: 'Recomputing spectrogram', bodyText: 'Rebuilding the spectrogram image — this may take a moment.' }); } catch(e){}
               if (prevNote) prevNote.textContent = 'Recomputing full spectrogram (this may take a moment)...';
 
               const totalFrames = Math.max(0, globalThis._spectroNumFrames || 0);
@@ -498,7 +498,7 @@
         let wasPlaying = false;
         try {
           // Show global wait overlay (index.html contains markup; spectrogram.js wires show/hide)
-          try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Applying silence...' }); } catch(e){}
+          try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Applying silence...', titleText: 'Applying silence', bodyText: 'Inserting silence into the audio buffer and updating visuals.' }); } catch(e){}
           await captureSnapshot({ type: 'silence', selection: { start: sel.start, end: sel.end }, silenceSeconds: silenceSec });
           wasPlaying = await pausePlaybackIfNeeded();
 
@@ -604,7 +604,7 @@
           }
 
           if (typeof window.__spectroWait !== 'undefined' && window.__spectroWait && typeof window.__spectroWait.show === 'function' && fallbackFullRebuild) {
-            try { window.__spectroWait.show({ etaText: 'Recomputing spectrogram...' }); } catch(e){}
+            try { window.__spectroWait.show({ etaText: 'Recomputing spectrogram...', titleText: 'Recomputing spectrogram', bodyText: 'Rebuilding the spectrogram image — this may take a moment.' }); } catch(e){}
           }
 
           try {

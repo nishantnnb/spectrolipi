@@ -887,8 +887,8 @@
   // Pause playback safely before heavy SCC work to avoid overlays/audio conflicts
   try { await safePausePlayback(1000); } catch (e) {}
   setDisabled(true);
-  // show wait overlay for long runs
-  try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Running SCC...' }); } catch (e) {}
+  // show wait overlay for long runs (provide explicit title/body to avoid stale spectrogram copy)
+  try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Running SCC...', titleText: 'Running SCC', bodyText: 'Computing detections — this may take several seconds.' }); } catch (e) {}
   // yield briefly so the overlay can paint before heavy synchronous work begins
   try { await new Promise(r => setTimeout(r, 50)); } catch (e) {}
   // assign a run number for this invocation
@@ -1262,7 +1262,7 @@
                   if (!dets.length) { alert('No detections cached for the selected preset.'); return; }
 
                   // show overlay
-                  try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Applying preset…' }); } catch(e){}
+                  try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Applying preset…', titleText: 'Applying preset', bodyText: 'Inserting cached detections into the grid. Please wait…' }); } catch(e){}
                   try { await new Promise(r=>setTimeout(r,20)); } catch(e){}
 
                   // species guess (match run behavior)
