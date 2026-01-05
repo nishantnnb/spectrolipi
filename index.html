@@ -235,6 +235,87 @@
           </svg>
           <span>Export Audio</span>
         </button>
+        <div class="left-menu-group" id="xcMenuGroup">
+          <button id="xcMenuParent" type="button" class="left-menu-btn left-menu-parent" aria-expanded="false" aria-controls="xcSubMenu" title="Xeno-canto integration actions">
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z" fill="#fff"/>
+              <path d="M11 7h2v6h-2zm0 8h2v2h-2z" fill="#fff"/>
+            </svg>
+            <span>Xeno-canto Integration</span>
+            <svg class="left-menu-caret" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M8 10l4 4 4-4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div id="xcSubMenu" class="left-submenu" role="menu" aria-label="Xeno-canto actions">
+            <button id="exportXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Export annotations to Xeno-canto JSON">
+              <span>Export JSON</span>
+            </button>
+            <button id="xcSettingsBtn" type="button" class="left-submenu-btn" role="menuitem" title="Configure Xeno-canto API settings">
+              <span>Xeno-canto Settings</span>
+            </button>
+          </div>
+        </div>
+        <script>
+        (function() {
+          function whenReady(cb) {
+            if (document.readyState === 'interactive' || document.readyState === 'complete') setTimeout(cb, 0);
+            else window.addEventListener('DOMContentLoaded', () => setTimeout(cb, 0));
+          }
+          whenReady(function() {
+            const group = document.getElementById('xcMenuGroup');
+            const parent = document.getElementById('xcMenuParent');
+            const submenu = document.getElementById('xcSubMenu');
+            const exportBtn = document.getElementById('exportXenoCantoBtn');
+            const uploadBtn = document.getElementById('uploadXenoCantoBtn');
+            const settingsBtn = document.getElementById('xcSettingsBtn');
+            if (group && parent && submenu) {
+              const openClass = 'left-menu-group-open';
+              const setOpen = (isOpen) => {
+                if (isOpen) {
+                  group.classList.add(openClass);
+                  parent.setAttribute('aria-expanded','true');
+                } else {
+                  group.classList.remove(openClass);
+                  parent.setAttribute('aria-expanded','false');
+                }
+              };
+              parent.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                setOpen(!group.classList.contains(openClass));
+              });
+              group.addEventListener('mouseenter', () => setOpen(true));
+              group.addEventListener('mouseleave', () => setOpen(false));
+              parent.addEventListener('blur', () => setTimeout(() => {
+                if (!group.contains(document.activeElement)) setOpen(false);
+              }, 50));
+            }
+            if (exportBtn) {
+              exportBtn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (typeof window.exportXenoCantoJSON === 'function') {
+                  window.exportXenoCantoJSON();
+                } else {
+                  alert('Xeno-canto export function not found. Make sure xc.js is loaded.');
+                }
+              });
+            }
+            // Upload to Xeno-canto button and handler removed
+            if (settingsBtn) {
+              settingsBtn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (typeof window.__openXcSettingsModal === 'function') {
+                  window.__openXcSettingsModal();
+                } else {
+                  alert('Settings modal not available. Ensure xc.js is loaded.');
+                }
+              });
+            }
+          });
+        })();
+        </script>
       </nav>
       <!-- Footer area for the left overlay: larger logo shown at bottom of hamburger menu (non-clickable) -->
       <div class="left-overlay-footer" style="margin-top:auto;padding:14px 12px 24px 12px;text-align:center;">
@@ -264,6 +345,14 @@
     .left-overlay[aria-hidden="true"] { pointer-events: none; }
   /* Keep the owl icon's original brown tint so it remains visually distinct */
   #manageSpeciesBtn svg, #manageSpeciesBtn svg path, #manageSpeciesBtn svg g, #manageSpeciesBtn svg circle, #manageSpeciesBtn svg rect { fill: #bf947a !important; stroke: #bf947a !important; }
+    .left-menu-group { position: relative; display: flex; flex-direction: column; }
+    .left-menu-parent { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .left-menu-caret { margin-left: auto; transition: transform 160ms ease; }
+    .left-menu-group-open .left-menu-caret { transform: rotate(180deg); }
+    .left-submenu { display: none; flex-direction: column; gap: 6px; padding: 6px 0 0 22px; }
+    .left-menu-group-open .left-submenu { display: flex; }
+    .left-submenu-btn { display: flex; width: 100%; text-align: left; padding: 6px 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px; }
+    .left-submenu-btn:hover, .left-submenu-btn:focus { background: rgba(21,101,192,0.7); border-color: rgba(21,101,192,0.85); outline: none; }
   </style>
   <div id="controls">
     <input id="file" type="file" accept="audio/*" />
@@ -1174,6 +1263,7 @@
   <script src="download_annotations.js"></script>
   <script src="scc.js"></script>
   <script src="annotation-highlight.js"></script>
+  <script src="xc.js"></script>
   
   <script>
   // Left overlay toggle wiring (structure only)
