@@ -2,8 +2,11 @@
 (function(){
   const STORAGE_KEY = 'xc.settings.v1';
   const DEFAULT_SETTINGS = {
+    apiKey: '',
     annotatorName: '',
-    annotatorId: ''
+    annotatorId: '',
+    // endpoint: 'https://dev.xeno-canto.org/api/3/upload/annotation-set'
+    endpoint: 'https://acc.xeno-canto.org/api/3/upload/annotation-set'
   };
   let __xcSettings = loadSettings();
 
@@ -18,9 +21,7 @@
     }
   }
   function persistSettings(next) {
-    // Remove endpoint and apiKey from settings if present
-    const { endpoint, apiKey, ...rest } = next || {};
-    __xcSettings = { ...DEFAULT_SETTINGS, ...rest };
+    __xcSettings = { ...DEFAULT_SETTINGS, ...next };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(__xcSettings)); } catch (e) {}
     return { ...__xcSettings };
   }
@@ -170,12 +171,17 @@
       '<h3 style="margin:0;font-size:1rem;">Xeno-canto Settings</h3>',
       '<button type="button" id="xcSettingsClose" aria-label="Close settings" style="background:transparent;border:0;color:#bbb;font-size:20px;line-height:1;cursor:pointer;">&times;</button>',
       '</div>',
-      // Removed API key field
+      '<label for="xcApiKeyInput" style="display:block;font-size:0.85rem;margin-top:6px;color:#ddd;">API key</label>',
+      '<input id="xcApiKeyInput" type="text" autocomplete="off" spellcheck="false" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;" />',
       '<label for="xcAnnotatorNameInput" style="display:block;font-size:0.85rem;margin-top:10px;color:#ddd;">Annotator display name</label>',
       '<input id="xcAnnotatorNameInput" type="text" autocomplete="off" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;" />',
       '<label for="xcAnnotatorIdInput" style="display:block;font-size:0.85rem;margin-top:10px;color:#ddd;">Annotator Xeno-canto ID</label>',
       '<input id="xcAnnotatorIdInput" type="text" autocomplete="off" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;" />',
-      // Removed API endpoint field
+      '<details id="xcAdvancedSection" style="margin-top:12px;color:#ddd;">',
+      '<summary style="cursor:pointer;">Advanced</summary>',
+      '<label for="xcEndpointInput" style="display:block;font-size:0.8rem;margin-top:6px;color:#bbb;">API endpoint</label>',
+      '<input id="xcEndpointInput" type="text" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;" />',
+      '</details>',
       '<div id="xcSettingsStatus" style="min-height:18px;color:#9fe3b2;font-size:0.8rem;margin-top:8px;"></div>',
       '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px;">',
       '<button type="button" id="xcSettingsCancel" class="seg-top-btn">Cancel</button>',
@@ -191,26 +197,31 @@
     }
     function open() {
       const s = getSettings();
-      // Removed API key field
+      document.getElementById('xcApiKeyInput').value = s.apiKey || '';
       document.getElementById('xcAnnotatorNameInput').value = s.annotatorName || '';
       document.getElementById('xcAnnotatorIdInput').value = s.annotatorId || '';
-      // Removed API endpoint field
+      document.getElementById('xcEndpointInput').value = s.endpoint || DEFAULT_SETTINGS.endpoint;
       document.getElementById('xcSettingsStatus').textContent = '';
       backdrop.style.display = 'flex';
       backdrop.setAttribute('aria-hidden','false');
       setTimeout(() => document.getElementById('xcApiKeyInput').focus(), 30);
     }
     function save() {
-      // Removed API key field
+      const apiKey = document.getElementById('xcApiKeyInput').value.trim();
       const annotatorName = document.getElementById('xcAnnotatorNameInput').value.trim();
       const annotatorId = document.getElementById('xcAnnotatorIdInput').value.trim();
-      // Removed API key required check
+      const endpoint = document.getElementById('xcEndpointInput').value.trim() || DEFAULT_SETTINGS.endpoint;
+      if (!apiKey) {
+        document.getElementById('xcSettingsStatus').textContent = 'API key is required.';
+        document.getElementById('xcSettingsStatus').style.color = '#ffb4b4';
+        return;
+      }
       if (!annotatorId) {
         document.getElementById('xcSettingsStatus').textContent = 'Annotator Xeno-canto ID is required.';
         document.getElementById('xcSettingsStatus').style.color = '#ffb4b4';
         return;
       }
-      persistSettings({ annotatorName, annotatorId });
+      persistSettings({ apiKey, annotatorName, annotatorId, endpoint });
       const status = document.getElementById('xcSettingsStatus');
       status.style.color = '#9fe3b2';
       status.textContent = 'Saved.';
@@ -261,6 +272,73 @@
     };
   }
 
+  async function uploadXenoCantoAnnotationSet() {
+    ensureSettingsModal();
+    ensureResultModal();
+    const settings = getSettings();
+    if (!settings.apiKey || !settings.annotatorId) {
+      alert('Please configure your Xeno-canto API key and annotator ID before uploading.');
+      window.__openXcSettingsModal && window.__openXcSettingsModal();
+      return;
+    }
+    const built = buildAnnotationSet();
+    if (!built.ok) {
+      alert(built.reason || 'Unable to build Xeno-canto JSON.');
+      return;
+    }
+    const endpoint = settings.endpoint || DEFAULT_SETTINGS.endpoint;
+    const payload = JSON.stringify(built.data);
+    try {
+      window.__spectroWait && window.__spectroWait.show({
+        titleText: 'Uploading to Xeno-canto',
+        bodyText: 'Sending annotation set to Xeno-canto API. This may take a few seconds.',
+        etaText: 'Uploading...'
+      });
+    } catch (e) {}
+    let responseBody = null;
+    let responseText = '';
+    let statusOk = false;
+    let warnings = [];
+    let errors = [];
+    let message = '';
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'key': settings.apiKey,
+          'Authorization': 'Basic ' + btoa('xc:xc')
+        },
+        body: payload
+      });
+      responseText = await res.text();
+      try { responseBody = responseText ? JSON.parse(responseText) : null; } catch (e) { responseBody = null; }
+      statusOk = res.ok;
+      if (responseBody && Array.isArray(responseBody.warnings)) warnings = responseBody.warnings;
+      if (responseBody && Array.isArray(responseBody.errors)) errors = responseBody.errors;
+      message = (responseBody && (responseBody.message || responseBody.status)) || res.statusText || '';
+    } catch (err) {
+      errors = [err && err.message ? err.message : String(err)];
+      statusOk = false;
+    } finally {
+      try { window.__spectroWait && window.__spectroWait.hide(); } catch (e) {}
+    }
+
+    const summary = statusOk && !errors.length ? 'Upload completed.' : 'Upload failed.';
+    const detailParts = [];
+    if (message) detailParts.push(`<p>${escapeHtml(String(message))}</p>`);
+    if (warnings.length) {
+      detailParts.push('<div style="margin-top:8px;"><strong>Warnings</strong><ul>' + warnings.map(w => `<li>${escapeHtml(String(w))}</li>`).join('') + '</ul></div>');
+    }
+    if (errors.length) {
+      detailParts.push('<div style="margin-top:8px;color:#ffb4b4;"><strong>Errors</strong><ul>' + errors.map(w => `<li>${escapeHtml(String(w))}</li>`).join('') + '</ul></div>');
+    }
+    if (!warnings.length && !errors.length && responseText) {
+      detailParts.push('<pre style="background:#0b0d14;padding:8px;border-radius:6px;white-space:pre-wrap;max-height:160px;overflow:auto;">' + escapeHtml(responseText) + '</pre>');
+    }
+    const detailHtml = detailParts.join('');
+    window.__showXcResultModal && window.__showXcResultModal({ title: 'Xeno-canto upload', summary, detailsHtml: detailHtml });
+  }
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] || c));
@@ -271,5 +349,6 @@
   ensureResultModal();
 
   window.exportXenoCantoJSON = exportXenoCantoJSON;
+  window.uploadXenoCantoAnnotationSet = uploadXenoCantoAnnotationSet;
   window.__getXcSettings = getSettings;
 })();
