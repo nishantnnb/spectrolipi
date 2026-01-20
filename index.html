@@ -250,6 +250,9 @@
             <button id="exportXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Export annotations to Xeno-canto JSON">
               <span>Export JSON</span>
             </button>
+            <button id="uploadXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Upload annotations to Xeno-canto via API">
+              <span>Upload to Xeno-canto</span>
+            </button>
             <button id="xcSettingsBtn" type="button" class="left-submenu-btn" role="menuitem" title="Configure Xeno-canto API settings">
               <span>Xeno-canto Settings</span>
             </button>
@@ -301,7 +304,17 @@
                 }
               });
             }
-            // Upload to Xeno-canto button and handler removed
+            if (uploadBtn) {
+              uploadBtn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (typeof window.uploadXenoCantoAnnotationSet === 'function') {
+                  window.uploadXenoCantoAnnotationSet();
+                } else {
+                  alert('Upload function not found. Ensure xc.js is loaded.');
+                }
+              });
+            }
             if (settingsBtn) {
               settingsBtn.addEventListener('click', function(ev) {
                 ev.preventDefault();
