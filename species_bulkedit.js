@@ -500,17 +500,23 @@
   function applySpeciesFromUI() {
     const keyEl = document.getElementById('selectedSpeciesKey');
     const labelEl = document.getElementById('speciesResult');
-    const common = labelEl ? String(labelEl.textContent || '').trim() : '';
+    let common = labelEl ? (labelEl.dataset.common || String(labelEl.textContent || '').trim()) : '';
     let scientific = '';
     try {
       const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
       const key = keyEl ? String(keyEl.value || '').trim() : '';
       if (key) {
         const rec = recs.find(r => String((r.key||'')).trim() === key);
-        scientific = rec ? (rec.scientific || '') : '';
+        if (rec) {
+          scientific = rec.scientific || '';
+          common = rec.common || '';
+        }
       } else if (common) {
-        const rec = recs.find(r => String((r.common||'')).trim() === common);
-        scientific = rec ? (rec.scientific || '') : '';
+        const rec = recs.find(r => String((r.common||'')).trim() === common || String((r.scientific||'')).trim() === common);
+        if (rec) {
+          scientific = rec.scientific || '';
+          common = rec.common || '';
+        }
       }
     } catch (e) { scientific = ''; }
     // Reuse existing confirmation + apply flow
