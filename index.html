@@ -152,6 +152,35 @@
       #controls { margin-left: 56px; }
     </style>
     <style>
+      /* New Species Search Styles (Dark Theme) */
+      .mode-btn { display:inline-flex; align-items:center; justify-content:center; padding:0 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.15); background:#222; cursor:pointer; margin-right:6px; height:26px; transition:background 0.2s; }
+      .mode-btn:hover { background:#333; }
+      .mode-badge { font-size:10px; color:#fff; padding:2px 5px; border-radius:3px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; }
+      .m-eBird { background:#00897b; } .m-Common { background:#3949ab; } .m-Sci { background:#e65100; }
+      
+      /* Suggestion box overrides for rich results */
+      #speciesSuggest .item { padding:4px 8px; display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid #2a2a2a; color:#ddd; cursor:pointer; }
+      #speciesSuggest .item:last-child { border-bottom:0; }
+      #speciesSuggest .item:hover, #speciesSuggest .item.selected { background:#333; }
+      #speciesSuggest .title { font-weight:600; font-size:13px; color:#fff; }
+      #speciesSuggest .muted { color:#888; font-size:12px; }
+      #speciesSuggest .badge { font-size:10px; padding:2px 4px; border-radius:4px; background:#333; color:#aaa; border:1px solid #444; }
+      #speciesSuggest mark { background:rgba(255,215,0,0.25); color:#ffeb3b; padding:0 1px; border-radius:2px; }
+      #speciesSuggest .small { font-size:11px; color:#666; }
+      
+      /* Fixed width label for selected species */
+      #speciesResult {
+        width: 160px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.15;
+        font-size: 11px;
+        white-space: normal;
+      }
+    </style>
+    <style>
       /* Specific override: when a button has both seg-top-btn and seg-compact-btn,
          make sure compact variant stays black. This overrides the earlier
          .seg-top-btn rules (same specificity but placed later), and is more
@@ -572,7 +601,10 @@
     
     <!-- Species search with label (in-toolbar) -->
     <div class="species-search" aria-label="Species search">
-      <div class="label">Species</div>
+      <!-- Mode Button -->
+      <button id="speciesModeBtn" class="mode-btn" type="button" title="Cycle search mode: Scientific / Common / eBird Code">
+        <span id="speciesModeBadge" class="mode-badge m-Sci">Sci</span>
+      </button>
       <div class="input-wrap">
         <input id="speciesKwInput" type="text" placeholder="Type key (2+ chars) to search species…" aria-label="Species key search" autocomplete="off" />
         <div id="speciesSuggest" class="species-suggestions" role="listbox" aria-label="Species suggestions" style="display:none"></div>
@@ -964,89 +996,171 @@
   <script src="species_bulkedit.js"></script>
   <script src="display_label.js"></script>
 
-  <!-- Patched species control (robust, uses bubbling so clicks on suggestions work) -->
+  <!-- Advanced Species Search Control (Fuzzy, Token-based, Modes) -->
   <script>
   (function () {
-    const MIN_CHARS = 2;
-    const DEBOUNCE_MS = 120;
-    const MAX_RESULTS = 7;
+    /* Utilities */
+    function stripBOM(s){ return s && s.charCodeAt(0) === 0xFEFF ? s.slice(1) : s; }
+    function norm(s){ return stripBOM(String(s||'')).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' '); }
+    function tokensOf(s){ return norm(s).split(/[\s\-\_\,;:()]+/).filter(Boolean); }
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-    function norm(s) { return (s || '').toString().normalize().toLowerCase(); }
-    function escapeHtml(s) { return s.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'" :'&#39;'})[c] || '&amp;'); }
-
-    function score(rec, q) {
-      const nq = norm(q);
-      const k = norm(rec.key || '');
-      const c = norm(rec.common || '');
-      let s = 0;
-      if (k.startsWith(nq)) s += 120;
-      else if (k.includes(nq)) s += 80;
-      if (c.startsWith(nq)) s += 60;
-      else if (c.includes(nq)) s += 30;
-      s += Math.max(0, 10 - Math.min(9, (k.length||0) / 10));
-      return s;
-    }
-
-    function highlight(orig, q) {
-      if (!q) return escapeHtml(orig || '');
-      const o = orig || '';
-      const lower = norm(o);
-      const nq = norm(q);
-      const idx = lower.indexOf(nq);
-      if (idx < 0) return escapeHtml(o);
-      const before = o.slice(0, idx), match = o.slice(idx, idx + q.length), after = o.slice(idx + q.length);
-      return escapeHtml(before) + '<span class="species-mark">' + escapeHtml(match) + '</span>' + escapeHtml(after);
-    }
-
-    const input = () => document.getElementById('speciesKwInput');
-    const suggest = () => document.getElementById('speciesSuggest');
-    const result = () => document.getElementById('speciesResult');
-    const clearBtn = () => document.getElementById('speciesClearBtn');
-    const resultWrap = () => document.querySelector('.species-result-wrap');
-    const hidden = () => document.getElementById('selectedSpeciesKey');
-
-    function whenReady(cb) {
-      if (document.readyState === 'interactive' || document.readyState === 'complete') setTimeout(cb, 0);
-      else window.addEventListener('DOMContentLoaded', () => setTimeout(cb, 0));
-    }
-
-    whenReady(() => {
-      const MAX_TRIES = 40;
-      let tries = 0;
-      const t = setInterval(() => {
-        tries++;
-        if (Array.isArray(window.__speciesRecords)) {
-          clearInterval(t);
-          // initial wire and expose refresh hook
-          window.wireSpeciesControl = function(records) { try { wireSpeciesControl(records); } catch(e){ console.warn('wireSpeciesControl wrapper failed', e); } };
-          wireSpeciesControl(window.__speciesRecords);
-        } else if (tries >= MAX_TRIES) {
-          clearInterval(t);
-          console.warn('species-data.js not found or window.__speciesRecords not defined; control will wire empty.');
-          wireSpeciesControl([]);
+    /* Levenshtein */
+    function editDistance(a,b){
+      const m=a.length, n=b.length;
+      if (m===0) return n; if (n===0) return m;
+      const dp = new Array(n+1);
+      for (let j=0;j<=n;j++) dp[j]=j;
+      for (let i=1;i<=m;i++){
+        let prev = dp[0];
+        dp[0]=i;
+        for (let j=1;j<=n;j++){
+          const cur = dp[j];
+          const cost = a[i-1]===b[j-1] ? 0 : 1;
+          dp[j] = Math.min(dp[j]+1, dp[j-1]+1, prev+cost);
+          prev = cur;
         }
-      }, 80);
-    });
+      }
+      return dp[n];
+    }
 
-    // respond to external source changes
-    window.addEventListener('species-source-changed', function() {
-      try { if (typeof window.wireSpeciesControl === 'function') window.wireSpeciesControl(window.__speciesRecords || []); } catch(e) { console.warn('species-source-changed handler failed', e); }
-    });
+    /* Scoring Logic */
+    function scorePair(qn, ft, allowFuzzy){
+      if (!qn || !ft) return 0;
+      if (qn === ft) return 100;
+      if (ft.startsWith(qn)) return 70;
+      if (ft.includes(qn)) return 40;
+      if (qn.length <= 2) return 0;
+      if (allowFuzzy) {
+        const maxDist = Math.min(2, Math.max(1, Math.floor(ft.length * 0.25)));
+        const dist = editDistance(qn, ft);
+        if (dist <= maxDist) return Math.max(10, 35 - (dist * 10));
+      }
+      return 0;
+    }
+
+    function assignTokensToFieldTokens(qTokens, fieldTokens, allowFuzzy){
+      const Q = qTokens.length, F = fieldTokens.length;
+      const pairs = [];
+      const initials = fieldTokens.map(t => (t[0]||'')).join('');
+      for (let qi=0; qi<Q; qi++){
+        const qn = qTokens[qi];
+        for (let fi=0; fi<F; fi++){
+          const ft = fieldTokens[fi];
+          let s = scorePair(qn, ft, allowFuzzy);
+          if ((qn.length <= 2 || /^[a-z]\.?$/.test(qn)) && initials.startsWith(qn)) {
+            s = Math.max(s, 60);
+          }
+          if (s > 0) pairs.push({ qi, fi, score: s });
+        }
+      }
+      pairs.sort((a,b) => b.score - a.score);
+      const assignedToken = new Array(Q).fill(-1);
+      const assignedField = new Array(F).fill(false);
+      for (const p of pairs){
+        if (assignedToken[p.qi] === -1 && !assignedField[p.fi]) {
+          assignedToken[p.qi] = p.fi;
+          assignedField[p.fi] = true;
+        }
+      }
+      for (let qi=0; qi<Q; qi++){
+        if (assignedToken[qi] !== -1) continue;
+        let best = { fi:-1, score:0 };
+        for (let fi=0; fi<F; fi++){
+          const s = scorePair(qTokens[qi], fieldTokens[fi], allowFuzzy);
+          if (s > best.score) best = { fi, score: s };
+        }
+        if (best.score === 0 && (qTokens[qi].length <= 2 || /^[a-z]\.?$/.test(qTokens[qi])) && initials.startsWith(qTokens[qi])) {
+          best = { fi: 0, score: 60 };
+        }
+        if (best.fi !== -1 && best.score > 0) assignedToken[qi] = best.fi;
+        else assignedToken[qi] = -1;
+      }
+      const perTokenScores = new Array(Q).fill(0);
+      for (let qi=0; qi<Q; qi++){
+        const fi = assignedToken[qi];
+        if (fi >= 0) perTokenScores[qi] = scorePair(qTokens[qi], fieldTokens[fi], allowFuzzy) || ((qTokens[qi].length <= 2 && fieldTokens.length>0) ? 60 : 0);
+        else perTokenScores[qi] = 0;
+      }
+      return { assignedToken, perTokenScores };
+    }
+
+    function scoreRecordExclusiveField(rec, qTokens, fieldName, allowFuzzy){
+      const fieldVal = norm(rec[fieldName] || '');
+      const fieldTokens = tokensOf(fieldVal);
+      if (fieldTokens.length === 0) return { total:0, matchedAll:false, matchedCount:0, matchedIndices:[] };
+      const { assignedToken, perTokenScores } = assignTokensToFieldTokens(qTokens, fieldTokens, allowFuzzy);
+      let total = 0;
+      let matchedCount = 0;
+      const matchedIndices = [];
+      for (let i=0;i<qTokens.length;i++){
+        const s = perTokenScores[i] || 0;
+        if (s > 0) matchedCount++;
+        total += s;
+        matchedIndices.push(assignedToken[i] !== undefined ? assignedToken[i] : -1);
+      }
+      const matchedAll = (matchedCount === qTokens.length && qTokens.length > 0);
+      if (matchedAll) total += 50;
+      const validIndices = matchedIndices.filter(i => i >= 0);
+      const uniqueIndices = Array.from(new Set(validIndices));
+      if (validIndices.length > 1 && uniqueIndices.length === validIndices.length) total += 25;
+      else if (validIndices.length > 1 && uniqueIndices.length >= 2) total += 10;
+      if (validIndices.length >= 2) {
+        let adj = true;
+        for (let i=1;i<matchedIndices.length;i++){
+          const a = matchedIndices[i-1], b = matchedIndices[i];
+          if (a < 0 || b < 0 || b !== a + 1) { adj = false; break; }
+        }
+        if (adj) total += 20;
+      }
+      return { total, matchedAll, matchedCount, matchedIndices };
+    }
 
     function wireSpeciesControl(records) {
       const recs = Array.isArray(records) ? records : (window.__speciesRecords || []);
       window.__speciesRecords = recs;
 
-      const elInput = input();
-      const elSuggest = suggest();
-      const elResult = result();
-      const elClear = clearBtn();
-      const elResultWrap = resultWrap();
-      const elHidden = hidden();
+      const elInput = document.getElementById('speciesKwInput');
+      const elSuggest = document.getElementById('speciesSuggest');
+      const elResult = document.getElementById('speciesResult');
+      const elClear = document.getElementById('speciesClearBtn');
+      const elResultWrap = document.querySelector('.species-result-wrap');
+      const elHidden = document.getElementById('selectedSpeciesKey');
+      const elModeBtn = document.getElementById('speciesModeBtn');
+      const elModeBadge = document.getElementById('speciesModeBadge');
 
-      if (!elInput || !elSuggest || !elResult || !elHidden || !elResultWrap) {
-        setTimeout(() => wireSpeciesControl(recs), 120);
-        return;
+      if (!elInput || !elSuggest || !elResult || !elHidden || !elResultWrap) { setTimeout(() => wireSpeciesControl(recs), 120); return; }
+
+      /* Mode State */
+      const MODES = ['Scientific','Common','eBird'];
+      let modeIndex = 0;
+      function applyModeUI(){
+        const m = MODES[modeIndex];
+        if (elModeBadge) {
+          elModeBadge.textContent = (m==='Scientific'?'Sci':(m==='Common'?'Com':m));
+          elModeBadge.className = 'mode-badge ' + (m==='eBird' ? 'm-eBird' : m==='Common' ? 'm-Common' : 'm-Sci');
+        }
+        if (m === 'eBird') elInput.placeholder = "Search eBird Code";
+        else if (m === 'Common') elInput.placeholder = "Search Common Name";
+        else elInput.placeholder = "Search Scientific Name";
+      }
+      applyModeUI();
+      if (elModeBtn) {
+        elModeBtn.onclick = (e) => {
+          e.preventDefault(); e.stopPropagation();
+          modeIndex = (modeIndex + 1) % MODES.length;
+          applyModeUI();
+          elInput.focus();
+          if (elInput.value.trim()) runSearch(elInput.value);
+        };
+      }
+
+      /* Code Map for eBird */
+      const codeMap = new Map();
+      for (const r of recs){
+        if (!r || !('key' in r)) continue;
+        const k = norm(stripBOM(r.key));
+        if (k) { if (!codeMap.has(k)) codeMap.set(k, []); codeMap.get(k).push(r); }
       }
 
       elHidden.value = '';
@@ -1054,45 +1168,148 @@
       elClear.style.display = 'none';
       elResultWrap.classList.add('empty');
 
+      let selectedIndex = -1;
       let debounceTimer = null;
-      let lastQuery = '';
-      let activeIdx = -1;
+      let lastQueryId = 0;
 
-      function close() { elSuggest.innerHTML = ''; elSuggest.style.display = 'none'; activeIdx = -1; }
+      function close() { elSuggest.innerHTML = ''; elSuggest.style.display = 'none'; selectedIndex = -1; }
 
-      function render(q) {
-        lastQuery = q;
-        activeIdx = -1;
+      function highlightText(text, qTokens){
+        if (!text) return '';
+        if (!qTokens || !qTokens.length) return escapeHtml(text);
+        const sorted = qTokens.slice().sort((a,b) => b.length - a.length);
+        const escaped = sorted.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = '(' + escaped.join('|') + ')';
+        const re = new RegExp(pattern, 'ig');
+        const parts = text.split(re);
+        let out = '';
+        for (let i = 0; i < parts.length; i++) {
+          if (i % 2 === 0) out += escapeHtml(parts[i]);
+          else out += '<mark>' + escapeHtml(parts[i]) + '</mark>';
+        }
+        return out;
+      }
+
+      function render(list, qTokens, primaryField){
+        selectedIndex = -1;
         elSuggest.innerHTML = '';
-        elSuggest.style.display = 'none';
-        if (!q || q.length < MIN_CHARS) { return; }
-        const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-        const cand = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a,b) => b.s - a.s).slice(0, MAX_RESULTS);
-        if (!cand.length) return;
-        cand.forEach((cobj, i) => {
-          const r = cobj.r;
-          const div = document.createElement('div');
-          div.className = 'item';
-          div.style.display = 'flex';
-          div.style.gap = '8px';
-          div.style.padding = '8px 10px';
-          div.style.cursor = 'pointer';
-          div.dataset.idx = i;
-          div.innerHTML = '<div class="common">' + highlight(r.common||'', q) + '</div>';
-          div.addEventListener('click', (ev) => { ev.preventDefault(); pick(i); });
-          elSuggest.appendChild(div);
-        });
+        if (!list || list.length === 0) { elSuggest.style.display='none'; return; }
+        
+        for (const it of list){
+          const r = it.rec;
+          const el = document.createElement('div');
+          el.className = 'item';
+          const primaryText = (primaryField === 'common') ? (r.common || '') : (primaryField === 'scientific' ? (r.scientific || '') : (r.key || ''));
+          const secondaryParts = [];
+          if (primaryField !== 'common' && r.common) secondaryParts.push(r.common);
+          if (primaryField !== 'scientific' && r.scientific) secondaryParts.push(r.scientific);
+          if (primaryField !== 'key' && r.key) secondaryParts.push(r.key);
+          const secondaryText = secondaryParts.join(' — ');
+
+          const hPrimary = highlightText(primaryText, qTokens);
+          const hSecondary = highlightText(secondaryText, qTokens);
+
+          el.innerHTML = `
+            <div>
+              <div class="title">${hPrimary} ${r.key?'<span class="muted">('+escapeHtml(r.key)+')</span>':''}</div>
+              <div class="muted">${hSecondary} ${r.meta? ' • ' + escapeHtml(r.meta):''}</div>
+            </div>
+          `;
+          el.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); applySelection(r); });
+          elSuggest.appendChild(el);
+        }
         elSuggest.style.display = 'block';
+      }
+
+      function runSearch(raw){
+        const q = norm(raw || '');
+        const qTokens = q ? tokensOf(q) : [];
+        const queryId = ++lastQueryId;
+        const mode = MODES[modeIndex];
+        let allowedField = 'scientific', allowFuzzy = true, primaryField = 'scientific';
+        if (mode === 'eBird') { allowedField = 'key'; allowFuzzy = false; primaryField = 'key'; }
+        else if (mode === 'Common') { allowedField = 'common'; allowFuzzy = true; primaryField = 'common'; }
+
+        if (mode === 'eBird') {
+          if (!q) { render([], qTokens, primaryField); return; }
+          if (codeMap.has(q)) {
+            const recs = codeMap.get(q);
+            render(recs.map(r => ({ rec: r, matchedField: 'key', matchType: 'Exact Code', score: 9999 })), qTokens, primaryField);
+            return;
+          }
+          const prefixMatches = [];
+          for (const [k, recs] of codeMap.entries()){
+            if (k.startsWith(q)) { for (const r of recs) prefixMatches.push({ rec: r, matchedField: 'key', matchType: 'prefix', score: 80 }); }
+          }
+          render(prefixMatches.slice(0,50), qTokens, primaryField);
+          return;
+        }
+
+        const shortTokenMask = qTokens.map(t => (t.length <= 2));
+        const anyShort = shortTokenMask.some(Boolean);
+        const singleShort = (qTokens.length === 1 && qTokens[0].length <= 2);
+        const candidates = [];
+        
+        for (const r of recs){
+          if (singleShort) {
+            const fieldVal = norm(r[allowedField] || '');
+            const fTokens = tokensOf(fieldVal);
+            const t = qTokens[0];
+            const prefixOk = fTokens.some(ft => ft.startsWith(t));
+            const initials = fTokens.map(x=>x[0]||'').join('');
+            const initialsOk = initials.startsWith(t);
+            if (!prefixOk && !initialsOk) continue;
+          }
+          const sc = scoreRecordExclusiveField(r, qTokens, allowedField, allowFuzzy && !anyShort);
+          if (sc.total > 0) candidates.push({ rec: r, score: sc.total, matchedAll: sc.matchedAll, matchedCount: sc.matchedCount });
+        }
+        if (candidates.length === 0 && qTokens.length > 0 && !singleShort) {
+          for (const r of recs){
+            const hay = norm(r[allowedField] || '');
+            if (qTokens.every(t => hay.includes(t))) candidates.push({ rec: r, score: 30, matchedAll:true, matchedCount:qTokens.length });
+          }
+        }
+        candidates.sort((a,b)=>{
+          if (b.score !== a.score) return b.score - a.score;
+          if (b.matchedAll !== a.matchedAll) return (b.matchedAll?1:0) - (a.matchedAll?1:0);
+          if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
+          const la = (norm(a.rec[allowedField]||'')).length, lb = (norm(b.rec[allowedField]||'')).length;
+          if (la !== lb) return la - lb;
+          return (a.rec.key||'').localeCompare(b.rec.key||'') || 0;
+        });
+
+        const out = candidates.slice(0,50).map(c=>{
+          let mf = allowedField, mt = null;
+          const fieldTokens = tokensOf(norm(c.rec[allowedField]||''));
+          for (const t of qTokens){
+            let bestType = null, bestScore = 0;
+            for (let fi=0; fi<fieldTokens.length; fi++){
+              const s = scorePair(t, fieldTokens[fi], allowFuzzy && !anyShort);
+              if (s > bestScore) { bestScore = s; bestType = s >= 100 ? 'exact' : s >= 70 ? 'prefix' : s >= 60 ? 'initials' : s >= 40 ? 'substr' : s >= 10 ? 'fuzzy' : null; }
+            }
+            if (bestType) { mt = bestType; break; }
+          }
+          if (!mt) mt = 'match';
+          return { rec: c.rec, score: c.score, matchedField: mf, matchType: mt };
+        });
+
+        if (queryId !== lastQueryId) return;
+        render(out, qTokens, primaryField);
       }
 
       function applySelection(chosen) {
         elHidden.value = chosen.key || '';
-        elResult.textContent = chosen.common || '';
+        elResult.textContent = chosen.scientific || chosen.common || '';
+        elResult.title = chosen.scientific || chosen.common || '';
+        elResult.dataset.common = chosen.common || '';
+        elResult.dataset.scientific = chosen.scientific || '';
         elClear.style.display = 'inline-flex';
         elResultWrap.classList.remove('empty');
         elHidden.dispatchEvent(new Event('input', { bubbles: true }));
         const wrapper = elResultWrap.closest('.species-search') || document.querySelector('.species-search');
         if (wrapper) wrapper.dispatchEvent(new CustomEvent('species-select', { detail: { key: chosen.key, common: chosen.common, scientific: chosen.scientific }, bubbles: true }));
+        elInput.value = '';
+        close();
       }
 
       function clearSelection() {
@@ -1105,92 +1322,81 @@
         const wrapper = elResultWrap.closest('.species-search') || document.querySelector('.species-search');
         if (wrapper) wrapper.dispatchEvent(new CustomEvent('species-select-cleared', { detail: { previousKey: prev }, bubbles: true }));
       }
-
-      function pick(idx) {
-        const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-        const cand = records.map(r => ({ r, s: score(r, lastQuery) })).filter(x => x.s > 0).sort((a,b) => b.s - a.s).slice(0, MAX_RESULTS);
-        const chosen = (cand[idx] && cand[idx].r) || null;
-        if (!chosen) return;
-        applySelection(chosen);
-        elInput.value = '';
-        close();
-        elInput.focus();
-      }
-
-      function acceptTop() {
-        const q = elInput.value.trim();
-        if (!q) return;
-        const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-        const best = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a,b)=>b.s-a.s)[0];
-        if (!best) return;
-        applySelection(best.r);
-        elInput.value = '';
-        close();
-      }
-
+      
       function updateActive(items) {
         items.forEach((it, i) => {
-          if (i === activeIdx) {
-            it.classList.add('active');
+          if (i === selectedIndex) {
+            it.classList.add('selected');
             it.scrollIntoView({ block: 'nearest' });
           } else {
-            it.classList.remove('active');
+            it.classList.remove('selected');
           }
         });
       }
 
       elResultWrap.addEventListener('mouseenter', () => { if (elHidden.value) elClear.style.display = 'inline-flex'; });
       elResultWrap.addEventListener('mouseleave', () => { if (elHidden.value) elClear.style.display = 'none'; });
-
       elClear.addEventListener('click', (e) => { e.preventDefault(); clearSelection(); elInput.focus(); });
 
-      elInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && elInput.value.trim() === '') {
-          e.preventDefault();
-          clearSelection();
-        }
-      });
-
       elInput.addEventListener('input', () => {
-        const q = elInput.value.trim();
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => render(q), DEBOUNCE_MS);
+        debounceTimer = setTimeout(() => runSearch(elInput.value), 120);
       });
 
       elInput.addEventListener('keydown', (e) => {
         const items = elSuggest.querySelectorAll('.item');
         if (elSuggest.style.display === 'block' && items.length) {
-          if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(items.length - 1, activeIdx + 1); updateActive(items); return; }
-          if (e.key === 'ArrowUp')   { e.preventDefault(); activeIdx = Math.max(0, activeIdx - 1); updateActive(items); return; }
+          if (e.key === 'ArrowDown') { e.preventDefault(); selectedIndex = Math.min(items.length - 1, selectedIndex + 1); updateActive(items); return; }
+          if (e.key === 'ArrowUp')   { e.preventDefault(); selectedIndex = Math.max(selectedIndex - 1, -1); updateActive(items); return; }
           if (e.key === 'Enter') {
-            if (activeIdx >= 0 && activeIdx < items.length) { e.preventDefault(); pick(activeIdx); return; }
-            e.preventDefault(); acceptTop(); return;
+            if (selectedIndex >= 0 && items[selectedIndex]) { e.preventDefault(); items[selectedIndex].click(); return; }
+            // Fallback to first item if none selected
+            if (items[0]) { e.preventDefault(); items[0].click(); return; }
           }
           if (e.key === 'Escape') { close(); return; }
         } else {
-          if (e.key === 'Enter') { e.preventDefault(); acceptTop(); return; }
+          if (e.key === 'Enter') { e.preventDefault(); runSearch(elInput.value); return; }
+          if (e.key === 'Escape' && elInput.value.trim() === '') { e.preventDefault(); clearSelection(); }
         }
       });
 
       // OUTSIDE CLICK: use bubble phase so clicks on suggestion items occur first
       document.addEventListener('click', (ev) => {
         try {
-          const path = (ev.composedPath && ev.composedPath()) || ev.path || [];
-          const inside = path.some(node => {
-            try { return node && node.classList && node.classList.contains && node.classList.contains('species-search'); } catch (e) { return false; }
-          });
-          if (!inside) close();
+          if (!ev.target.closest('.species-search')) close();
         } catch (err) {
-          // fallback conservative check
-          try {
-            if (!elInput.closest('.species-search') && !document.querySelector('.species-search').contains(ev.target)) close();
-          } catch (e) { /* ignore */ }
+          try { if (!document.querySelector('.species-search').contains(ev.target)) close(); } catch (e) {}
         }
       }, false);
 
       // ensure suggestions are above overlays (defensive if CSS not present)
       elSuggest.style.zIndex = elSuggest.style.zIndex || '999999';
     }
+
+    /* Initialization / Polling */
+    function whenReady(cb) {
+      if (document.readyState === 'interactive' || document.readyState === 'complete') setTimeout(cb, 0);
+      else window.addEventListener('DOMContentLoaded', () => setTimeout(cb, 0));
+    }
+    whenReady(() => {
+      const MAX_TRIES = 40;
+      let tries = 0;
+      const t = setInterval(() => {
+        tries++;
+        if (Array.isArray(window.__speciesRecords)) {
+          clearInterval(t);
+          window.wireSpeciesControl = function(records) { try { wireSpeciesControl(records); } catch(e){ console.warn('wireSpeciesControl wrapper failed', e); } };
+          wireSpeciesControl(window.__speciesRecords);
+        } else if (tries >= MAX_TRIES) {
+          clearInterval(t);
+          console.warn('species-data.js not found or window.__speciesRecords not defined; control will wire empty.');
+          wireSpeciesControl([]);
+        }
+      }, 80);
+    });
+    window.addEventListener('species-source-changed', function() {
+      try { if (typeof window.wireSpeciesControl === 'function') window.wireSpeciesControl(window.__speciesRecords || []); } catch(e) { console.warn('species-source-changed handler failed', e); }
+    });
   })();
   </script>
 
