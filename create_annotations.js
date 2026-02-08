@@ -51,6 +51,18 @@
   let lastCreatedId = null;
   let onChangeCb = null;
   let __lastPointerId;
+
+  // Cache species info to avoid DOM scraping per annotation
+  let cachedSpecies = { common: '', scientific: '' };
+  window.addEventListener('species-select', (ev) => {
+    cachedSpecies.common = (ev.detail && ev.detail.common) || '';
+    cachedSpecies.scientific = (ev.detail && ev.detail.scientific) || '';
+  });
+  window.addEventListener('species-select-cleared', () => {
+    cachedSpecies.common = '';
+    cachedSpecies.scientific = '';
+  });
+
   // Centralized pending-restore applier (defined unconditionally so callers can invoke anytime)
   try {
     window.__applyPendingAnnotationRestore = function(){
@@ -478,11 +490,40 @@
     const MIN_DUR = 0.01;
     if (begin >= end) end = Math.min(duration, begin + MIN_DUR);
 
-    let speciesVal = '';
-    try {
-      const spLabel = document.querySelector('#speciesResult');
-      if (spLabel) speciesVal = String(spLabel.textContent || '').trim();
-    } catch (e) { speciesVal = ''; }
+    // Resolve species info (Common and Scientific)
+    // Priority: Cache -> DOM Key Lookup -> DOM Label Dataset -> DOM Label Text (Fallback)
+    let speciesVal = cachedSpecies.common;
+    let scientificVal = cachedSpecies.scientific;
+
+    if (!speciesVal) {
+      try {
+        const keyEl = document.getElementById('selectedSpeciesKey');
+        const key = keyEl ? String(keyEl.value || '').trim() : '';
+        const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        
+        // 1. Try lookup by Key
+        if (key) {
+          const rec = recs.find(r => String((r.key||'')).trim() === key);
+          if (rec) { speciesVal = rec.common||''; scientificVal = rec.scientific||''; }
+        }
+        
+        // 2. Try Label Dataset (if key lookup failed or key empty)
+        if (!speciesVal) {
+          const spLabel = document.querySelector('#speciesResult');
+          if (spLabel) {
+            speciesVal = spLabel.dataset.common || '';
+            scientificVal = spLabel.dataset.scientific || '';
+            // 3. Fallback: Reverse lookup from Label Text (Scientific)
+            if (!speciesVal && spLabel.textContent) {
+               const text = String(spLabel.textContent).trim();
+               const rec = recs.find(r => r.scientific === text || r.common === text);
+               if (rec) { speciesVal = rec.common||''; scientificVal = rec.scientific||''; }
+            }
+          }
+        }
+      } catch (e) { }
+    }
+
     // If species is missing, block creation: alert with OK-only and cancel the pending
     if (!speciesVal) {
       try {
@@ -502,20 +543,6 @@
         const gridData = window.annotationGrid.getData();
         const nextId = gridData.length > 0 ? Math.max(...gridData.map(a => Number(a.id) || 0)) + 1 : 1;
           const round4 = v => Number(v).toFixed(4);
-          // Determine scientific name from selected species key or lookup by common name
-          let scientificVal = '';
-          try {
-            const keyEl = document.getElementById('selectedSpeciesKey');
-            const key = keyEl ? String(keyEl.value || '').trim() : '';
-            const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-            if (key) {
-              const rec = recs.find(r => String((r.key||'')).trim() === key);
-              scientificVal = rec ? (rec.scientific || '') : '';
-            } else if (speciesVal) {
-              const rec = recs.find(r => String((r.common||'')).trim() === String(speciesVal).trim());
-              scientificVal = rec ? (rec.scientific || '') : '';
-            }
-          } catch (e) { scientificVal = ''; }
 
           const rowObj = {
                   id: nextId,
