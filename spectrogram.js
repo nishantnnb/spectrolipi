@@ -2380,7 +2380,7 @@
   // Keep Cut button enablement in sync
   updateCutButtonEnabled();
   window.addEventListener('spectrogram-generated', ()=>{ try { updateCutButtonEnabled(); } catch(e){} });
-  window.addEventListener('annotation-mode-changed', ()=>{ try { updateCutButtonEnabled(); } catch(e){} });
+  window.addEventListener('mode-change', ()=>{ try { updateCutButtonEnabled(); } catch(e){} });
   setInterval(()=>{ try { updateCutButtonEnabled(); } catch(e){} }, 800);
 
   // Listen for mode-change events so selection is only possible in Edit mode.
