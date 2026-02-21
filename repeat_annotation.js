@@ -3,11 +3,11 @@
   const btn = document.getElementById('repeatBtn');
   if (!btn) return;
 
-  let lastDim = null; // { duration: sec, bandwidth: hz }
+  let lastAnn = null; // { duration: sec, bandwidth: hz, species: 'common', scientificName: 'scientific' }
   let ghost = null;
   let isRepeat = false;
 
-  function updateLastDim() {
+  function updateLastAnn() {
     if (window.annotationGrid) {
       try {
         const data = window.annotationGrid.getData();
@@ -24,12 +24,23 @@
             const e = Number(last.endTime);
             const l = Number(last.lowFreq);
             const h = Number(last.highFreq);
+            const sp = last.species || '';
+            const sc = last.scientificName || '';
+
             if (e > b && h > l) {
-              lastDim = { duration: e - b, bandwidth: h - l };
+              lastAnn = { 
+                duration: e - b, 
+                bandwidth: h - l,
+                species: sp,
+                scientificName: sc
+              };
             }
           }
         }
-      } catch(e){}
+      } catch(e){
+        console.error('Error reading last annotation for repeat:', e);
+        lastAnn = null; // Reset on error
+      }
     }
   }
 
@@ -38,7 +49,11 @@
     btn.setAttribute('aria-pressed', String(isRepeat));
     if (isRepeat) {
       btn.style.setProperty('background', '#43a047', 'important');
-      updateLastDim();
+      updateLastAnn(); // This now captures dimensions AND species
+      if (!lastAnn) {
+        alert('Could not find a previous annotation to repeat. Please create one first.');
+        toggleRepeat(); // Immediately turn off if no data
+      }
     } else {
       btn.style.removeProperty('background');
       if (ghost) ghost.style.display = 'none';
@@ -65,7 +80,7 @@
   const spectrogramCanvas = document.getElementById('spectrogramCanvas');
   if (scrollArea && spectrogramCanvas) {
     spectrogramCanvas.addEventListener('pointermove', (ev) => {
-      if (!isRepeat || !lastDim) { if (ghost) ghost.style.display = 'none'; return; }
+      if (!isRepeat || !lastAnn) { if (ghost) ghost.style.display = 'none'; return; }
       
       if (!ghost) {
         ghost = document.createElement('div');
@@ -88,8 +103,8 @@
       const yMax = globalThis._spectroYMax || 22050;
       const imgH = globalThis._spectroImageHeight || 420;
       
-      const wPx = lastDim.duration * pxPerSec;
-      const hPx = (lastDim.bandwidth / yMax) * imgH;
+      const wPx = lastAnn.duration * pxPerSec;
+      const hPx = (lastAnn.bandwidth / yMax) * imgH;
       
       ghost.style.width = wPx + 'px';
       ghost.style.height = hPx + 'px';
@@ -103,7 +118,7 @@
     });
 
     spectrogramCanvas.addEventListener('pointerdown', (ev) => {
-      if (!isRepeat || !lastDim || ev.button !== 0) return;
+      if (!isRepeat || !lastAnn || ev.button !== 0) return;
       
       // Intercept creation
       ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
@@ -122,41 +137,19 @@
       const freqCenter = yMax * (1 - (y - AXIS_TOP) / imgH);
       
       const duration = (typeof globalThis._spectroDuration === 'number' && isFinite(globalThis._spectroDuration)) ? globalThis._spectroDuration : Infinity;
-      const t1 = Math.max(0, tCenter - lastDim.duration / 2);
-      const t2 = Math.min(duration, tCenter + lastDim.duration / 2);
-      const f1 = Math.max(0, freqCenter - lastDim.bandwidth / 2);
-      const f2 = Math.min(yMax, freqCenter + lastDim.bandwidth / 2);
+      const t1 = Math.max(0, tCenter - lastAnn.duration / 2);
+      const t2 = Math.min(duration, tCenter + lastAnn.duration / 2);
+      const f1 = Math.max(0, freqCenter - lastAnn.bandwidth / 2);
+      const f2 = Math.min(yMax, freqCenter + lastAnn.bandwidth / 2);
       
-      // Resolve species info (Common and Scientific)
-      let speciesVal = '';
-      let scientificVal = '';
-      try {
-        const keyEl = document.getElementById('selectedSpeciesKey');
-        const key = keyEl ? String(keyEl.value || '').trim() : '';
-        const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-        
-        if (key) {
-          const rec = recs.find(r => String((r.key||'')).trim() === key);
-          if (rec) { speciesVal = rec.common||''; scientificVal = rec.scientific||''; }
-        }
-        if (!speciesVal) {
-          const spLabel = document.querySelector('#speciesResult');
-          if (spLabel) {
-            speciesVal = spLabel.dataset.common || '';
-            scientificVal = spLabel.dataset.scientific || '';
-            if (!speciesVal && spLabel.textContent) {
-               const text = String(spLabel.textContent).trim();
-               const rec = recs.find(r => r.scientific === text || r.common === text);
-               if (rec) { speciesVal = rec.common||''; scientificVal = rec.scientific||''; }
-            }
-          }
-        }
-      } catch (e) {}
-
-      if (!speciesVal) {
-        alert('Please Select a species first and try again.');
+      // Use the species info stored from the last annotation
+      if (!lastAnn.species) {
+        alert('The annotation you are repeating has no species. Please select a species for it or create a new annotation.');
         return;
       }
+
+      const speciesVal = lastAnn.species;
+      const scientificVal = lastAnn.scientificName;
       
       let nextId = 1;
       if (window.annotationGrid) {
