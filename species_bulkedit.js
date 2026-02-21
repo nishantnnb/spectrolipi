@@ -498,29 +498,41 @@
 
   // Apply species currently selected in the UI to the selected rows (button handler)
   function applySpeciesFromUI() {
-    const keyEl = document.getElementById('selectedSpeciesKey');
     const labelEl = document.getElementById('speciesResult');
-    let common = labelEl ? (labelEl.dataset.common || String(labelEl.textContent || '').trim()) : '';
-    let scientific = '';
-    try {
-      const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-      const key = keyEl ? String(keyEl.value || '').trim() : '';
-      if (key) {
-        const rec = recs.find(r => String((r.key||'')).trim() === key);
-        if (rec) {
-          scientific = rec.scientific || '';
-          common = rec.common || '';
+    const scientificName = labelEl ? String(labelEl.textContent || '').trim() : '';
+
+    if (!scientificName) {
+      try {
+        alert('No species selected for bulk update. Please select a species from the dropdown first.');
+      } catch (e) {}
+      return;
+    }
+
+    const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+    const rec = recs.find(r => String(r.scientific || '').trim() === scientificName);
+
+    if (!rec) {
+      try {
+        // Fallback to check if the label was a common name, just in case.
+        const fallbackRec = recs.find(r => String(r.common || '').trim() === scientificName);
+        if (fallbackRec) {
+          handleSpeciesAccepted(fallbackRec.common, fallbackRec.scientific);
+        } else {
+          alert('Could not find the selected species data. Please try selecting the species again.');
         }
-      } else if (common) {
-        const rec = recs.find(r => String((r.common||'')).trim() === common || String((r.scientific||'')).trim() === common);
-        if (rec) {
-          scientific = rec.scientific || '';
-          common = rec.common || '';
-        }
+      } catch (e) {
+        alert('An error occurred while looking up the species.');
       }
-    } catch (e) { scientific = ''; }
-    // Reuse existing confirmation + apply flow
-    try { handleSpeciesAccepted(common, scientific); } catch (e) { console.error('bulk: applySpeciesFromUI failed', e); }
+      return;
+    }
+
+    const commonName = rec.common || '';
+
+    try {
+      handleSpeciesAccepted(commonName, scientificName);
+    } catch (e) {
+      console.error('bulk: applySpeciesFromUI failed', e);
+    }
   }
 
   // Wire the new button when present
