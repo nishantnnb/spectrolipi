@@ -1,4 +1,6 @@
-<img width="250" height="250" alt="001Logo name" src="https://github.com/user-attachments/assets/bfd3e649-460b-4afc-ab8a-93467ba74b20" />
+<a href="https://nishantnnb.github.io/spectrolipi/">
+  <img src="https://github.com/user-attachments/assets/bfd3e649-460b-4afc-ab8a-93467ba74b20" alt="001Logo name" width="250" height="250">
+</a>
 
 
 # Spectrolipi
