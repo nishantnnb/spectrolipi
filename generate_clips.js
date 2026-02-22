@@ -301,7 +301,7 @@
   }
 
   // Merges adjacent annotations of the same species if their gap is less than maxGapSec.
-  function mergeAnnotationsBySpeciesAndGap(annotations, maxGapSec, logMessages) {
+  function mergeAnnotationsBySpeciesAndGap(annotations, maxGapSec) {
     if (!annotations || annotations.length <= 1) return annotations;
 
     // 1. Enrich with scientific name and group by it
@@ -314,15 +314,10 @@
       return acc;
     }, {});
     
-    logMessages.push('--- DEBUG: Grouping by species ---');
-    try { logMessages.push(JSON.stringify(groupedBySpecies, null, 2)); } catch(e) { logMessages.push('Error stringifying species groups'); }
-
-
     const finalAnnotations = [];
 
     // 2. Process each species group
     for (const species in groupedBySpecies) {
-      logMessages.push(`--- DEBUG: Processing species: ${species} ---`);
       const speciesAnnotations = groupedBySpecies[species];
       if (speciesAnnotations.length <= 1) {
         finalAnnotations.push(...speciesAnnotations);
@@ -332,42 +327,26 @@
       // Sort by start time, then end time as a tie-breaker
       speciesAnnotations.sort((a, b) => a.start - b.start || a.end - b.end);
       
-      logMessages.push('--- DEBUG: Sorted List ---');
-      try { logMessages.push(JSON.stringify(speciesAnnotations, null, 2)); } catch(e) { logMessages.push('Error stringifying sorted list'); }
-
-
       const mergedForSpecies = [];
       if (speciesAnnotations.length > 0) {
         let current = { ...speciesAnnotations[0] };
-        logMessages.push(`--- DEBUG: Initial current: ${JSON.stringify(current)}`);
 
         for (let i = 1; i < speciesAnnotations.length; i++) {
           const next = speciesAnnotations[i];
           const gap = next.start - current.end;
           
-          logMessages.push(`--- DEBUG: Loop i=${i}, current=${JSON.stringify(current)}, next=${JSON.stringify(next)}, gap=${gap.toFixed(4)} ---`);
-
           // Condition to merge: gap is small, or they overlap
           if (gap < maxGapSec) {
-            logMessages.push('--- DEBUG: Decision: MERGE ---');
             // current.start is already the minimum due to sorting, so only update the end.
             current.end = Math.max(current.end, next.end);
-            logMessages.push(`--- DEBUG: current is now: ${JSON.stringify(current)}`);
           } else {
-            logMessages.push('--- DEBUG: Decision: NO MERGE ---');
             mergedForSpecies.push(current);
-            logMessages.push(`--- DEBUG: Pushed to mergedForSpecies. Array is now ${mergedForSpecies.length} items long.`);
             current = { ...next };
-            logMessages.push(`--- DEBUG: Set new current: ${JSON.stringify(current)}`);
           }
         }
         // Add the very last block
-        logMessages.push('--- DEBUG: End of loop. Pushing final current.');
         mergedForSpecies.push(current);
       }
-
-      logMessages.push('--- DEBUG: Final Merged for Species ---');
-      try { logMessages.push(JSON.stringify(mergedForSpecies, null, 2)); } catch(e) { logMessages.push('Error stringifying final merged list for species'); }
 
       finalAnnotations.push(...mergedForSpecies);
     }
@@ -572,20 +551,11 @@
             continue;
           }
 
-          logMessages.push('--- DEBUG: Initial Annotations ---');
-          try { logMessages.push(JSON.stringify(annotations, null, 2)); } catch (e) { logMessages.push('Error stringifying initial annotations'); }
-
           let processedAnnotations = annotations;
           if (mergeAnnotations && annotations.length > 1) {
-            logMessages.push('--- DEBUG: Starting Merge Process ---');
-            processedAnnotations = mergeAnnotationsBySpeciesAndGap(annotations, mergeSecs, logMessages);
-            logMessages.push('--- DEBUG: Merge Process Complete ---');
+            processedAnnotations = mergeAnnotationsBySpeciesAndGap(annotations, mergeSecs);
           }
           
-          logMessages.push('--- DEBUG: Final Processed Annotations (before validation) ---');
-          try { logMessages.push(JSON.stringify(processedAnnotations, null, 2)); } catch (e) { logMessages.push('Error stringifying processed annotations'); }
-
-
           // Read Sound
           const soundFile = await sf.getFile();
           const arrayBuffer = await soundFile.arrayBuffer();
@@ -608,9 +578,6 @@
             }
             return true;
           });
-
-          logMessages.push('--- DEBUG: Valid Anns (after duration filter) ---');
-          try { logMessages.push(JSON.stringify(validAnns, null, 2)); } catch (e) { logMessages.push('Error stringifying valid annotations'); }
 
           // --- Noise Sample Logic ---
           if (createNoise) {
