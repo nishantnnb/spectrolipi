@@ -68,6 +68,16 @@
             <label style="font-size:13px;color:#ccc;white-space:nowrap;">For the annotations &gt; Required clip length, after segmentation, ignore the last clip if balance annotation < <input id="gc-ignore-last" type="number" min="0" max="99" step="1" value="0" style="width:40px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">  sec</label>
           </div>
 
+          <!-- Merge Annotations -->
+          <div style="margin-top:4px;">
+            <label style="font-size:13px;color:#ccc;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+              <input type="checkbox" id="gc-merge-annotations">
+              Merge annotations less than
+              <input id="gc-merge-secs" type="number" min="0" step="0.1" value="1.0" style="width:60px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">
+              secs apart.
+            </label>
+          </div>
+
           <!-- Conflict Resolution -->
           <div style="margin-top:4px;">
             <label style="display:block;font-size:13px;color:#ccc;margin-bottom:6px;">Action if clips already present for a file:</label>
@@ -290,6 +300,84 @@
     return found ? (found.scientific || '') : '';
   }
 
+  // Merges adjacent annotations of the same species if their gap is less than maxGapSec.
+  function mergeAnnotationsBySpeciesAndGap(annotations, maxGapSec, logMessages) {
+    if (!annotations || annotations.length <= 1) return annotations;
+
+    // 1. Enrich with scientific name and group by it
+    const groupedBySpecies = annotations.reduce((acc, ann) => {
+      const scientificName = getScientific(ann.species) || ann.species || 'Unknown';
+      if (!acc[scientificName]) {
+        acc[scientificName] = [];
+      }
+      acc[scientificName].push(ann);
+      return acc;
+    }, {});
+    
+    logMessages.push('--- DEBUG: Grouping by species ---');
+    try { logMessages.push(JSON.stringify(groupedBySpecies, null, 2)); } catch(e) { logMessages.push('Error stringifying species groups'); }
+
+
+    const finalAnnotations = [];
+
+    // 2. Process each species group
+    for (const species in groupedBySpecies) {
+      logMessages.push(`--- DEBUG: Processing species: ${species} ---`);
+      const speciesAnnotations = groupedBySpecies[species];
+      if (speciesAnnotations.length <= 1) {
+        finalAnnotations.push(...speciesAnnotations);
+        continue;
+      }
+
+      // Sort by start time, then end time as a tie-breaker
+      speciesAnnotations.sort((a, b) => a.start - b.start || a.end - b.end);
+      
+      logMessages.push('--- DEBUG: Sorted List ---');
+      try { logMessages.push(JSON.stringify(speciesAnnotations, null, 2)); } catch(e) { logMessages.push('Error stringifying sorted list'); }
+
+
+      const mergedForSpecies = [];
+      if (speciesAnnotations.length > 0) {
+        let current = { ...speciesAnnotations[0] };
+        logMessages.push(`--- DEBUG: Initial current: ${JSON.stringify(current)}`);
+
+        for (let i = 1; i < speciesAnnotations.length; i++) {
+          const next = speciesAnnotations[i];
+          const gap = next.start - current.end;
+          
+          logMessages.push(`--- DEBUG: Loop i=${i}, current=${JSON.stringify(current)}, next=${JSON.stringify(next)}, gap=${gap.toFixed(4)} ---`);
+
+          // Condition to merge: gap is small, or they overlap
+          if (gap < maxGapSec) {
+            logMessages.push('--- DEBUG: Decision: MERGE ---');
+            // current.start is already the minimum due to sorting, so only update the end.
+            current.end = Math.max(current.end, next.end);
+            logMessages.push(`--- DEBUG: current is now: ${JSON.stringify(current)}`);
+          } else {
+            logMessages.push('--- DEBUG: Decision: NO MERGE ---');
+            mergedForSpecies.push(current);
+            logMessages.push(`--- DEBUG: Pushed to mergedForSpecies. Array is now ${mergedForSpecies.length} items long.`);
+            current = { ...next };
+            logMessages.push(`--- DEBUG: Set new current: ${JSON.stringify(current)}`);
+          }
+        }
+        // Add the very last block
+        logMessages.push('--- DEBUG: End of loop. Pushing final current.');
+        mergedForSpecies.push(current);
+      }
+
+      logMessages.push('--- DEBUG: Final Merged for Species ---');
+      try { logMessages.push(JSON.stringify(mergedForSpecies, null, 2)); } catch(e) { logMessages.push('Error stringifying final merged list for species'); }
+
+      finalAnnotations.push(...mergedForSpecies);
+    }
+
+    // Sort the final combined list by start time for consistent output order
+    finalAnnotations.sort((a, b) => a.start - b.start || a.end - b.end);
+
+    return finalAnnotations;
+  }
+
   // --- Logic ---
 
   async function processFiles() {
@@ -303,8 +391,16 @@
     const ignoreLastInput = document.getElementById('gc-ignore-last');
     const ignoreLastClipIfLessThen = parseFloat(ignoreLastInput.value) || 0;
 
+    const mergeAnnotations = document.getElementById('gc-merge-annotations').checked;
+    const mergeSecs = parseFloat(document.getElementById('gc-merge-secs').value) || 0;
+
     if (ignoreLastClipIfLessThen > clipLen) {
         alert("Ignore last clip duration can't be > Required clip duration");
+        return;
+    }
+
+    if (mergeAnnotations && mergeSecs >= clipLen) {
+        alert("Merge duration must be less than the Required Clip length.");
         return;
     }
 
@@ -476,6 +572,20 @@
             continue;
           }
 
+          logMessages.push('--- DEBUG: Initial Annotations ---');
+          try { logMessages.push(JSON.stringify(annotations, null, 2)); } catch (e) { logMessages.push('Error stringifying initial annotations'); }
+
+          let processedAnnotations = annotations;
+          if (mergeAnnotations && annotations.length > 1) {
+            logMessages.push('--- DEBUG: Starting Merge Process ---');
+            processedAnnotations = mergeAnnotationsBySpeciesAndGap(annotations, mergeSecs, logMessages);
+            logMessages.push('--- DEBUG: Merge Process Complete ---');
+          }
+          
+          logMessages.push('--- DEBUG: Final Processed Annotations (before validation) ---');
+          try { logMessages.push(JSON.stringify(processedAnnotations, null, 2)); } catch (e) { logMessages.push('Error stringifying processed annotations'); }
+
+
           // Read Sound
           const soundFile = await sf.getFile();
           const arrayBuffer = await soundFile.arrayBuffer();
@@ -491,13 +601,16 @@
           const sr = audioBuffer.sampleRate;
 
           // Check invalid end times
-          const validAnns = annotations.filter(a => {
+          const validAnns = processedAnnotations.filter(a => {
             if (a.end > duration) {
               logMessages.push(`Annotation end > EOF in ${annoName}: ${a.end} > ${duration}`);
               return false;
             }
             return true;
           });
+
+          logMessages.push('--- DEBUG: Valid Anns (after duration filter) ---');
+          try { logMessages.push(JSON.stringify(validAnns, null, 2)); } catch (e) { logMessages.push('Error stringifying valid annotations'); }
 
           // --- Noise Sample Logic ---
           if (createNoise) {
