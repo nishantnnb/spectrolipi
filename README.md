@@ -5,24 +5,20 @@
 
 
 # Spectrolipi
-A tool for managing annotations for Bioacoustics.
+Bioacoustics researchers, birders, and machine‑learning practitioners often need a tool to visualize and annotate spectrograms to make the most of their sound recordings. Sound‑data annotation is a crucial step in building high‑quality machine‑learning models for sound based identification. To support this workflow, a new open‑source tool—Spectrolipi—is now available.
 
-Link: https://nishantnnb.github.io/spectrolipi/
+Link: https://spectrolipi.com
 
 	Features:
-
-	Playback of spectrogram generated for the sound file.
-
-	Spectrogram views management.
-	
-	Create/Edit/Export/Import box type annotations.
-
-	Assistance to create automatic annotations based on template.
-
-	Overall ease of use.
-	
-	File level Metadata - Create/Edit/Export.
-	
-	Selection of species with predefined or custom list. Search based on keywords. Common name, Scientific name.
+		Spectrogram playback with different options for visualization (Colourmap, Gain, Zoom).
+		Create, edit, import, and export annotation boxes.
+		Automatic annotation assistance using templates for repeated sound patterns.
+		‘Repeat annotation’ feature - to quickly annotate the similar recurring sound patterns on the spectrogram.
+		Maintain file‑level metadata.
+		Species selection with predefined or custom lists (common & scientific names).
+		Basic sound editing & export: cut, silence, filters (high‑pass / low‑pass), normalize, and single‑step undo.
+		Export sound clips for machine learning based on the annotations. Clips are auto-segrigated in respective species folders.
+		Integration with Xeno-canto to upload the annotations: Manually (json file) or directly with API.
+		No data privacy concerns: All processing happens locally in your browser. No other installation is required.
 
 Please refer 'Spectrolipi - Guide.docx' and 'Spectrolipi - FAQ.docx' to read details about this tool.
