@@ -196,6 +196,28 @@
     </style>
 </head>
 <body>
+<div id="landing-overlay">
+    <div class="landing-content">
+        <img src="001Logo&name.png" alt="Spectrolipi Logo">
+        <p>Bioacoustics researchers, birders, and machine‑learning practitioners use Spectrolipi to visualize sound, annotate spectrograms, and prepare high‑quality datasets for acoustic analysis.</p>
+        <h2>Key Features:</h2>
+        <ul>
+            <li>Spectrogram playback with adjustable colormap, gain, and zoom</li>
+            <li>Create, edit, import, and export annotation boxes</li>
+            <li>Quick annotation tools (SCC & Repeat annotation) for repeated sound patterns</li>
+            <li>Species selection with predefined or custom lists</li>
+            <li>Basic sound editing: cut, silence, filters, normalize, undo</li>
+            <li>Manage file level Metadata</li>
+            <li>Export ML‑ready clips auto‑sorted by species</li>
+            <li>Local‑only processing for full data privacy</li>
+            <li>Xeno-canto integration for uploading annotations.</li>
+        </ul>
+        <div class="landing-footer">
+            <p><a href="https://github.com/nishantnnb/spectrolipi" target="_blank">Guide, FAQ, Issues & feature requests</a></p>
+            <button id="close-overlay">Get Started</button>
+        </div>
+    </div>
+</div>
   <!-- Left-side collapsible overlay (structure only). Does not move existing toolbar buttons. -->
   <button id="leftHamburgerToggle" aria-label="Open menu" aria-expanded="false" aria-controls="leftOverlay" type="button"
     style="position:fixed;left:12px;top:12px;z-index:2147483646;width:40px;height:36px;border-radius:6px;border:1px solid rgba(0,0,0,0.12);background:#111;color:#fff;display:inline-flex;align-items:center;justify-content:center;">☰</button>
@@ -1601,5 +1623,59 @@
   </script>
 
   <script src="repeat_annotation.js"></script>
+  <script>
+  // Centralized function to get the currently selected species object
+  window.getCurrentSpecies = function() {
+    const labelEl = document.getElementById('speciesResult');
+    const scientificName = labelEl ? String(labelEl.textContent || '').trim() : '';
+
+    if (!scientificName) {
+      return null;
+    }
+
+    const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+    const rec = recs.find(r => String(r.scientific || '').trim() === scientificName);
+
+    if (rec) {
+      return {
+        common: rec.common || '',
+        scientific: rec.scientific || '',
+        key: rec.key || ''
+      };
+    }
+
+    // As a fallback, check if the label might be showing a common name
+    const fallbackRec = recs.find(r => String(r.common || '').trim() === scientificName);
+    if (fallbackRec) {
+      return {
+        common: fallbackRec.common || '',
+        scientific: fallbackRec.scientific || '',
+        key: fallbackRec.key || ''
+      };
+    }
+
+    return null;
+  }
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const overlay = document.getElementById('landing-overlay');
+        const closeButton = document.getElementById('close-overlay');
+
+        // Set focus to the close button when the overlay is shown
+        closeButton.focus();
+
+        closeButton.addEventListener('click', function() {
+            overlay.style.display = 'none';
+        });
+
+        closeButton.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                closeButton.click();
+            }
+        });
+    });
+  </script>
 </body>
 </html>
