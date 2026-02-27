@@ -334,3 +334,109 @@ button[data-role="save"] {
 #waitOverlay .msg { font-size: 13px; color: #cfeeff; opacity: 0.95; }
 #waitOverlay .meta { font-size: 12px; color: #9fc8e6; opacity: 0.9; }
 
+
+#landing-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 20, 30, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 2147483647;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.landing-content {
+    background: #ffffff;
+    color: #333;
+    padding: 1.5rem 2.5rem;
+    border-radius: 12px;
+    max-width: 680px;
+    width: 90%;
+    text-align: left;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.landing-content img {
+    max-width: 100px;
+    margin-bottom: 1rem;
+    display: block;
+    margin: 0 auto 1rem auto;
+}
+
+.landing-content p {
+    font-size: 1rem;
+    line-height: 1.4;
+    color: #555;
+    margin-bottom: 1rem;
+}
+
+.landing-content h2 {
+    font-size: 1.1rem;
+    font-weight: normal;
+    color: #111;
+    margin-top: 1rem;
+    margin-bottom: 0.8rem;
+    border-bottom: 1px solid #2196F3;
+    padding-bottom: 0.4rem;
+    display: inline-block;
+}
+
+.landing-content ul {
+    text-align: left;
+    margin: 0 auto 1.5rem auto;
+    padding-left: 20px;
+    display: block;
+}
+
+.landing-content li {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #444;
+    margin-bottom: 0.3rem;
+}
+
+.landing-content a {
+    color: #2196F3;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.landing-content a:hover {
+    color: #1565c0;
+    text-decoration: underline;
+}
+
+.landing-footer {
+    text-align: center;
+}
+
+#close-overlay {
+    background: #2196F3;
+    color: #fff;
+    border: none;
+    padding: 0.7rem 1.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background-color 0.2s, transform 0.2s;
+    margin-top: 0.5rem;
+    display: inline-block;
+}
+
+#close-overlay:hover {
+    background: #1976D2;
+    transform: translateY(-2px);
+}
+
