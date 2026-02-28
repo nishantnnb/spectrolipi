@@ -21,4 +21,8 @@ Link: https://spectrolipi.com
 		Integration with Xeno-canto to upload the annotations: Manually (json file) or directly with API.
 		No data privacy concerns: All processing happens locally in your browser. No other installation is required.
 
+<p><a href="https://raw.githubusercontent.com/nishantnnb/spectrolipi/main/Guide%20and%20FAQ/Spectrolipi%20-%20Guide.docx" target="_blank">Guide</a>
+			&nbsp and &nbsp 
+			<a href="https://github.com/nishantnnb/spectrolipi/raw/main/Guide%20and%20FAQ/Spectrolipi%20-%20FAQ.docx" target="_blank">FAQ</a></p>
+
 Please refer 'Spectrolipi - Guide.docx' and 'Spectrolipi - FAQ.docx' to read details about this tool.
