@@ -1,4 +1,3 @@
-
 // display_label.js (Tabulator version)
 (function () {
   if (!window || !document) return;
@@ -57,12 +56,16 @@
           if (row.species !== undefined && row.species !== null) {
             species = String(row.species).trim();
           }
+          let scientificName = '';
+          if (row.scientificName !== undefined && row.scientificName !== null) {
+            scientificName = String(row.scientificName).trim();
+          }
           // Use numeric index for Selection if possible, else fallback to string
           let index = row.Selection;
           if (typeof index !== 'number') {
             if (!isNaN(Number(index))) index = Number(index);
           }
-          map.set(String(aid), { index: index, species: species });
+          map.set(String(aid), { index: index, species: species, scientificName: scientificName });
         }
       }
     } catch (e) {}
@@ -112,7 +115,18 @@
     if (rowInfo && rowInfo.index !== undefined && rowInfo.index !== null) {
       labelIndex = typeof rowInfo.index === 'number' ? rowInfo.index : String(rowInfo.index);
     }
-    const labelText = labelIndex + '|' + (rowInfo && rowInfo.species ? rowInfo.species : '');
+
+    const toggleCheckbox = document.getElementById('toggleNameCheckbox');
+    let nameToShow = '';
+    if (rowInfo) {
+      if (toggleCheckbox && toggleCheckbox.checked) {
+        nameToShow = rowInfo.species || '';
+      } else {
+        nameToShow = rowInfo.scientificName || rowInfo.species || '';
+      }
+    }
+
+    const labelText = labelIndex + '|' + nameToShow;
     const opts = getOptions();
     if (!el) {
       el = document.createElement('div');
@@ -192,7 +206,7 @@
       for (const a of anns) {
         const aidStr = String(a.id);
         const rect = annotationToRectPx(a);
-        createOrUpdateLabel(container, aidStr, rect, rowMap.get(aidStr) || { index: '?', species: '' });
+        createOrUpdateLabel(container, aidStr, rect, rowMap.get(aidStr) || { index: '?', species: '', scientificName: '' });
       }
 
       const children = Array.from(container.children || []);
@@ -232,6 +246,23 @@
     const scrollArea = document.getElementById('scrollArea');
     if (scrollArea) scrollArea.addEventListener('scroll', () => scheduleSync(), { passive: true });
     window.addEventListener('resize', () => scheduleSync(), { passive: true });
+
+    const toggleCheckbox = document.getElementById('toggleNameCheckbox');
+    const toggleLabel = document.getElementById('toggleNameLabel');
+    if (toggleCheckbox && toggleLabel) {
+      // Set initial state to checked (display common name by default)
+      toggleCheckbox.checked = true;
+      toggleLabel.textContent = 'Common name';
+      
+      toggleCheckbox.addEventListener('change', () => {
+        if (toggleCheckbox.checked) {
+          toggleLabel.textContent = 'Common name';
+        } else {
+          toggleLabel.textContent = 'Scientific name';
+        }
+        scheduleSync();
+      });
+    }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(scheduleSync, 60));
     else setTimeout(scheduleSync, 60);
