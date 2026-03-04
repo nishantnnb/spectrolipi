@@ -8,6 +8,13 @@
 // and includes a shorter poll fallback.
 
 (function(){
+  // Fast yield helper to bypass background tab throttling (setTimeout clamps to 1s in background)
+  // Uses MessageChannel which is not throttled as aggressively as timers.
+  const _yieldCh = new MessageChannel();
+  const _yieldQ = [];
+  _yieldCh.port1.onmessage = () => { const r = _yieldQ.shift(); if(r) r(); };
+  globalThis.fastYield = () => new Promise(r => { _yieldQ.push(r); _yieldCh.port2.postMessage(null); });
+
   function hannWindow(N){ const w=new Float32Array(N); for(let n=0;n<N;n++) w[n]=0.5*(1-Math.cos(2*Math.PI*n/(N-1))); return w; }
   function log10(x){ return Math.log(x)/Math.LN10; }
   function reverseBits(x,bits){ let y=0; for(let i=0;i<bits;i++){ y=(y<<1)|(x&1); x>>>=1; } return y; }
@@ -465,12 +472,30 @@
   function formatTime(s){ if(!isFinite(s)||s<0.001) return '0s'; if(s>=3600){ const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=Math.floor(s%60); return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; } if(s>=60){ const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${String(sec).padStart(2,'0')}`; } return s.toFixed(0) + 's'; }
 
   // colormap approximations
-  function colormapSwitch(t, name){ t=Math.max(0,Math.min(1,t)); switch(name){ case 'viridis': return viridisApprox(t); case 'magma': return magmaApprox(t); case 'grayscale': return grayscale(t); case 'jet': return jetApprox(t); case 'cividis': return cividisApprox(t); default: return customMap(t); } }
+  function colormapSwitch(t, name){ t=Math.max(0,Math.min(1,t)); switch(name){ case 'viridis': return viridisApprox(t); case 'magma': return magmaApprox(t); case 'grayscale': return grayscale(t); case 'jet': return jetApprox(t); case 'SpectroFlare': return SpectroFlareApprox(t); default: return customMap(t); } }
   function customMap(t){ let r=0,g=0,b=0; if(t<0.25){ const u=t/0.25; r=0; g=Math.round(30*u); b=Math.round(80+175*u); } else if(t<0.5){ const u=(t-0.25)/0.25; r=0; g=Math.round(30+200*u); b=Math.round(255-55*u); } else if(t<0.75){ const u=(t-0.5)/0.25; r=Math.round(255*u); g=Math.round(230-100*u); b=Math.round(200-200*u); } else { const u=(t-0.75)/0.25; r=Math.round(255-20*(1-u)); g=Math.round(130+125*u); b=Math.round(0+255*u); } return [r,g,b]; }
-  function grayscale(t){ const v=Math.round(255*t); return [v,v,v]; }
+  function grayscale(t){ const v=Math.round(255*t); return [v,v,v]; } 
   function viridisApprox(t){ const r = Math.round(68 + 187 * Math.pow(t,1.0)); const g = Math.round(1 + 210 * Math.pow(t,0.8)); const b = Math.round(84 + 170 * (1 - t)); return [r,g,b]; }
+
+  
   function magmaApprox(t){ const r = Math.round(10 + 245 * Math.pow(t,0.9)); const g = Math.round(5 + 160 * Math.pow(t,1.2)); const b = Math.round(20 + 120 * (1 - t)); return [r,g,b]; }
-  function cividisApprox(t){ const r = Math.round(32 + 180 * t); const g = Math.round(69 + 130 * Math.pow(t,0.9)); const b = Math.round(92 + 60 * (1 - t)); return [r,g,b]; }
+  //function SpectroFlareApprox(t){ const r = Math.round(32 + 180 * t); const g = Math.round(69 + 130 * Math.pow(t,0.9)); const b = Math.round(92 + 60 * (1 - t)); return [r,g,b]; }
+  function SpectroFlareApprox(t) {
+    // Poped up / flared up Colormap
+    let r, g, b;
+    if (t < 0.3) {
+      const u = t / 0.3; r = Math.round(120 * u); g = 0; b = Math.round(150 * u);
+    } else if (t < 0.6) {
+      const u = (t - 0.3) / 0.3; r = Math.round(120 + 100 * u); g = Math.round(50 * u); b = Math.round(150 - 100 * u);
+    } else if (t < 0.8) {
+      const u = (t - 0.6) / 0.2; r = Math.round(220 + 35 * u); g = Math.round(50 + 150 * u); b = Math.round(50 - 50 * u);
+    } else {
+      const u = (t - 0.8) / 0.2; r = 255; g = Math.round(200 + 55 * u); b = Math.round(255 * u);
+    }
+    return [r, g, b];
+  }
+  
+  
   function jetApprox(t){ const r = Math.round(255 * Math.max(0, Math.min(1, 1.5 - Math.abs(2*t - 1)))); const g = Math.round(255 * Math.max(0, Math.min(1, 1.5 - Math.abs(2*t)))); const b = Math.round(255 * Math.max(0, Math.min(1, 1.5 - Math.abs(2*t + 1)))); return [r,g,b]; }
   function buildLUT(name){ const lut=new Uint8ClampedArray(256*3); for(let i=0;i<256;i++){ const t=i/255; const [r,g,b]=colormapSwitch(t,name); lut[i*3]=r; lut[i*3+1]=g; lut[i*3+2]=b; } return lut; }
 
@@ -506,10 +531,17 @@
       for (let n=0;n<N;n++){ const s = mono[off+n] || 0; re[n] = s * window[n]; im[n] = 0; }
       fft(re, im);
       for (let b=0;b<bins;b++){ const r=re[b], i=im[b]; const mag=Math.sqrt(r*r+i*i)/N; const db=20*log10(mag+1e-12); if(db<minDB) minDB=db; if(db>maxDB) maxDB=db; spectra[fIdx*bins + b] = mag; }
-      if ((fIdx & 127) === 0) await new Promise(r => setTimeout(r,0));
+      if ((fIdx & 127) === 0) await globalThis.fastYield();
     }
 
   const DR = 80, top = maxDB, bottom = Math.max(minDB, maxDB - DR);
+  
+  // Lock the scale to a standard bioacoustics window
+  //const top = maxDB;      
+  //const bottom = -120; // Tweak between -80 and -90 to hide more or less background noise
+  
+  
+  
     const denom = (top - bottom) || 1e-6;
   const imageW = Math.max(1, numFrames * pxpf); // intrinsic spectrogram pixel width (unscaled)
     const imageH = IMAGE_H;
@@ -580,6 +612,7 @@
           const magAdj = mag * gain;
           const db = 20 * (Math.log(magAdj + 1e-12) / Math.LN10);
           let v = (db - bottom) / denom; if (!isFinite(v)) v = 0; v = Math.max(0, Math.min(1, v));
+		  //v = Math.pow(v, 1.5);
           const lutIdx = Math.round(v * 255) | 0;
           const rgbBase = lutIdx * 3;
           const idx = (y * w + localX) * 4;
@@ -627,7 +660,7 @@
         console.error('paint tile failed', e);
       }
 
-      if ((tileIndex & 1) === 0) await new Promise(r => setTimeout(r,0));
+      if ((tileIndex & 1) === 0) await globalThis.fastYield();
     }
 
     // update globals (authoritative)
@@ -779,13 +812,14 @@
             const magAdj = mag * gain;
             const db = 20 * (Math.log(magAdj + 1e-12) / Math.LN10);
             let v = (db - bottom) / (denom || 1e-12); if (!isFinite(v)) v = 0; v = Math.max(0, Math.min(1, v));
+			//v = Math.pow(v, 1.5);
             const lutIdx = Math.round(v * 255) | 0; const rgbBase = lutIdx * 3;
             const pi = (y * w + localX) * 4;
             tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
           }
         }
         try { t.bitmap = await buildTileBitmap(w, imageH, tilePixels); t.colorVersion = (globalThis._spectroColorVersion|0); t.lutName = (cmapSelect && cmapSelect.value) ? cmapSelect.value : 'custom'; t.gain = gain; t.ymax = ymaxClamped; } catch(e) { console.error('tile rebuild failed', e); }
-        if ((idxTile & 1) === 0) await new Promise(r => setTimeout(r,0));
+        if ((idxTile & 1) === 0) await globalThis.fastYield();
       }
     } else {
       // Fallback: no tiles available (unlikely). Do a direct draw like before.
@@ -813,6 +847,7 @@
             const magAdj = mag * gain;
             const db = 20 * (Math.log(magAdj + 1e-12) / Math.LN10);
             let v = (db - bottom) / (denom || 1e-12); if (!isFinite(v)) v = 0; v = Math.max(0, Math.min(1, v));
+			//v = Math.pow(v, 1.5);
             const lutIdx = Math.round(v * 255) | 0; const rgbBase = lutIdx * 3;
             const pi = (y * w + localX) * 4;
             tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
@@ -823,7 +858,7 @@
         const dx = Math.round(tileX * scaleX); const dy = Math.round(AXIS_TOP * scaleY);
         const dw = Math.max(1, Math.round(w * scaleX)); const dh = Math.max(1, Math.round(imageH * scaleY));
         ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, dx, dy, dw, dh);
-        await new Promise(r => setTimeout(r,0));
+        await globalThis.fastYield();
       }
     }
 
@@ -963,6 +998,7 @@
         const magAdj = mag * gain;
         const db = 20 * (Math.log(magAdj + 1e-12) / Math.LN10);
         let v = (db - bottom) / denom; if (!isFinite(v)) v = 0; v = Math.max(0, Math.min(1, v));
+		//v = Math.pow(v, 1.5);
         const lutIdx = (v * 255) | 0; const rgbBase = lutIdx * 3;
         const pi = (y * w + localX) * 4;
         tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
@@ -1002,6 +1038,7 @@
           const magAdj = mag * gain;
           const db = 20 * (Math.log(magAdj + 1e-12) / Math.LN10);
           let v = (db - bottom) / denom; if (!isFinite(v)) v = 0; v = Math.max(0, Math.min(1, v));
+		  //v = Math.pow(v, 1.5);
           const lutIdx = Math.round(v * 255) | 0; const rgbBase = lutIdx * 3;
           const pi = (y * w + localX) * 4;
           tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
@@ -1103,7 +1140,7 @@
           }
         }
         // yield to UI thread
-        await new Promise(r => setTimeout(r, 0));
+        await globalThis.fastYield();
         // progress callback
         try { if (options.progressCb) options.progressCb(Math.round(100 * (to - startFrame + 1) / Math.max(1, frameCount))); } catch(e){}
       }
@@ -1125,7 +1162,7 @@
         try { await _rebuildTileBitmapInPlace(t, ymaxClamped, lut, gainVal); } catch(e){ try { _rebuildTileBitmapSync(t, ymaxClamped, lut, gainVal); } catch(e2){} }
         rebuilt++;
         // yield & progress
-        if ((rebuilt & 3) === 0) await new Promise(r => setTimeout(r, 0));
+        if ((rebuilt & 3) === 0) await globalThis.fastYield();
         try { if (options.progressCb) options.progressCb(Math.round(100 * rebuilt / Math.max(1, totalTiles))); } catch(e){}
       }
 
@@ -1705,10 +1742,22 @@
         t=Math.max(0,Math.min(1,t));
         switch(name){
           case 'viridis': return [Math.round(68+187*Math.pow(t,1.0)), Math.round(1+210*Math.pow(t,0.8)), Math.round(84+170*(1-t))];
-          case 'magma': return [Math.round(10+245*Math.pow(t,0.9)), Math.round(5+160*Math.pow(t,1.2)), Math.round(20+120*(1-t))];
+		  case 'magma': return [Math.round(10+245*Math.pow(t,0.9)), Math.round(5+160*Math.pow(t,1.2)), Math.round(20+120*(1-t))];
           case 'grayscale': { const v=Math.round(255*t); return [v,v,v]; }
-          case 'jet': { const rj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t-1)))); const gj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t)))); const bj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t+1)))); return [rj,gj,bj]; }
-          case 'cividis': return [Math.round(32+180*t), Math.round(69+130*Math.pow(t,0.9)), Math.round(92+60*(1-t))];
+		  case 'jet': { const rj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t-1)))); const gj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t)))); const bj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t+1)))); return [rj,gj,bj]; }
+          //case 'SpectroFlare': return [Math.round(32+180*t), Math.round(69+130*Math.pow(t,0.9)), Math.round(92+60*(1-t))];
+		  case 'SpectroFlare': {
+			let r, g, b;
+			if (t < 0.3) { const u = t / 0.3; r = Math.round(120 * u); g = 0; b = Math.round(150 * u); }
+			else if (t < 0.6) { const u = (t - 0.3) / 0.3; r = Math.round(120 + 100 * u); g = Math.round(50 * u); b = Math.round(150 - 100 * u); }
+			else if (t < 0.8) { const u = (t - 0.6) / 0.2; r = Math.round(220 + 35 * u); g = Math.round(50 + 150 * u); b = Math.round(50 - 50 * u); }
+			else { const u = (t - 0.8) / 0.2; r = 255; g = Math.round(200 + 55 * u); b = Math.round(255 * u); }
+			return [r, g, b];
+			}
+		  
+		  
+		  
+		  
           default: {
             let r=0,g=0,b=0;
             if(t<0.25){ const u=t/0.25; r=0; g=Math.round(30*u); b=Math.round(80+175*u); }
@@ -1746,6 +1795,7 @@
           const magAdj = mag * gain;
           const db = 20 * (Math.log(magAdj + 1e-12) / Math.LN10);
           let v = (db - bottom) / (denom || 1e-12); if (!isFinite(v)) v = 0; v = Math.max(0, Math.min(1, v));
+		  //v = Math.pow(v, 1.5);
           const lutIdx = Math.round(v * 255) | 0; const rgbBase = lutIdx * 3;
           const pi = (y * w + localX) * 4;
           tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
@@ -1794,7 +1844,7 @@
       out.set(src.subarray(0, s1), 0);
       out.set(src.subarray(s2), s1);
       try { newBuf.copyToChannel(out, c, 0); } catch(e){ const dst = newBuf.getChannelData(c); dst.set(out, 0); }
-      if ((c & 1) === 0) await new Promise(r => setTimeout(r,0));
+      if ((c & 1) === 0) await globalThis.fastYield();
     }
     if (ctx.close) try { await ctx.close(); } catch(e){}
     globalThis._spectroAudioBuffer = newBuf;
