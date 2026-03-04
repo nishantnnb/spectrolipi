@@ -144,6 +144,76 @@
     } catch (e) {}
   }
 
+  function $(id){ return document.getElementById(id); }
+  function currentPxpf(){ return Number(globalThis._spectroPxPerFrame || 0) || 2; }
+
+  function updateZoomControlsDisabledState() {
+      const yZoomSelect = $('yZoomSelect');
+      const xZoomSelect = $('xZoomSelect');
+      const disabled = !globalThis._spectroSpectra;
+      if(yZoomSelect) yZoomSelect.disabled = disabled;
+      if(xZoomSelect) xZoomSelect.disabled = disabled;
+  }
+
+  function populateZoomDropdowns() {
+    const Y_STEPS = 9;
+    const yZoomSelect = $('yZoomSelect');
+    const xZoomSelect = $('xZoomSelect');
+    if (!yZoomSelect || !xZoomSelect) return;
+
+    yZoomSelect.innerHTML = '';
+    xZoomSelect.innerHTML = '';
+
+    const nyq = (globalThis._spectroSampleRate || 0) / 2 || 22050;
+    const minY = 1000;
+    for (let i = 0; i < Y_STEPS; i++) {
+        const freq = nyq - i * ((nyq - minY) / (Y_STEPS - 1));
+        const option = document.createElement('option');
+        option.value = freq;
+        option.textContent = (freq / 1000).toFixed(2) + ' kHz';
+        yZoomSelect.appendChild(option);
+    }
+    
+    const xZoomPxpfLevels = [1, 2, 4, 8];
+    
+    for (const pxpf of xZoomPxpfLevels) {
+        const option = document.createElement('option');
+        option.value = pxpf;
+        option.textContent = `${pxpf}x`;
+        xZoomSelect.appendChild(option);
+    }
+
+    const entireOption = document.createElement('option');
+    entireOption.value = 'entire';
+    entireOption.textContent = 'Entire';
+    xZoomSelect.appendChild(entireOption);
+
+    // Set current values
+    if (yZoomSelect.options.length > 0) {
+        const currentY = globalThis._spectroYMax || nyq;
+        yZoomSelect.value = Array.from(yZoomSelect.options).reduce((prev, curr) => 
+            Math.abs(curr.value - currentY) < Math.abs(prev.value - currentY) ? curr : prev
+        ).value;
+    }
+    if (xZoomSelect.options.length > 0) {
+        const currentX = currentPxpf();
+        const existingOption = Array.from(xZoomSelect.options).find(opt => Math.abs(opt.value - currentX) < 0.01);
+        if (existingOption) {
+            xZoomSelect.value = existingOption.value;
+        } else {
+            // If current pxpf is not in the list (e.g. 'entire' was used), select 'entire' if it's the right fit
+            const numFrames = Number(globalThis._spectroNumFrames || 0);
+            const scrollArea = $('scrollArea');
+            if (numFrames > 0 && scrollArea && scrollArea.clientWidth > 0) {
+                const entirePxpf = scrollArea.clientWidth / numFrames;
+                if (Math.abs(currentX - entirePxpf) < 0.01) {
+                    xZoomSelect.value = 'entire';
+                }
+            }
+        }
+    }
+  }
+
   // Global state (sane defaults)
   globalThis._spectroLastGen = globalThis._spectroLastGen || { fileId:null, pxpf:null, sampleRate:null, numFrames:null, fftSize:null, ymax:null };
   globalThis._spectroTiles = globalThis._spectroTiles || null;
@@ -741,6 +811,10 @@
       try { window.dispatchEvent(new CustomEvent('spectrogram-generated', { detail: { meta } })); } catch (e) {}
     } catch (e) {}
     try { window.__spectroWait && window.__spectroWait.hide(); } catch (e) {}
+    
+    populateZoomDropdowns();
+    updateZoomControlsDisabledState();
+    
     // Repaint visible slice on scroll
     try {
       if (scrollArea && !scrollArea.__spectroViewportHooked) {
