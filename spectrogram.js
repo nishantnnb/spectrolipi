@@ -57,7 +57,7 @@
   const AXIS_BOTTOM = 44;
   const VIEWPORT_H = (axisCanvas && axisCanvas.height) ? axisCanvas.height : 240;
   const IMAGE_H = VIEWPORT_H - AXIS_TOP - AXIS_BOTTOM;
-  const DEFAULT_FFT_SIZE = 2048;
+  const DEFAULT_FFT_SIZE = 1024;
 
   // Toolbar mouse readout elements live in the main action bar; keep references here so
   // they can reuse the existing helpers (px-to-sec, ymax resolution, etc.).
@@ -2542,3 +2542,4 @@
   } catch(e){}
 
 })();
+
