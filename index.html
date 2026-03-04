@@ -194,6 +194,19 @@
       .seg-top-btn.selection-on.seg-compact-btn { background: #7FFF00 !important; color: #000 !important; }
       .seg-top-btn.selection-on.seg-compact-btn svg * { /* keep icon contrast if needed */ fill: inherit; stroke: inherit; }
     </style>
+<style>
+      .zoom-dropdown {
+        height: 32px;
+        background: #2196F3;
+        border: 0;
+        color: #fff;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 0 4px;
+      }
+    </style>
 </head>
 <body>
 <div id="landing-overlay">
@@ -542,27 +555,13 @@
         <!-- Y spinner -->
   <div class="zoom-spinner" data-which="y" style="display:flex;align-items:center;gap:2px;">
           <div class="z-label" style="color:Black;font-size:16px;width:5px">Y</div>
-          <div class="z-box" style="display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,0.10);border-radius:6px;overflow:hidden">
-            <button id="yMinus" class="z-btn" title="Decrease Y" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">-</button>
-            <div id="yMid" style="min-width:16px;height:32px;padding:0 6px;display:flex;align-items:center;justify-content:center;background:#fff;color:#000;font-size:14px;font-weight:600;box-sizing:border-box">1</div>
-            <button id="yPlus" class="z-btn" title="Increase Y" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">+</button>
-          </div>
-          <button id="yReset" class="z-reset" title="Reset Y" aria-label="Reset Y" style="width:32px;height:32px;border:1px solid rgba(255,255,255,0.10);border-radius:6px;background:#1e88e5;color:#fff;display:inline-flex;align-items:center;justify-content:center;padding:0">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" fill="#fff"/></svg>
-          </button>
+          <select id="yZoomSelect" class="zoom-dropdown"></select>
         </div>
   <div></div>
         <!-- X spinner -->
   <div class="zoom-spinner" data-which="x" style="display:flex;align-items:center;gap:2px;">
           <div class="z-label" style="color:Black;font-size:16px;width:5px">X</div>
-          <div class="z-box" style="display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,0.10);border-radius:6px;overflow:hidden">
-            <button id="xMinus" class="z-btn" title="Decrease X" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">-</button>
-            <div id="xMid" style="min-width:16px;height:32px;padding:0 6px;display:flex;align-items:center;justify-content:center;background:#fff;color:#000;font-size:14px;font-weight:600;box-sizing:border-box">2</div>
-            <button id="xPlus" class="z-btn" title="Increase X" style="width:32px;height:32px;background:#2196F3;border:0;color:#fff;cursor:pointer;font-size:14px;font-weight:600">+</button>
-          </div>
-          <button id="xReset" class="z-reset" title="Reset X" aria-label="Reset X" style="width:32px;height:32px;border:1px solid rgba(255,255,255,0.10);border-radius:6px;background:#1e88e5;color:#fff;display:inline-flex;align-items:center;justify-content:center;padding:0">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" fill="#fff"/></svg>
-          </button>
+          <select id="xZoomSelect" class="zoom-dropdown"></select>
         </div>
       </div>
     </div>
@@ -1682,5 +1681,3 @@
   </script>
 </body>
 </html>
-
-
