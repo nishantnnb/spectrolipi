@@ -20,10 +20,17 @@ Link: https://spectrolipi.com
 		Export sound clips for machine learning based on the annotations. Clips are auto-segrigated in respective species folders.
 		Integration with Xeno-canto to upload the annotations: Manually (json file) or directly with API.
 		No data privacy concerns: All processing happens locally in your browser. No other installation is required.
+		Analyze and make annnotations with Birdnet V2.4
 		
 
 <p>Please refer 'Spectrolipi - Guide.docx' and 'Spectrolipi - FAQ.docx' to read details about this tool: <a href="https://raw.githubusercontent.com/nishantnnb/spectrolipi/main/Guide%20and%20FAQ/Spectrolipi%20-%20Guide.docx" target="_blank">Guide</a>
 			&nbsp and &nbsp 
 			<a href="https://github.com/nishantnnb/spectrolipi/raw/main/Guide%20and%20FAQ/Spectrolipi%20-%20FAQ.docx" target="_blank">FAQ</a></p>
+
+<p>BirdNET AI model by the K. Lisa Yang Center for Conservation Bioacoustics at the Cornell Lab of Ornithology in collaboration with Chemnitz University of Technology. Stefan Kahl, Connor Wood, Maximilian Eibl, Holger Klinck. <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank">Birdnet analyzer</a>, <a href="https://zenodo.org/records/15050749" target="_blank">Birdnet models</a> </p>
+
+
+
+
 
 
