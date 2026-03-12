@@ -57,7 +57,7 @@ tf.serialization.registerClass(MelSpecLayerSimple);
 
 let customSpeciesList = null;
 async function main() {
-    const BASE = '/Testspectrolipi/models/birdnet_v2.4/';
+    const BASE = '/spectrolipi/models/birdnet_v2.4/';
     await tf.setBackend('webgl');
     
     postMessage({ message: 'load_model', progress: 10 });
@@ -181,5 +181,6 @@ async function main() {
         }
     };
 }
+
 
 main();
