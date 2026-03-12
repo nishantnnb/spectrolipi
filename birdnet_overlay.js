@@ -611,7 +611,7 @@
                 <div style="background:#222; width:95%; height:90%; border-radius:12px; display:flex; flex-direction:column; border:1px solid #444; position:relative; overflow:hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
                     <div style="padding:12px 20px; background:#111; border-bottom:1px solid #333; display:flex; flex-direction:column; gap:5px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="color:bisque; font-family:monospace; font-weight:bold; font-size:14px;">BIRDNET ANALYSIS</span>
+                            <span style="color:bisque; font-family:monospace; font-weight:bold; font-size:14px;">BirdNET Model V2.4 (tfjs)</span>
                             <button id="bn-close" style="background:none; border:none; color:#ff6b6b; font-size:28px; cursor:pointer; line-height:1;">&times;</button>
                         </div>
                         <div style="font-size:11px; color:#888; line-height:1.3;">
