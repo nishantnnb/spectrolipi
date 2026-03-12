@@ -57,7 +57,10 @@ tf.serialization.registerClass(MelSpecLayerSimple);
 
 let customSpeciesList = null;
 async function main() {
-    const BASE = 'models/birdnet_v2.4/';
+    // Derive base URL from the worker's own location to ensure correct path resolution
+    const workerUrl = self.location.href;
+    const baseUrl = workerUrl.substring(0, workerUrl.lastIndexOf('/') + 1);
+    const BASE = baseUrl + 'models/birdnet_v2.4/';
     await tf.setBackend('webgl');
     
     postMessage({ message: 'load_model', progress: 10 });
@@ -182,9 +185,4 @@ async function main() {
     };
 }
 
-
 main();
-
-
-
-
