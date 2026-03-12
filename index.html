@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="002LogoWOname_small.png" type="image/png">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
   <script>
     // Prevent context menu and certain keys
     (function () {
@@ -310,6 +311,12 @@
             <path d="M16 6h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
           </svg>
           <span>Generate clips</span>
+        </button>
+        <button id="runBirdnetBtn" type="button" class="left-menu-btn" title="Run BirdNET analysis">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L8 6v2H6v4h2v2h4v-2h2V8h-2V6z"/><path d="M8 16v-2H6v-2H2v6h4v-2h2z"/><path d="M16 16v-2h2v-2h4v6h-4v-2h-2z"/>
+          </svg>
+          <span>Run BirdNET</span>
         </button>
         <div class="left-menu-group" id="xcMenuGroup">
           <button id="xcMenuParent" type="button" class="left-menu-btn left-menu-parent" aria-expanded="false" aria-controls="xcSubMenu" title="Xeno-canto integration actions">
@@ -1579,19 +1586,15 @@
   <script>
   // Left overlay toggle wiring (structure only)
   (function () {
-    function $(id){return document.getElementById(id);} 
+    function $(id){return document.getElementById(id);}
     const toggle = $('leftHamburgerToggle');
     const overlay = $('leftOverlay');
-    const closeBtn = $('leftHamburgerClose');
     if (!overlay || !toggle) return; // nothing to wire
 
     function open() {
       overlay.classList.add('open');
       overlay.setAttribute('aria-hidden','false');
       toggle.setAttribute('aria-expanded','true');
-      // Focus the close button so the overlay does not show a permanently-blue first item on open
-      const cb = closeBtn || overlay.querySelector('.left-close');
-      if (cb) try { cb.focus(); } catch(e){}
     }
     function close() {
       overlay.classList.remove('open');
@@ -1600,30 +1603,20 @@
       try { toggle.focus(); } catch(e){}
     }
 
-  toggle.addEventListener('click', (ev) => { ev.stopPropagation(); const isOpen = overlay.classList.contains('open'); if (isOpen) close(); else open(); });
-    if (closeBtn) closeBtn.addEventListener('click', (ev)=>{ ev.stopPropagation(); close(); });
+    toggle.addEventListener('click', (ev) => { ev.stopPropagation(); const isOpen = overlay.classList.contains('open'); if (isOpen) close(); else open(); });
 
     // Close on Escape
     document.addEventListener('keydown', (ev)=>{ if (ev.key === 'Escape' && overlay.classList.contains('open')) { ev.preventDefault(); close(); } });
 
     // Auto-collapse when mouse leaves the overlay (small delay to avoid flicker)
     let closeTimer = null;
-    overlay.addEventListener('mouseleave', (ev) => {
-      try { closeTimer = setTimeout(() => { close(); closeTimer = null; }, 350); } catch (e) { close(); }
-    });
-    overlay.addEventListener('mouseenter', (ev) => { try { if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; } } catch (e) {} });
+    overlay.addEventListener('mouseleave', () => { closeTimer = setTimeout(close, 350); });
+    overlay.addEventListener('mouseenter', () => { if (closeTimer) clearTimeout(closeTimer); });
 
-    // Mirror clicks to existing toolbar buttons (non-destructive duplicates)
-    Array.from(overlay.querySelectorAll('.left-menu-btn')).forEach(b=>{
-      b.addEventListener('click', (ev)=>{
-        ev.preventDefault(); ev.stopPropagation();
-        const targetId = b.dataset.target;
-        if (!targetId) return;
-        const target = document.getElementById(targetId);
-        if (target && typeof target.click === 'function' && !target.disabled) {
-          try { target.click(); } catch(e){}
-        }
-      });
+    // Add auto-close behavior to all menu buttons without interfering with their actions
+    Array.from(overlay.querySelectorAll('.left-menu-btn, .left-submenu-btn')).forEach(b => {
+      if (b.classList.contains('left-menu-parent')) return; // Don't close for submenu toggles
+      b.addEventListener('click', () => setTimeout(close, 150));
     });
   })();
   </script>
@@ -1683,5 +1676,6 @@
         });
     });
   </script>
+  <script src="birdnet_overlay.js"></script>
 </body>
 </html>
