@@ -19,7 +19,7 @@ Link: https://spectrolipi.com
 		Basic sound editing & export: cut, silence, filters (high‑pass / low‑pass), normalize, and single‑step undo.
 		Export sound clips for machine learning based on the annotations. Clips are auto-segrigated in respective species folders.
 		Integration with Xeno-canto to upload the annotations: Manually (json file) or directly with API.
-		No data privacy concerns: All processing happens locally in your browser. No other installation is required.
+		No data privacy concerns: All processing happens locally in your browser (except Birnet model downloading). No other installation is required.
 		Analyze and create annotations with Birdnet V2.4
 		
 
