@@ -29,7 +29,7 @@ Link: https://spectrolipi.com
 
 <p>BirdNET AI model by the K. Lisa Yang Center for Conservation Bioacoustics at the Cornell Lab of Ornithology in collaboration with Chemnitz University of Technology. Stefan Kahl, Connor Wood, Maximilian Eibl, Holger Klinck. <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank">Birdnet analyzer</a>, <a href="https://zenodo.org/records/15050749" target="_blank">Birdnet models</a> </p>
 
-
+<p>Code for analysis with Birdnet tfjs model was referred (& improvised) from: <a href="https://github.com/georg95/birdnet-web" target="_blank">https://github.com/georg95/birdnet-web</a></p>
 
 
 
