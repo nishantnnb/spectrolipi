@@ -609,9 +609,16 @@
             modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:2147483650;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
             modal.innerHTML = `
                 <div style="background:#222; width:95%; height:90%; border-radius:12px; display:flex; flex-direction:column; border:1px solid #444; position:relative; overflow:hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-                    <div style="padding:12px 20px; background:#111; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-                        <span style="color:bisque; font-family:monospace; font-weight:bold; font-size:14px;">BIRDNET ANALYSIS</span>
-                        <button id="bn-close" style="background:none; border:none; color:#ff6b6b; font-size:28px; cursor:pointer; line-height:1;">&times;</button>
+                    <div style="padding:12px 20px; background:#111; border-bottom:1px solid #333; display:flex; flex-direction:column; gap:5px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="color:bisque; font-family:monospace; font-weight:bold; font-size:14px;">BIRDNET ANALYSIS</span>
+                            <button id="bn-close" style="background:none; border:none; color:#ff6b6b; font-size:28px; cursor:pointer; line-height:1;">&times;</button>
+                        </div>
+                        <div style="font-size:11px; color:#888; line-height:1.3;">
+                            BirdNET AI model by the K. Lisa Yang Center for Conservation Bioacoustics at the Cornell Lab of Ornithology in collaboration with Chemnitz University of Technology. Stefan Kahl, Connor Wood, Maximilian Eibl, Holger Klinck. 
+                            <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank" style="color:#aaa;text-decoration:underline;">BirdNET Analyzer</a>, 
+                            <a href="https://zenodo.org/records/15050749" target="_blank" style="color:#aaa;text-decoration:underline;">BirdNET Models</a>
+                        </div>
                     </div>
                     <div id="bn-content-wrapper" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
                 </div>
