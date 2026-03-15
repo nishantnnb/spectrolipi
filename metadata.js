@@ -178,6 +178,19 @@
       el('label', { cls: 'meta-label', html: 'Name of the Annotator (for Xeno-canto):' }),
       el('input', { type: 'text', className: 'meta-input', id: 'meta-annname', placeholder: '', title: 'Optional for XC upload' })
     );
+    // NEW: Annotation license dropdown
+    const licenseWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Annotation license:' }),
+      el('select', { className: 'meta-select', id: 'meta-license' },
+        el('option', { value: '' }, ''), // Default blank
+        el('option', { value: 'CC-by-nc-4.0' }, 'CC-by-nc-4.0'),
+        el('option', { value: 'CC-by-4.0' }, 'CC-by-4.0'),
+        el('option', { value: 'CC-by-nc-sa-4.0' }, 'CC-by-nc-sa-4.0'),
+        el('option', { value: 'CC-BY-NC-4.0' }, 'CC-BY-NC-4.0'),
+        el('option', { value: 'CC-BY-NC' }, 'CC-BY-NC')
+      )
+    );
+
     // New fields: Annotation set name and creator (fix: define outside of annotatorNameWrap)
     const setNameWrap = el('div', null,
       el('label', { cls: 'meta-label', html: 'Annotation set name (for Xeno-canto):' }),
@@ -192,7 +205,7 @@
       el('input', { type: 'text', className: 'meta-input', id: 'meta-project', placeholder: '', title: 'Optional for XC upload' })
     );
 
-    const contribWrap = el('div', { cls: 'meta-span-2' },
+    const contribWrap = el('div', null, // Removed 'meta-span-2' for adjustable length
       el('label', { cls: 'meta-label', html: 'Sound record Contributor(s)' }),
       (function () {
         const container = el('div', { cls: 'meta-chip-wrap', id: 'meta-contrib-wrap' });
@@ -229,6 +242,7 @@
   // Insert new fields before contributors/comments
   grid.appendChild(xcFileNoWrap);
   grid.appendChild(xcAnnotatorIdWrap);
+  grid.appendChild(licenseWrap); // NEW: Annotation license
   grid.appendChild(annotatorNameWrap);
   grid.appendChild(setNameWrap);
   grid.appendChild(setCreatorWrap);
@@ -296,6 +310,7 @@
           parsed.accessories,
           parsed.xcfileno,
           parsed.xcannid,
+          parsed.set_license, // NEW
           parsed.annname,
           parsed.project,
           parsed.contributors,
@@ -732,6 +747,7 @@
       accessories: overlayScope.querySelector('#meta-accessories'),
       xcfileno: overlayScope.querySelector('#meta-xcfileno'),
       xcannid: overlayScope.querySelector('#meta-xcannid'),
+      license: overlayScope.querySelector('#meta-license'), // NEW
       annname: overlayScope.querySelector('#meta-annname'),
       project: overlayScope.querySelector('#meta-project'),
       setname: overlayScope.querySelector('#meta-setname'),
@@ -796,6 +812,7 @@
         xcannid: nodes.xcannid && nodes.xcannid.value ? nodes.xcannid.value.trim() : null,
         annname: nodes.annname && nodes.annname.value ? nodes.annname.value.trim() : null,
         project: nodes.project && nodes.project.value ? nodes.project.value.trim() : null,
+        set_license: nodes.license && nodes.license.value ? nodes.license.value.trim() : null, // NEW
         setname: nodes.setname && nodes.setname.value ? nodes.setname.value.trim() : null,
         setcreator: nodes.setcreator && nodes.setcreator.value ? nodes.setcreator.value.trim() : null,
         contributors: (nodes.contributorsWrap && nodes.contributorsWrap.__contribAPI) ? nodes.contributorsWrap.__contribAPI.get().map(s => String(s).trim()).filter(Boolean) : [],
@@ -830,7 +847,7 @@
 
     // Wire live-change backups: schedule a backup on user edits inside the modal
     try {
-      const inputNodeIds = ['meta-lat','meta-lon','meta-datetime','meta-rating','meta-type','meta-species','meta-recorder','meta-mic','meta-accessories','meta-xcfileno','meta-xcannid','meta-annname','meta-project','meta-comments','meta-contrib-input','meta-setname','meta-setcreator'];
+      const inputNodeIds = ['meta-lat','meta-lon','meta-datetime','meta-rating','meta-type','meta-species','meta-recorder','meta-mic','meta-accessories','meta-xcfileno','meta-xcannid','meta-license','meta-annname','meta-project','meta-comments','meta-contrib-input','meta-setname','meta-setcreator'];
       inputNodeIds.forEach(id => {
         const n = overlayScope.querySelector('#' + id);
         if (!n) return;
@@ -849,6 +866,8 @@
               accessories: overlayScope.querySelector('#meta-accessories') ? overlayScope.querySelector('#meta-accessories').value : null,
               xcfileno: overlayScope.querySelector('#meta-xcfileno') ? overlayScope.querySelector('#meta-xcfileno').value : null,
               xcannid: overlayScope.querySelector('#meta-xcannid') ? overlayScope.querySelector('#meta-xcannid').value : null,
+              set_license: overlayScope.querySelector('#meta-license') ? overlayScope.querySelector('#meta-license').value : null, // NEW
+              set_license: overlayScope.querySelector('#meta-license') ? overlayScope.querySelector('#meta-license').value : null, // NEW
               annname: overlayScope.querySelector('#meta-annname') ? overlayScope.querySelector('#meta-annname').value : null,
               project: overlayScope.querySelector('#meta-project') ? overlayScope.querySelector('#meta-project').value : null,
               contributors: (function () { const wrap = overlayScope.querySelector('#meta-contrib-wrap'); if (!wrap) return []; const chips = Array.from(wrap.querySelectorAll('.meta-chip')).map(ch => ch.childNodes[0].textContent.trim()); const input = wrap.querySelector('#meta-contrib-input'); return chips.concat(input && input.value ? [input.value.trim()] : []).filter(Boolean); })(),
@@ -876,6 +895,8 @@
         accessories: document.getElementById('meta-accessories') ? document.getElementById('meta-accessories').value : null,
         xcfileno: document.getElementById('meta-xcfileno') ? document.getElementById('meta-xcfileno').value : null,
         xcannid: document.getElementById('meta-xcannid') ? document.getElementById('meta-xcannid').value : null,
+        set_license: document.getElementById('meta-license') ? document.getElementById('meta-license').value : null, // NEW
+        set_license: document.getElementById('meta-license') ? document.getElementById('meta-license').value : null, // NEW
         annname: document.getElementById('meta-annname') ? document.getElementById('meta-annname').value : null,
         project: document.getElementById('meta-project') ? document.getElementById('meta-project').value : null,
         setname: document.getElementById('meta-setname') ? document.getElementById('meta-setname').value : null,
@@ -916,6 +937,7 @@
     nodesSafeSet('meta-mic', source.microphone || '');
     nodesSafeSet('meta-accessories', source.accessories || '');
     nodesSafeSet('meta-xcfileno', source.xcfileno || '');
+    nodesSafeSet('meta-license', source.set_license || '');
     // Prefill Annotator Xeno-canto ID and Name from settings if not present in metadata
     let prefillAnnotatorId = source.xcannid;
     let prefillAnnotatorName = source.annname;
@@ -986,6 +1008,7 @@
       accessories: existingOverlay.querySelector('#meta-accessories'),
       xcfileno: existingOverlay.querySelector('#meta-xcfileno'),
       xcannid: existingOverlay.querySelector('#meta-xcannid'),
+      license: existingOverlay.querySelector('#meta-license'), // NEW
       annname: existingOverlay.querySelector('#meta-annname'),
       project: existingOverlay.querySelector('#meta-project'),
       contributorsWrap: existingOverlay.querySelector('#meta-contrib-wrap'),
@@ -1015,6 +1038,7 @@
     n.recorder.value = source.recorder || '';
     n.mic.value = source.microphone || '';
     n.accessories.value = source.accessories || '';
+    if (n.license) n.license.value = source.set_license || ''; // NEW
     if (n.xcfileno) n.xcfileno.value = source.xcfileno || '';
     if (n.xcannid) n.xcannid.value = source.xcannid || '';
     if (n.annname) n.annname.value = source.annname || '';

@@ -106,7 +106,7 @@
       set_creator: meta.setcreator || '',
       set_creator_id: '',
       set_owner: '',
-      set_license: '',
+      set_license: meta.set_license || '',
       project_uri: '',
       project_name: projectName,
       funding: '',

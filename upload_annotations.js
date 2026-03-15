@@ -26,7 +26,7 @@
     if (fi) return fi;
     fi = document.createElement('input');
     fi.type = 'file';
-    fi.accept = '.txt,.tsv,.csv,text/tab-separated-values,text/plain';
+    fi.accept = '.txt,.tsv,.csv,.json,text/tab-separated-values,text/plain,application/json';
     fi.id = INTERNAL_FILE_INPUT_ID;
     fi.style.display = 'none';
     fi.setAttribute('aria-hidden', 'true');
@@ -367,6 +367,78 @@
     return out;
   }
 
+  // New: normalize parsed JSON to canonical annotation objects and metadata
+  function parseJsonToAnnotations(json) {
+    if (!json || !Array.isArray(json.annotations)) return null;
+
+    const meta = {};
+    if (json.set_name) meta.setname = json.set_name;
+    if (json.set_creator) meta.setcreator = json.set_creator;
+    if (json.set_license) meta.set_license = json.set_license;
+    if (json.project_name) meta.project = json.project_name;
+    if (json.scope && json.scope[0]) {
+      if (json.scope[0].taxon_coverage) meta.taxon_coverage = json.scope[0].taxon_coverage;
+      if (json.scope[0].completeness) meta.completeness = json.scope[0].completeness;
+    }
+
+    const anns = [];
+    const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+
+    json.annotations.forEach((a, index) => {
+      if (!meta.xcfileno && a.xc_nr) meta.xcfileno = a.xc_nr;
+      if (!meta.annname && a.annotator) meta.annname = a.annotator;
+      if (!meta.xcannid && a.annotator_xc_id) meta.xcannid = a.annotator_xc_id;
+
+      const beginTime = Number(a.start_time);
+      const endTime = Number(a.end_time);
+      const lowFreq = Number(a.frequency_low);
+      const highFreq = Number(a.frequency_high);
+
+      let scientificName = a.scientific_name || '';
+      let species = '';
+
+      if (scientificName) {
+        const match = recs.find(r => r.scientific && r.scientific.toLowerCase() === scientificName.toLowerCase());
+        if (match && match.common) species = match.common;
+        else species = scientificName;
+      }
+
+      anns.push({
+        Selection: a.annotation_source_id || String(index + 1),
+        beginTime: isFinite(beginTime) ? beginTime : 0,
+        endTime: isFinite(endTime) ? endTime : 0,
+        lowFreq: isFinite(lowFreq) ? lowFreq : 0,
+        highFreq: isFinite(highFreq) ? highFreq : 0,
+        scientificName: scientificName,
+        species: species,
+        notes: a.annotation_remarks || ''
+      });
+    });
+
+    return { metadata: meta, annotations: anns };
+  }
+
+  function updateMetadataFromJSON(importedMeta) {
+    if (!importedMeta || Object.keys(importedMeta).length === 0) return;
+    const current = Object.assign({}, window.__lastMetadata || {});
+    let updated = false;
+    for (const [key, value] of Object.entries(importedMeta)) {
+      if (value !== undefined && value !== null && value !== '') {
+        current[key] = value;
+        updated = true;
+      }
+    }
+    if (updated) {
+      window.__lastMetadata = current;
+      try {
+        window.__pendingMetadataRestore = { raw: JSON.stringify(current) };
+        if (typeof window.__applyPendingMetadataRestore === 'function') {
+          window.__applyPendingMetadataRestore();
+        }
+      } catch(e) {}
+    }
+  }
+
   // Renumber Selection starting at startIndex (1-based)
   function renumberSelection(arr, startIndex) {
     for (let i = 0; i < arr.length; i++) {
@@ -596,16 +668,41 @@
       let text;
       try { text = await readFileAsText(f); } catch (e) { console.error('Failed to read upload file', e); try { window.alert('Failed to read file. See console for details.'); } catch (e) {} return; }
 
-      const parsed = parseTableText(text);
-      if (!parsed) { try { window.alert('Uploaded file is empty or malformed. Expecting TSV/CSV with header row.'); } catch (e) {} return; }
+      const isJSON = f.name.toLowerCase().endsWith('.json') || f.type === 'application/json';
+      let normalized = null;
+      let parsed = null;
+      let pendingMetadata = null;
 
-      if (missingMandatoryColumns(parsed.headers)) {
-        try { window.alert('Mandatory columns for Box coordinates are missing.'); } catch (e) {}
-        try { fi.value = ''; } catch (e) {}
-        return;
+      if (isJSON) {
+        try {
+          const jsonObj = JSON.parse(text);
+          const parsedData = parseJsonToAnnotations(jsonObj);
+          if (!parsedData || !parsedData.annotations || parsedData.annotations.length === 0) {
+            try { window.alert('Uploaded JSON does not contain valid annotations.'); } catch (e) {}
+            try { fi.value = ''; } catch (e) {}
+            return;
+          }
+          normalized = parsedData.annotations;
+          if (parsedData.metadata) {
+            pendingMetadata = parsedData.metadata;
+          }
+        } catch (e) {
+          console.error('JSON parsing failed', e);
+          try { window.alert('Invalid JSON file format.'); } catch(e){}
+          try { fi.value = ''; } catch (e) {}
+          return;
+        }
+      } else {
+        parsed = parseTableText(text);
+        if (!parsed) { try { window.alert('Uploaded file is empty or malformed. Expecting TSV/CSV with header row.'); } catch (e) {} return; }
+        if (missingMandatoryColumns(parsed.headers)) {
+          try { window.alert('Mandatory columns for Box coordinates are missing.'); } catch (e) {}
+          try { fi.value = ''; } catch (e) {}
+          return;
+        }
+        normalized = normalizeParsedRowsToAnnotations(parsed);
       }
 
-      const normalized = normalizeParsedRowsToAnnotations(parsed);
       if (!normalized) {
         try { fi.value = ''; } catch (e) {}
         return;
@@ -620,6 +717,15 @@
       }
 
       if (action === 'cancel') { try { fi.value = ''; } catch (e) {} return; }
+
+      // Prevent any pending background auto-restores from overwriting this manual upload
+      try { window.__pendingAnnotationRestore = null; } catch (e) {}
+      try { window.__pendingMetadataRestore = null; } catch (e) {}
+
+      // Apply the imported metadata ONLY if the user proceeded with Merge or Replace
+      if (pendingMetadata) {
+        updateMetadataFromJSON(pendingMetadata);
+      }
 
       let toInsert = normalized.slice();
 
@@ -858,4 +964,3 @@
     showThreeOptionModal: showThreeOptionModal
   };
 })();
-
