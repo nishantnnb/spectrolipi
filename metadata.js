@@ -183,11 +183,8 @@
       el('label', { cls: 'meta-label', html: 'Annotation license:' }),
       el('select', { className: 'meta-select', id: 'meta-license' },
         el('option', { value: '' }, ''), // Default blank
-        el('option', { value: 'CC-by-nc-4.0' }, 'CC-by-nc-4.0'),
-        el('option', { value: 'CC-by-4.0' }, 'CC-by-4.0'),
-        el('option', { value: 'CC-by-nc-sa-4.0' }, 'CC-by-nc-sa-4.0'),
-        el('option', { value: 'CC-BY-NC-4.0' }, 'CC-BY-NC-4.0'),
-        el('option', { value: 'CC-BY-NC' }, 'CC-BY-NC')
+        el('option', { value: 'CC-BY-4.0' }, 'CC-BY-4.0'),
+        el('option', { value: 'CC-BY-NC-4.0' }, 'CC-BY-NC-4.0')
       )
     );
 
