@@ -628,11 +628,17 @@
       const clickedTime = clientXToTime_onAxis(ev.clientX);
       const commitTime = quantizeToSample(clickedTime);
 
+      const s = spectro();
       // Do NOT change scrollLeft. Just position playhead at the clicked screen position.
-      pausedAt = commitTime;
+      if (commitTime >= (s.duration || 0) - EPS) {
+        pausedAt = 0;
+        reachedEOF = true;
+      } else {
+        pausedAt = commitTime;
+        reachedEOF = false;
+      }
 
       // Update visuals: compute screenX relative to current scrollLeft
-      const s = spectro();
       const globalX = Math.round(commitTime * s.pxPerSec);
       const screenX = globalX - Math.round(scrollArea.scrollLeft || 0);
       drawPlayheadAt(screenX);
@@ -669,7 +675,13 @@
 
       if (commit) {
         const commitTime = quantizeToSample(previewTime);
-        pausedAt = commitTime;
+        if (commitTime >= s.duration - EPS) {
+          pausedAt = 0;
+          reachedEOF = true;
+        } else {
+          pausedAt = commitTime;
+          reachedEOF = false;
+        }
         // if playing, restart audio at pausedAt
         if (isPlaying) {
           if (source) {
@@ -717,11 +729,17 @@
     });
   });
 
-  // Spacebar toggles Play/Pause when focus is not in an editable control
+  let isKeyboardSeeking = false;
+  let wasPlayingBeforeKeyboardSeek = false;
+  let keyboardSeekTimeout = null;
+
+  // Spacebar toggles Play/Pause, Left/Right arrows seek when focus is not in an editable control
   window.addEventListener('keydown', (ev) => {
     try {
       const isSpace = (ev.code === 'Space' || ev.key === ' ' || ev.key === 'Spacebar');
-      if (!isSpace) return;
+      const isLeft = (ev.code === 'ArrowLeft' || ev.key === 'ArrowLeft');
+      const isRight = (ev.code === 'ArrowRight' || ev.key === 'ArrowRight');
+      if (!isSpace && !isLeft && !isRight) return;
       const active = document.activeElement;
       if (active) {
         const tag = (active.tagName || '').toUpperCase();
@@ -733,13 +751,89 @@
       }
       // prevent default page scrolling
       ev.preventDefault();
-      // toggle play/pause
-      if (isPlaying) {
-        pauseNow().catch(() => {});
-      } else {
-        // Only resize/draw if axis is ready (same flow as click handler)
-        if (axisReady) resizeOverlayToSpectrogram();
-        startPlayback().catch(() => {});
+      
+      if (isSpace) {
+        if (isKeyboardSeeking) return;
+        // toggle play/pause
+        if (isPlaying) {
+          pauseNow().catch(() => {});
+        } else {
+          // Only resize/draw if axis is ready (same flow as click handler)
+          if (axisReady) resizeOverlayToSpectrogram();
+          startPlayback().catch(() => {});
+        }
+      } else if (isLeft || isRight) {
+        if (!axisReady) return;
+        const s = spectro();
+        if (!s.duration) return;
+        
+        let currentTime = pausedAt;
+        if (isPlaying) {
+          currentTime = computePlayedTimeFromMeta();
+        } else if (reachedEOF) {
+          currentTime = s.duration;
+        }
+        
+        let newTime;
+        if (ev.ctrlKey || ev.metaKey) {
+          newTime = isLeft ? 0 : s.duration;
+        } else {
+          let pxpf = Number(globalThis._spectroPxPerFrame);
+          if (!isFinite(pxpf) || pxpf <= 0) pxpf = 2; // Default to 2x (1 sec)
+          
+          let seekStep = 2 / pxpf;
+          if (ev.shiftKey) seekStep *= 2;
+          
+          newTime = currentTime + (isLeft ? -seekStep : seekStep);
+        }
+        newTime = clamp(newTime, 0, s.duration);
+        newTime = quantizeToSample(newTime);
+        
+        if (newTime >= s.duration - EPS) {
+          pausedAt = 0;
+          reachedEOF = true;
+        } else {
+          pausedAt = newTime;
+          reachedEOF = false;
+        }
+        
+        const globalX = Math.round(newTime * s.pxPerSec);
+        let currentScroll = Math.round(scrollArea.scrollLeft || 0);
+        const viewWidth = Math.max(1, scrollArea.clientWidth);
+        
+        if (globalX < currentScroll || globalX > currentScroll + viewWidth) {
+          const maxScroll = Math.max(0, s.imageWidth - viewWidth);
+          currentScroll = clamp(globalX - Math.round(viewWidth / 2), 0, maxScroll);
+          scrollArea.scrollLeft = currentScroll;
+        }
+        
+        const screenX = globalX - Math.round(scrollArea.scrollLeft || 0);
+        drawPlayheadAt(screenX);
+        renderXAxisTicks();
+        drawTimeFooter((scrollArea.scrollLeft || 0) / Math.max(1, s.pxPerSec || 1));
+        
+        if (!isKeyboardSeeking) {
+          wasPlayingBeforeKeyboardSeek = isPlaying;
+          isKeyboardSeeking = true;
+        }
+        
+        if (wasPlayingBeforeKeyboardSeek) {
+          isPlaying = false; // stop animation loop
+          if (source) {
+            try { source.onended = null; source.stop(0); source.disconnect(); } catch (e) {}
+            source = null;
+          }
+          if (keyboardSeekTimeout) clearTimeout(keyboardSeekTimeout);
+          keyboardSeekTimeout = setTimeout(() => {
+            isKeyboardSeeking = false;
+            startPlayback().catch(() => {});
+          }, 150);
+        } else {
+          if (keyboardSeekTimeout) clearTimeout(keyboardSeekTimeout);
+          keyboardSeekTimeout = setTimeout(() => {
+            isKeyboardSeeking = false;
+          }, 150);
+        }
       }
     } catch (e) { /* swallow errors */ }
   });
