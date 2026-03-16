@@ -615,7 +615,7 @@
       lastClientX = ev.clientX;
       await handleAxisSeekPreview(ev.clientX, /*commit*/ true);
       if (wasPlayingBeforeDrag) {
-        if (!isPlaying) await startPlayback(); // ensure playback resumes
+        if (!isPlaying && !reachedEOF) await startPlayback(); // ensure playback resumes
       } else {
         renderXAxisTicks();
         drawTimeFooter((scrollArea.scrollLeft || 0) / Math.max(1, spectro().pxPerSec || 1));
@@ -631,12 +631,12 @@
       const s = spectro();
       // Do NOT change scrollLeft. Just position playhead at the clicked screen position.
       if (commitTime >= (s.duration || 0) - EPS) {
-        pausedAt = 0;
-        reachedEOF = true;
-      } else {
-        pausedAt = commitTime;
-        reachedEOF = false;
+        finalizeAtEOF(s);
+        return;
       }
+      
+      pausedAt = commitTime;
+      reachedEOF = false;
 
       // Update visuals: compute screenX relative to current scrollLeft
       const globalX = Math.round(commitTime * s.pxPerSec);
@@ -676,12 +676,12 @@
       if (commit) {
         const commitTime = quantizeToSample(previewTime);
         if (commitTime >= s.duration - EPS) {
-          pausedAt = 0;
-          reachedEOF = true;
-        } else {
-          pausedAt = commitTime;
-          reachedEOF = false;
+          finalizeAtEOF(s);
+          return;
         }
+        
+        pausedAt = commitTime;
+        reachedEOF = false;
         // if playing, restart audio at pausedAt
         if (isPlaying) {
           if (source) {
@@ -789,13 +789,21 @@
         newTime = clamp(newTime, 0, s.duration);
         newTime = quantizeToSample(newTime);
         
-        if (newTime >= s.duration - EPS) {
-          pausedAt = 0;
-          reachedEOF = true;
-        } else {
-          pausedAt = newTime;
-          reachedEOF = false;
+        if (!isKeyboardSeeking) {
+          wasPlayingBeforeKeyboardSeek = isPlaying;
+          isKeyboardSeeking = true;
         }
+        
+        if (newTime >= s.duration - EPS) {
+          finalizeAtEOF(s);
+          wasPlayingBeforeKeyboardSeek = false;
+          if (keyboardSeekTimeout) clearTimeout(keyboardSeekTimeout);
+          keyboardSeekTimeout = setTimeout(() => { isKeyboardSeeking = false; }, 150);
+          return;
+        }
+        
+        pausedAt = newTime;
+        reachedEOF = false;
         
         const globalX = Math.round(newTime * s.pxPerSec);
         let currentScroll = Math.round(scrollArea.scrollLeft || 0);
@@ -811,11 +819,6 @@
         drawPlayheadAt(screenX);
         renderXAxisTicks();
         drawTimeFooter((scrollArea.scrollLeft || 0) / Math.max(1, s.pxPerSec || 1));
-        
-        if (!isKeyboardSeeking) {
-          wasPlayingBeforeKeyboardSeek = isPlaying;
-          isKeyboardSeeking = true;
-        }
         
         if (wasPlayingBeforeKeyboardSeek) {
           isPlaying = false; // stop animation loop
