@@ -960,32 +960,9 @@
   // debug logs removed
 
     // Insert into grid
-    const speciesGuess = (function(){
-      try {
-        // If all selected rows share same species, use it; else fallback to UI selected label
-        const uniq = Array.from(new Set(sel.map(r => (r.species||'').trim()))).filter(Boolean);
-        if (uniq.length === 1) return uniq[0];
-        const spLbl = document.getElementById('speciesResult');
-        return spLbl ? (spLbl.textContent||'').trim() : '';
-      } catch (e) { return ''; }
-    })();
-    // Determine scientific name for the species guess
-    const speciesScientificGuess = (function(){
-      try {
-        const keyEl = document.getElementById('selectedSpeciesKey');
-        const key = keyEl ? String(keyEl.value||'').trim() : '';
-        const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-        if (key) {
-          const rec = recs.find(r => String((r.key||'')).trim() === key);
-          return rec ? (rec.scientific || '') : '';
-        }
-        if (speciesGuess) {
-          const rec = recs.find(r => String((r.common||'')).trim() === String(speciesGuess).trim());
-          return rec ? (rec.scientific || '') : '';
-        }
-      } catch (e) {}
-      return '';
-    })();
+    // Use the species and scientificName from the selected template row directly.
+    const speciesGuess = sel.length > 0 ? (sel[0].species || '') : '';
+    const speciesScientificGuess = sel.length > 0 ? (sel[0].scientificName || '') : '';
 
     // Optionally merge by gap < 1s, based on checkbox
     let finalDetections = dedup;
@@ -1266,33 +1243,10 @@
                   try { await new Promise(r=>setTimeout(r,20)); } catch(e){}
 
                   // species guess (match run behavior)
+                  // Use the species and scientificName from the selected template row directly.
                   const selRows = getGridSelectedTemplates();
-                  const speciesGuess = (function(){
-                    try {
-                      const uniq = Array.from(new Set(selRows.map(r => (r.species||'').trim()))).filter(Boolean);
-                      if (uniq.length === 1) return uniq[0];
-                      const spLbl = document.getElementById('speciesResult');
-                      return spLbl ? (spLbl.textContent||'').trim() : '';
-                    } catch (e) { return ''; }
-                  })();
-
-                  // Determine scientific name for the species guess (same logic as used by run)
-                  const speciesScientificGuess = (function(){
-                    try {
-                      const keyEl = document.getElementById('selectedSpeciesKey');
-                      const key = keyEl ? String(keyEl.value||'').trim() : '';
-                      const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-                      if (key) {
-                        const rec = recs.find(r => String((r.key||'')).trim() === key);
-                        return rec ? (rec.scientific || '') : '';
-                      }
-                      if (speciesGuess) {
-                        const rec = recs.find(r => String((r.common||'')).trim() === String(speciesGuess).trim());
-                        return rec ? (rec.scientific || '') : '';
-                      }
-                    } catch (e) {}
-                    return '';
-                  })();
+                  const speciesGuess = selRows.length > 0 ? (selRows[0].species || '') : '';
+                  const speciesScientificGuess = selRows.length > 0 ? (selRows[0].scientificName || '') : '';
 
                   // assign a new run number
                   const runNumber = (++__scc_runCounter);
