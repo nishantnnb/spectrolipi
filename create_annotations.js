@@ -802,6 +802,7 @@
           const high = Number(r && r.highFreq != null ? r.highFreq : r.high);
           const id = i + 1;
           return {
+            ...(r || {}),
             id,
             Selection: String(id),
             beginTime: isFinite(begin) ? +begin : 0,
