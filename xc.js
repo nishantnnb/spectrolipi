@@ -6,7 +6,7 @@
     annotatorName: '',
     annotatorId: '',
     // endpoint: 'https://dev.xeno-canto.org/api/3/upload/annotation-set'
-    endpoint: 'https://acc.xeno-canto.org/api/3/upload/annotation-set'
+    endpoint: 'https://xeno-canto.org/api/3/upload/annotation-set'
   };
   let __xcSettings = loadSettings();
 
