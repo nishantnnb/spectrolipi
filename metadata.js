@@ -912,6 +912,16 @@
   // applyInitial helpers
   function applyInitial(init) {
     const source = Object.assign({}, window.__lastMetadata || {}, init || {});
+    try {
+      const fi = document.getElementById('file');
+      if (fi && fi.files && fi.files.length > 0) {
+        const match = fi.files[0].name.match(/^XC(\d+)/i);
+        if (match) {
+          if (source.xcfileno === undefined) source.xcfileno = match[1];
+          if (source.setname === undefined) source.setname = 'Annotation set for XC' + match[1];
+        }
+      }
+    } catch(e) {}
     nodesSafeSet('meta-lat', (source.latitude !== undefined && source.latitude !== null) ? source.latitude : '');
     nodesSafeSet('meta-lon', (source.longitude !== undefined && source.longitude !== null) ? source.longitude : '');
     if (source.datetime) {
@@ -1014,6 +1024,16 @@
     };
     if (!n.lat) return;
     const source = Object.assign({}, window.__lastMetadata || {}, init && Object.keys(init).length ? init : {});
+    try {
+      const fi = document.getElementById('file');
+      if (fi && fi.files && fi.files.length > 0) {
+        const match = fi.files[0].name.match(/^XC(\d+)/i);
+        if (match) {
+          if (source.xcfileno === undefined) source.xcfileno = match[1];
+          if (source.setname === undefined) source.setname = 'Annotation set for XC' + match[1];
+        }
+      }
+    } catch(e) {}
     try { if (source.latitude !== undefined && source.latitude !== null) n.lat.value = source.latitude; else n.lat.value = ''; } catch (e) { n.lat && (n.lat.value = ''); }
     try { if (source.longitude !== undefined && source.longitude !== null) n.lon.value = source.longitude; else n.lon.value = ''; } catch (e) { n.lon && (n.lon.value = ''); }
     if (source.datetime) {
@@ -1090,7 +1110,7 @@
         return false;
       }
       // Save into last metadata so modal picks it up when opened
-      window.__lastMetadata = parsed;
+      window.__lastMetadata = Object.assign({}, window.__lastMetadata || {}, parsed);
 
       // If modal is open, populate it immediately
       const existing = document.getElementById('metaOverlay');
