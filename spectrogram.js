@@ -2543,3 +2543,115 @@
 
 })();
 
+// ---- Xeno-canto Integration ----
+(function() {
+  window.loadFromXenoCanto = async function(xcId) {
+    try {
+      // Strip out 'XC' if user typed it, leaving just the number
+      const cleanId = String(xcId).replace(/[^0-9]/g, '');
+      if (!cleanId) {
+        alert('Invalid Xeno-canto ID. Please enter numbers (e.g., XC123456).');
+        return;
+      }
+
+      if (window.__spectroWait) {
+        window.__spectroWait.show({ etaText: 'Downloading from Xeno-canto...' });
+      }
+
+      console.log(`[XC-DEBUG] --- STARTING XENO-CANTO IMPORT FOR XC${cleanId} ---`);
+      const audioUrl = `https://xeno-canto.org/${cleanId}/download`;
+
+      console.log(`[XC-DEBUG] Fetching actual audio file from URL: ${audioUrl}`);
+      
+      // Attempt to download the audio file directly first, then fall back to proxies
+      const audioFetchUrls = [
+        { url: audioUrl, name: 'Direct from XC' },
+        { url: `https://api.codetabs.com/v1/proxy?quest=${audioUrl}`, name: 'Proxy 1 (CodeTabs)' },
+        { url: `https://corsproxy.io/?${encodeURIComponent(audioUrl)}`, name: 'Proxy 2 (CorsProxy.io)' },
+        { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrl)}`, name: 'Proxy 3 (AllOrigins)' },
+        { url: `https://thingproxy.freeboard.io/fetch/${audioUrl}`, name: 'Proxy 4 (ThingProxy)' }
+      ];
+
+      let audioSuccess = false;
+      let arrayBuffer = null;
+      
+      for (let i = 0; i < audioFetchUrls.length; i++) {
+        try {
+          console.log(`[XC-DEBUG] Fetching audio (Attempt ${i+1}): ${audioFetchUrls[i].url}`);
+          let response = await fetch(audioFetchUrls[i].url);
+          if (response.ok) {
+            let buffer = await response.arrayBuffer();
+            // Check if buffer is actually an audio file (e.g. > 10KB), not just an HTML error page
+            if (buffer.byteLength > 10000) {
+              audioSuccess = true;
+              arrayBuffer = buffer;
+              break; // Success, exit loop
+            } else {
+              const text = new TextDecoder().decode(buffer.slice(0, 50));
+              console.warn(`[XC-DEBUG] Audio Attempt ${i+1} returned a tiny file (${buffer.byteLength} bytes), likely an error page. Starts with: ${text}`);
+            }
+          } else {
+            console.warn(`[XC-DEBUG] Audio Attempt ${i+1} returned ${response.status}`);
+          }
+        } catch (audioErr) {
+          console.warn(`[XC-DEBUG] Audio Attempt ${i+1} failed:`, audioErr);
+        }
+      }
+      
+      if (!audioSuccess || !arrayBuffer) {
+        if (window.__spectroWait) window.__spectroWait.hide();
+        console.error('[XC-DEBUG] All audio proxies failed.');
+        alert(`Failed to download audio from Xeno-canto.\nThe browser blocked direct access (CORS), and the backup proxies failed.\nAudio URL: ${audioUrl}`);
+        return;
+      }
+
+      console.log(`[XC-DEBUG] ArrayBuffer created (${arrayBuffer.byteLength} bytes). Mocking File object...`);
+      const filename = `XC${cleanId}.mp3`;
+      const mockFile = new File([arrayBuffer], filename, { type: 'audio/mpeg' });
+
+      console.log('[XC-DEBUG] Pre-filling basic metadata...');
+      window.__lastMetadata = Object.assign({}, window.__lastMetadata || {}, {
+        xcfileno: cleanId
+      });
+
+      console.log('[XC-DEBUG] Injecting File into Spectrolipi File Input and dispatching event...');
+      const fileInput = document.getElementById('file');
+      if (fileInput) {
+        // Programmatically set the file input files using DataTransfer
+        const dt = new DataTransfer();
+        dt.items.add(mockFile);
+        fileInput.files = dt.files;
+        
+        // Dispatch the change event exactly as if the user clicked and selected a file
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log('[XC-DEBUG] --- IMPORT COMPLETE! Spectrogram should now generate. ---');
+      } else {
+        if (window.__spectroWait) window.__spectroWait.hide();
+        console.error('[XC-DEBUG] Could not find the #file input element in the DOM!');
+      }
+    } catch (err) {
+      if (window.__spectroWait) window.__spectroWait.hide();
+      console.error('[XC-DEBUG] Unexpected global error in loadFromXenoCanto:', err);
+      alert(`An unexpected error occurred: ${err.message}`);
+    }
+  };
+
+  // Wait for the DOM to load, then inject a small button next to the File input
+  setTimeout(() => {
+    if (document.getElementById('xcLoadBtn')) return; // prevent duplicates
+    const fileInput = document.getElementById('file');
+    if (fileInput && fileInput.parentNode) {
+      // Create custom "Load from XC" button
+      const xcBtn = document.createElement('button');
+      xcBtn.id = 'xcLoadBtn';
+      xcBtn.type = 'button';
+      xcBtn.innerHTML = 'Load<br>from XC';
+      xcBtn.style.cssText = 'margin-left: 8px; font-size: 11px; padding: 3px 6px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 4px; vertical-align: middle; text-align: center; line-height: 1.2;';
+      xcBtn.onmouseover = () => xcBtn.style.background = '#1976D2';
+      xcBtn.onmouseout = () => xcBtn.style.background = '#2196F3';
+      xcBtn.onclick = (e) => { e.preventDefault(); const id = prompt('Enter Xeno-canto ID (e.g. XC123456):'); if (id) window.loadFromXenoCanto(id); };
+
+      fileInput.parentNode.insertBefore(xcBtn, fileInput.nextSibling);
+    }
+  }, 1000);
+})();
