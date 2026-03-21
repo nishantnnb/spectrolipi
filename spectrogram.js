@@ -2654,4 +2654,17 @@
       fileInput.parentNode.insertBefore(xcBtn, fileInput.nextSibling);
     }
   }, 1000);
+
+  // Auto-load if URL contains ?XCID=...
+  window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const xcIdParam = urlParams.get('XCID') || urlParams.get('xcid');
+    if (xcIdParam) {
+      // Trigger the load
+      window.loadFromXenoCanto(xcIdParam);
+      // Clean up the URL so refreshing doesn't redownload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  });
 })();

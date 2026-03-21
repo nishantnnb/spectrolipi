@@ -210,32 +210,6 @@
     </style>
 </head>
 <body>
-<div id="landing-overlay">
-    <div class="landing-content">
-       
-        <p>Bioacoustics researchers, birders, and machine‑learning practitioners use Spectrolipi to visualize sound, annotate spectrograms, and prepare high‑quality datasets for acoustic analysis.</p>
-        <h2>Key Features:</h2>
-        <ul>
-            <li>Spectrogram playback with adjustable colormap, gain, and zoom</li>
-            <li>Create, edit, import, and export annotation boxes</li>
-            <li>Quick annotation tools (SCC & Repeat annotation) for repeated sound patterns</li>
-            <li>Species selection with predefined or custom lists</li>
-            <li>Basic sound editing: cut, silence, filters, normalize, undo</li>
-            <li>Manage file level Metadata</li>
-            <li>Export ML‑ready clips auto‑sorted by species</li>
-            <li>Local‑only processing for full data privacy</li>
-            <li>Xeno-canto integration for uploading annotations.</li>
-			<li>Analyze and create annotations with Birdnet V2.4</li>
-        </ul>
-        <div class="landing-footer">
-            <p><a href="https://raw.githubusercontent.com/nishantnnb/spectrolipi/main/Guide%20and%20FAQ/Spectrolipi%20-%20Guide.docx" target="_blank">Guide</a>
-			&nbsp and &nbsp 
-			<a href="https://github.com/nishantnnb/spectrolipi/raw/main/Guide%20and%20FAQ/Spectrolipi%20-%20FAQ.docx" target="_blank">FAQ</a></p>
-			<p><a href="https://github.com/nishantnnb/spectrolipi/issues" target="_blank">Issues & feature requests</a></p>
-            <button id="close-overlay">Get Started</button>
-        </div>
-    </div>
-</div>
   <!-- Left-side collapsible overlay (structure only). Does not move existing toolbar buttons. -->
   <button id="leftHamburgerToggle" aria-label="Open menu" aria-expanded="false" aria-controls="leftOverlay" type="button"
     style="position:fixed;left:12px;top:12px;z-index:2147483646;width:40px;height:36px;border-radius:6px;border:1px solid rgba(0,0,0,0.12);background:#111;color:#fff;display:inline-flex;align-items:center;justify-content:center;">☰</button>
@@ -1657,27 +1631,6 @@
     return null;
   }
   </script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const overlay = document.getElementById('landing-overlay');
-        const closeButton = document.getElementById('close-overlay');
-
-        // Set focus to the close button when the overlay is shown
-        closeButton.focus();
-
-        closeButton.addEventListener('click', function() {
-            overlay.style.display = 'none';
-        });
-
-        closeButton.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                closeButton.click();
-            }
-        });
-    });
-  </script>
   <script src="birdnet_overlay.js"></script>
 </body>
 </html>
-
