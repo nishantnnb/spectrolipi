@@ -57,7 +57,7 @@
   const AXIS_BOTTOM = 44;
   const VIEWPORT_H = (axisCanvas && axisCanvas.height) ? axisCanvas.height : 240;
   const IMAGE_H = VIEWPORT_H - AXIS_TOP - AXIS_BOTTOM;
-  const DEFAULT_FFT_SIZE = 1024;
+  function getFFTSize() { try { const s = localStorage.getItem('spectrolipi.settings.v1'); if (s) return parseInt(JSON.parse(s).fftSize) || 1024; } catch(e){} return 1024; }
 
   // Toolbar mouse readout elements live in the main action bar; keep references here so
   // they can reuse the existing helpers (px-to-sec, ymax resolution, etc.).
@@ -221,7 +221,7 @@
   globalThis._spectroSampleRate = globalThis._spectroSampleRate || 44100;
   globalThis._spectroNumFrames = globalThis._spectroNumFrames || 0;
   globalThis._spectroPxPerFrame = globalThis._spectroPxPerFrame || 2;
-  globalThis._spectroFramesPerSec = globalThis._spectroFramesPerSec || (globalThis._spectroSampleRate / (DEFAULT_FFT_SIZE/2));
+  globalThis._spectroFramesPerSec = globalThis._spectroFramesPerSec || (globalThis._spectroSampleRate / (getFFTSize()/2));
   globalThis._spectroImageWidth = globalThis._spectroImageWidth || 800;
   globalThis._spectroImageIntrinsicWidth = globalThis._spectroImageIntrinsicWidth || globalThis._spectroImageWidth;
   globalThis._spectroDisplayScaleX = (typeof globalThis._spectroDisplayScaleX === 'number' && isFinite(globalThis._spectroDisplayScaleX)) ? globalThis._spectroDisplayScaleX : 1;
@@ -499,7 +499,7 @@
   // compute visibleStartSec from scrollLeft and redraw ticks into axisCanvas
   function updateXTicksFromScroll() {
     if (!globalThis._spectroImageWidth || !globalThis._spectroFramesPerSec || !globalThis._spectroPxPerFrame) {
-      drawXTicksAxis(globalThis._spectroSampleRate || 44100, globalThis._spectroNumFrames || 0, globalThis._spectroImageWidth || 800, globalThis._spectroImageHeight || IMAGE_H, globalThis._spectroFramesPerSec || (globalThis._spectroSampleRate/(DEFAULT_FFT_SIZE/2)), globalThis._spectroPxPerFrame || 2, 0);
+      drawXTicksAxis(globalThis._spectroSampleRate || 44100, globalThis._spectroNumFrames || 0, globalThis._spectroImageWidth || 800, globalThis._spectroImageHeight || IMAGE_H, globalThis._spectroFramesPerSec || (globalThis._spectroSampleRate/(getFFTSize()/2)), globalThis._spectroPxPerFrame || 2, 0);
       return;
     }
     const currentScroll = (scrollArea && typeof scrollArea.scrollLeft === 'number') ? scrollArea.scrollLeft : 0;
@@ -1333,13 +1333,33 @@
   if (gainInput) { gainInput.addEventListener('input', ()=>{ updateGainLabel(); debouncedLiveApply(); }); gainInput.addEventListener('change', ()=>debouncedLiveApply()); }
   if (ymaxInput) { ymaxInput.addEventListener('input', ()=>{ debouncedLiveApply(); }); ymaxInput.addEventListener('change', ()=>{ debouncedLiveApply(); }); }
 
+  function resolveTargetYMax(userYmaxHz, currentNyquist) {
+    if (isFinite(userYmaxHz) && userYmaxHz > 0) return userYmaxHz;
+    let defaultYMaxSetting = 'Nyquist';
+    try {
+      const s = localStorage.getItem('spectrolipi.settings.v1');
+      if (s) defaultYMaxSetting = JSON.parse(s).defaultYMax || 'Nyquist';
+    } catch(e){}
+    if (defaultYMaxSetting === 'Nyquist') return currentNyquist;
+    const targetYmax = parseFloat(defaultYMaxSetting) * 1000;
+    if (!isFinite(targetYmax) || targetYmax <= 0) return currentNyquist;
+    if (targetYmax >= currentNyquist) return currentNyquist;
+    const Y_STEPS = 9;
+    const minY = 1000;
+    const validYVals = [];
+    for (let i = 0; i < Y_STEPS; i++) { validYVals.push(currentNyquist - i * ((currentNyquist - minY) / (Y_STEPS - 1))); }
+    validYVals.sort((a,b) => a - b);
+    for (const v of validYVals) { if (v >= targetYmax - 0.1) return v; }
+    return currentNyquist;
+  }
+
   // Generate handler: capture current left-edge time at press and after processing align that time to left edge
   // Strong integration: install finish-listener immediately on invocation, show overlay, and rely on generator to hide quickly when visible pixels are painted.
   async function generateSpectrogram() {
         const f = fileInput && fileInput.files && fileInput.files[0];
         if (!f) { alert('Choose an audio file'); return; }
 
-        const fftSize = DEFAULT_FFT_SIZE;
+        const fftSize = getFFTSize();
         const overlapFactor = 2;
         const zoomVal = (xzoomSelect && xzoomSelect.value) ? xzoomSelect.value : '2';
         const pxpf = Math.max(1, Math.min(4, parseInt(String(zoomVal).replace(/\D/g,''), 10) || 2));
@@ -1380,9 +1400,19 @@
               if (ymaxInput) ymaxInput.max = Math.round((globalThis._spectroSampleRate || 0) / 1000);
             }
 
-            if (isFinite(userYmaxHz) && Math.abs(userYmaxHz - (generatedDefaultYmax || 0)) > 1) {
-              await reRenderFromSpectra(userYmaxHz);
-              globalThis._spectroLastGen.ymax = userYmaxHz;
+            const currentNyquist = globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050;
+            const finalYMax = resolveTargetYMax(userYmaxHz, currentNyquist);
+
+            if (isFinite(finalYMax) && Math.abs(finalYMax - (generatedDefaultYmax || 0)) > 1) {
+              await reRenderFromSpectra(finalYMax);
+              globalThis._spectroLastGen.ymax = finalYMax;
+              const yZoomSelect = document.getElementById('yZoomSelect');
+              if (yZoomSelect && yZoomSelect.options.length > 0) {
+                const closest = Array.from(yZoomSelect.options).reduce((prev, curr) => Math.abs(curr.value - finalYMax) < Math.abs(prev.value - finalYMax) ? curr : prev);
+                yZoomSelect.value = closest.value;
+              }
+            } else {
+              globalThis._spectroLastGen.ymax = generatedDefaultYmax;
             }
 
             updateXTicksFromScroll();
@@ -1396,11 +1426,19 @@
             resetPlaybackState();
           } else {
             const lastY = last.ymax;
-            if (isFinite(userYmaxHz) && Math.abs(userYmaxHz - (lastY || 0)) > 1) {
-              await reRenderFromSpectra(userYmaxHz);
-              globalThis._spectroLastGen.ymax = userYmaxHz;
+            const currentNyquist = globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050;
+            const finalYMax = resolveTargetYMax(userYmaxHz, currentNyquist);
+            
+            if (isFinite(finalYMax) && Math.abs(finalYMax - (lastY || 0)) > 1) {
+              await reRenderFromSpectra(finalYMax);
+              globalThis._spectroLastGen.ymax = finalYMax;
+              const yZoomSelect = document.getElementById('yZoomSelect');
+              if (yZoomSelect && yZoomSelect.options.length > 0) {
+                const closest = Array.from(yZoomSelect.options).reduce((prev, curr) => Math.abs(curr.value - finalYMax) < Math.abs(prev.value - finalYMax) ? curr : prev);
+                yZoomSelect.value = closest.value;
+              }
             } else {
-              const useY = (isFinite(lastY) ? lastY : (globalThis._spectroYMax || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050)));
+              const useY = (isFinite(lastY) ? lastY : (globalThis._spectroYMax || currentNyquist));
               await reRenderFromSpectra(useY);
             }
 
@@ -1428,6 +1466,9 @@
           try { window.removeEventListener('spectrogram-generated', onceGen); } catch(e){}
         }
       }
+
+  // Expose for settings application
+  globalThis._generateSpectrogram = generateSpectrogram;
 
   // Wire button click if present
   if (goBtn) { goBtn.addEventListener('click', generateSpectrogram); }
