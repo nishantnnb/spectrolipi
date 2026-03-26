@@ -4,7 +4,6 @@
   const DEFAULT_SETTINGS = {
     apiKey: '',
     annotatorName: '',
-    annotatorId: '',
     // endpoint: 'https://dev.xeno-canto.org/api/3/upload/annotation-set'
     endpoint: 'https://xeno-canto.org/api/3/upload/annotation-set'
   };
@@ -64,10 +63,6 @@
     }
     const projectName = meta['project'] || meta['Project'] || meta['meta-project'] || meta['project_name'] || '';
     const annotator = safeField(meta['annname'] || meta['Name of the Annotator'] || meta['meta-annname'] || meta['annotator'] || settings.annotatorName);
-    const annotatorXCId = safeField(meta['xcannid'] || meta['Xeno-canto ID of the Annotator'] || meta['meta-xcannid'] || meta['annotator_xc_id'] || settings.annotatorId);
-    if (!annotatorXCId) {
-      return { ok: false, reason: 'Annotator Xeno-canto ID is required. Please set it via metadata or Xeno-canto Settings.' };
-    }
     const taxonCoverage = meta['taxon_coverage'] || meta['taxonCoverage'] || '';
     const completeness = meta['completeness'] || meta['set_completeness'] || '';
 
@@ -77,7 +72,7 @@
       sound_file: '',
       xc_nr: safeField(xcFileNo),
       annotator: safeField(annotator),
-      annotator_xc_id: safeField(annotatorXCId),
+      annotator_xc_id: '',
       frequency_high: safeField(row.highFreq ?? row.highfreq ?? row['High Freq (Hz)']),
       frequency_low: safeField(row.lowFreq ?? row.lowfreq ?? row['Low Freq (Hz)']),
       start_time: (row.beginTime ?? row['Begin Time (s)']) === 0 ? 0 : safeField(row.beginTime ?? row['Begin Time (s)']),
@@ -119,7 +114,7 @@
       set_creation_date: '',
       annotations
     };
-    return { ok: true, data: payload, meta: { annotationsCount: annotations.length, xcFileNo, annotatorXCId } };
+    return { ok: true, data: payload, meta: { annotationsCount: annotations.length, xcFileNo } };
   }
 
   function downloadJSON(obj, filename) {
@@ -175,8 +170,6 @@
       '<input id="xcApiKeyInput" type="text" autocomplete="off" spellcheck="false" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;" />',
       '<label for="xcAnnotatorNameInput" style="display:block;font-size:0.85rem;margin-top:10px;color:#ddd;">Annotator display name</label>',
       '<input id="xcAnnotatorNameInput" type="text" autocomplete="off" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;" />',
-      '<label for="xcAnnotatorIdInput" style="display:block;font-size:0.85rem;margin-top:10px;color:#ddd;">Annotator Xeno-canto ID</label>',
-      '<input id="xcAnnotatorIdInput" type="text" autocomplete="off" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;" />',
       '<details id="xcAdvancedSection" style="margin-top:12px;color:#ddd;">',
       '<summary style="cursor:pointer;">Advanced</summary>',
       '<label for="xcEndpointInput" style="display:block;font-size:0.8rem;margin-top:6px;color:#bbb;">API endpoint</label>',
@@ -199,7 +192,6 @@
       const s = getSettings();
       document.getElementById('xcApiKeyInput').value = s.apiKey || '';
       document.getElementById('xcAnnotatorNameInput').value = s.annotatorName || '';
-      document.getElementById('xcAnnotatorIdInput').value = s.annotatorId || '';
       document.getElementById('xcEndpointInput').value = s.endpoint || DEFAULT_SETTINGS.endpoint;
       document.getElementById('xcSettingsStatus').textContent = '';
       backdrop.style.display = 'flex';
@@ -209,19 +201,13 @@
     function save() {
       const apiKey = document.getElementById('xcApiKeyInput').value.trim();
       const annotatorName = document.getElementById('xcAnnotatorNameInput').value.trim();
-      const annotatorId = document.getElementById('xcAnnotatorIdInput').value.trim();
       const endpoint = document.getElementById('xcEndpointInput').value.trim() || DEFAULT_SETTINGS.endpoint;
       if (!apiKey) {
         document.getElementById('xcSettingsStatus').textContent = 'API key is required.';
         document.getElementById('xcSettingsStatus').style.color = '#ffb4b4';
         return;
       }
-      if (!annotatorId) {
-        document.getElementById('xcSettingsStatus').textContent = 'Annotator Xeno-canto ID is required.';
-        document.getElementById('xcSettingsStatus').style.color = '#ffb4b4';
-        return;
-      }
-      persistSettings({ apiKey, annotatorName, annotatorId, endpoint });
+      persistSettings({ apiKey, annotatorName, endpoint });
       const status = document.getElementById('xcSettingsStatus');
       status.style.color = '#9fe3b2';
       status.textContent = 'Saved.';
@@ -276,8 +262,8 @@
     ensureSettingsModal();
     ensureResultModal();
     const settings = getSettings();
-    if (!settings.apiKey || !settings.annotatorId) {
-      alert('Please configure your Xeno-canto API key and annotator ID before uploading.');
+    if (!settings.apiKey) {
+      alert('Please configure your Xeno-canto API key before uploading.');
       window.__openXcSettingsModal && window.__openXcSettingsModal();
       return;
     }
