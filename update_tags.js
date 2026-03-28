@@ -60,7 +60,7 @@
         <h3 style="margin:0;font-size:18px;font-weight:600;">Update Tags (Group ID: ${groupId})</h3>
         <button id="ut-close" style="background:transparent;border:0;color:#9ca3af;font-size:24px;cursor:pointer;line-height:1;">&times;</button>
       </div>
-      <div style="margin-bottom:12px;font-size:13px;color:#cbd5e1;">Select tags to apply to the selected rows:</div>
+      <div style="margin-bottom:12px;font-size:13px;color:#cbd5e1;">Select tags to apply to the selected rows. Select 'Clear' to clear the tag.</div>
       <div id="ut-dynamic-content"></div>
     `;
 
@@ -96,31 +96,45 @@
       tagsWrap.style.flexWrap = 'wrap';
       tagsWrap.style.gap = '8px';
 
-      options.forEach(opt => {
+      const allOptions = [...options, { isClear: true, val: '', label: 'Clear' }];
+
+      allOptions.forEach(optObj => {
+        const isClear = typeof optObj === 'object' && optObj.isClear;
+        const optVal = isClear ? optObj.val : optObj;
+        const optLabel = isClear ? optObj.label : optObj;
+
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.dataset.category = prefix;
-        btn.dataset.val = opt;
-        btn.textContent = opt;
-        btn.style.cssText = 'background:#374151;color:#d1d5db;border:1px solid #4b5563;padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.15s ease;';
+        btn.dataset.val = optVal;
+        btn.textContent = optLabel;
+        
+        const defaultBg = isClear ? '#4b2020' : '#374151';
+        const defaultColor = isClear ? '#fca5a5' : '#d1d5db';
+        const defaultBorder = isClear ? '#7f1d1d' : '#4b5563';
+        const activeBg = isClear ? '#ef4444' : '#10b981';
+        const activeBorder = isClear ? '#dc2626' : '#059669';
+
+        btn.style.cssText = `background:${defaultBg};color:${defaultColor};border:1px solid ${defaultBorder};padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.15s ease;`;
         
         btn.onclick = () => {
           const wasSelected = btn.classList.contains('selected-tag');
           
           // Deselect all tags in this category first
-          tagsWrap.querySelectorAll('.selected-tag').forEach(sib => {
+          tagsWrap.querySelectorAll('button').forEach(sib => {
             sib.classList.remove('selected-tag');
-            sib.style.background = '#374151';
-            sib.style.color = '#d1d5db';
-            sib.style.borderColor = '#4b5563';
+            const sibIsClear = sib.dataset.val === '';
+            sib.style.background = sibIsClear ? '#4b2020' : '#374151';
+            sib.style.color = sibIsClear ? '#fca5a5' : '#d1d5db';
+            sib.style.borderColor = sibIsClear ? '#7f1d1d' : '#4b5563';
           });
 
           // If it wasn't selected before, select it now
           if (!wasSelected) { // Only select if it wasn't already selected
             btn.classList.add('selected-tag');
-            btn.style.background = '#10b981';
+            btn.style.background = activeBg;
             btn.style.color = '#fff';
-            btn.style.borderColor = '#059669';
+            btn.style.borderColor = activeBorder;
           }
         };
 
@@ -216,9 +230,10 @@
       const wrap = buildModal(singleGroupId);
       wrap.querySelectorAll('button[data-category]').forEach(btn => {
         btn.classList.remove('selected-tag');
-        btn.style.background = '#374151';
-        btn.style.color = '#d1d5db';
-        btn.style.borderColor = '#4b5563';
+        const isClear = btn.dataset.val === '';
+        btn.style.background = isClear ? '#4b2020' : '#374151';
+        btn.style.color = isClear ? '#fca5a5' : '#d1d5db';
+        btn.style.borderColor = isClear ? '#7f1d1d' : '#4b5563';
       });
       wrap.style.display = 'flex';
     } catch (err) {

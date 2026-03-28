@@ -899,6 +899,16 @@
         white-space: pre-wrap !important;
         line-height: 1.2 !important;
       }
+
+      /* Enhanced Visibility for Selected Rows */
+      .tabulator-row.tabulator-selected {
+        background-color: #e3f2fd !important; /* Crisp light blue background */
+        box-shadow: inset 0 0 0 2px #1976d2 !important; /* Bold primary blue inner border */
+        z-index: 1; /* Ensures the highlight sits cleanly above unselected rows */
+      }
+      .tabulator-row.tabulator-selected:hover {
+        background-color: #bbdefb !important; /* Slightly darker distinct blue on hover */
+      }
     </style>
     <script>
       // Create Tabulator grid with specified columns
@@ -913,9 +923,9 @@
   {title: "Common\nname", field: "species", headerSort: true, width: 250, resizable: true},
   {title: "Scientific\nname", field: "scientificName", headerSort: true, width: 250, resizable: true},
         {title: "Group\nID", field: "group_id", visible: false},
-        {title: "Sex", field: "sex", headerSort: true, width: 100, resizable: true},
-        {title: "Life\nstage", field: "lifeStage", headerSort: true, width: 100, resizable: true},
-        {title: "Sound\ntype", field: "soundType", headerSort: true, width: 150, resizable: true},
+        {title: "Sex", field: "sex", headerSort: true, width: 100, resizable: true, tooltip: "To update, select row(s) and press 'Update tags' button.", headerTooltip: "To update, select row(s) and press 'Update tags' button."},
+        {title: "Life\nstage", field: "lifeStage", headerSort: true, width: 100, resizable: true, tooltip: "To update, select row(s) and press 'Update tags' button.", headerTooltip: "To update, select row(s) and press 'Update tags' button."},
+        {title: "Sound\ntype", field: "soundType", headerSort: true, width: 150, resizable: true, tooltip: "To update, select row(s) and press 'Update tags' button.", headerTooltip: "To update, select row(s) and press 'Update tags' button."},
           {title: "Notes", field: "notes", headerSort: true, editor: "input", width: 250, resizable: true}
       ];
   window.annotationGrid = new Tabulator("#annotationGrid", {
