@@ -59,7 +59,7 @@
 
   function getGridSelectedTemplates() {
     try {
-      if (!window.annotationGrid || typeof window.annotationGrid.getSelectedRows !== 'function') return [];
+      if (!window.annotationGrid || typeof window.annotationGrid.getSelectedRows !== 'function' || window.annotationGrid.initialized === false) return [];
       const rows = window.annotationGrid.getSelectedRows();
       return rows.map(r => r.getData());
     } catch (e) { return []; }
@@ -473,8 +473,6 @@
   let __scc_lastSelectedPresetIndex = null;
   // active scan abort token (used to cancel long-running preset scans)
   let __scc_currentScan = null;
-  // run counter for labeling runs (used to prefix notes)
-  let __scc_runCounter = 0;
   function _showModal() {
     const m = showModal();
     __bodyOverflowBackup.val = document.body.style.overflow;
@@ -868,14 +866,6 @@
     } catch (e) { return null; }
   }
 
-  function nextIdFromGrid(){
-    try {
-      const data = window.annotationGrid.getData();
-      if (!data || !data.length) return 1;
-      return Math.max(...data.map(r => Number(r.id)||0)) + 1;
-    } catch (e) { return 1; }
-  }
-
   async function runSccWithOptions(opts){
     const sel = getGridSelectedTemplates();
     if (!sel.length) { alert('Select one template row in the grid first.'); return; }
@@ -891,8 +881,6 @@
   try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Running SCC...', titleText: 'Running SCC', bodyText: 'Computing detections — this may take several seconds.' }); } catch (e) {}
   // yield briefly so the overlay can paint before heavy synchronous work begins
   try { await new Promise(r => setTimeout(r, 50)); } catch (e) {}
-  // assign a run number for this invocation
-  const runNumber = (++__scc_runCounter);
   // instrumentation counters
     let totalCoarsePeaks = 0;
     let totalRawCandidates = 0;
@@ -972,31 +960,24 @@
       if (mergeFlag) finalDetections = mergeDetectionsByGap(dedup, gapSec);
     } catch(e){}
 
-    let nextId = nextIdFromGrid();
-    const rowsToAdd = finalDetections.map((d,i) => {
-      // Do not auto-populate notes per user preference; keep empty for manual editing
-      const notes = '';
-        return {
-        id: nextId + i,
-        Selection: String(nextId + i),
-        beginTime: Number(round4(d.t1)),
-        endTime: Number(round4(d.t2)),
-        lowFreq: Number(round4(d.f1)),
-        highFreq: Number(round4(d.f2)),
+    const rowsToCreate = finalDetections.map((d) => ({
+        beginTime: d.t1,
+        endTime: d.t2,
+        lowFreq: d.f1,
+        highFreq: d.f2,
         species: speciesGuess,
-        scientificName: speciesScientificGuess,
-        runNo: runNumber,
-        sccScore: (typeof d.score === 'number') ? d.score : Number(d.score || 0),
-        notes
-      };
-    });
+        scientificName: speciesScientificGuess
+    }));
 
-    if (rowsToAdd.length) {
-      try { window.annotationGrid.addData(rowsToAdd); } catch (e) {}
+    let addedRows = [];
+    if (rowsToCreate.length) {
+      try { 
+        addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-create');
+      } catch (e) {}
       // Deselect previously-selected template rows and select newly added rows for convenience
       try {
         const grid = window.annotationGrid;
-        const addedIds = rowsToAdd.map(r => r.id);
+        const addedIds = addedRows.map(r => r.id);
         if (grid) {
           // Try to deselect any currently selected rows
           try {
@@ -1021,9 +1002,9 @@
       } catch (e) {}
     }
 
-    runResult = { added: rowsToAdd.length, raw: totalRawCandidates, coarse: totalCoarsePeaks, dedup: dedup.length };
+    runResult = { added: rowsToCreate.length, raw: totalRawCandidates, coarse: totalCoarsePeaks, dedup: dedup.length };
 
-    setProgress(`${rowsToAdd.length} detections added.`);
+    setProgress(`${rowsToCreate.length} detections added.`);
     } catch (e) {
       throw e;
     } finally {
@@ -1107,8 +1088,7 @@
           if (!presetsArea) return;
               // validate selection first; do not clear existing presets area on invalid selection
               const sel = getGridSelectedTemplates();
-              const onlySccTemplates = Array.isArray(sel) && sel.length > 0 && sel.every(r => !!r.sccTemplate);
-              if (!onlySccTemplates) { alert('Process can be applied only on SCC template(s). Pls deselect other rows.'); return; }
+              if (!sel || sel.length === 0) { alert('Please select a row first.'); return; }
               // proceed and show searching message
               presetsArea.style.display = 'block';
               presetsArea.innerHTML = '<div style="color:#9ca3af">Searching presets, please wait...</div>';
@@ -1119,9 +1099,8 @@
               if (stopBtn) { stopBtn.style.display = 'inline-block'; stopBtn.disabled = false; }
           try {
             const sel = getGridSelectedTemplates();
-            const onlySccTemplates = Array.isArray(sel) && sel.length > 0 && sel.every(r => !!r.sccTemplate);
-            if (!onlySccTemplates) {
-              presetsArea.innerHTML = '<div style="color:#f97316">Process can be applied only on SCC template(s). Pls deselect other rows.</div>';
+            if (!sel || sel.length === 0) {
+              presetsArea.innerHTML = '<div style="color:#f97316">Please select a row first.</div>';
               return;
             }
             const meta = getSpectroMeta();
@@ -1248,9 +1227,6 @@
                   const speciesGuess = selRows.length > 0 ? (selRows[0].species || '') : '';
                   const speciesScientificGuess = selRows.length > 0 ? (selRows[0].scientificName || '') : '';
 
-                  // assign a new run number
-                  const runNumber = (++__scc_runCounter);
-                  let nextId = nextIdFromGrid();
                   // Optionally merge by gap < 1s
                   let toInsert = dets;
                   try {
@@ -1264,23 +1240,19 @@
                     } catch(e){}
                     if (mergeFlag) toInsert = mergeDetectionsByGap(dets, gapSec);
                   } catch(e){}
-                  const rowsToAdd = toInsert.map((d,i) => ({
-                    id: nextId + i,
-                    Selection: String(nextId + i),
+                const rowsToCreate = toInsert.map((d) => ({
                     beginTime: Number(round4(d.t1)),
                     endTime: Number(round4(d.t2)),
                     lowFreq: Number(round4(d.f1)),
                     highFreq: Number(round4(d.f2)),
                     species: speciesGuess,
                     scientificName: speciesScientificGuess,
-                    runNo: runNumber,
-                    sccScore: (typeof d.score === 'number') ? d.score : Number(d.score || 0),
                     notes: ''
                   }));
 
-                  if (rowsToAdd.length) {
-                    try { window.annotationGrid.addData(rowsToAdd); } catch (e) {}
-                    try {
+                if (rowsToCreate.length) {
+                  try {
+                    const addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-apply');
                       // Deselect previous, select newly-added
                       const grid = window.annotationGrid;
                       if (grid && typeof grid.getSelectedRows === 'function') {
@@ -1288,7 +1260,7 @@
                         if (Array.isArray(prev)) prev.forEach(rObj => { try { if (typeof rObj.deselect === 'function') rObj.deselect(); else if (typeof grid.deselectRow === 'function') grid.deselectRow(rObj); } catch(e){} });
                       }
                       if (grid && typeof grid.selectRow === 'function') {
-                        for (const r of rowsToAdd) { try { grid.selectRow(r.id); } catch(e){} }
+                        for (const r of addedRows) { try { grid.selectRow(r.id); } catch(e){} }
                       }
                     } catch(e){}
                   }

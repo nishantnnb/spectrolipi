@@ -48,6 +48,9 @@
     'High Freq (Hz)',
     'Common name',
     'Scientific name',
+    'Sex',
+    'Life stage',
+    'Sound type(s)',
     'Notes'
   ];
 
@@ -59,11 +62,12 @@
     'highFreq', 'high_freq', 'high',
     'species',
   'scientificName',
+    'sex', 'lifeStage', 'soundType', 'Sex', 'Life stage', 'Sound type(s)',
     'file','File',
     'notes', 'note',
     'Selection','View','Channel','Begin Time (s)','End Time (s)','Low Freq (Hz)','High Freq (Hz)','Species','Notes',
     // Internal/admin fields we should never export
-    'needsMetadata', 'sccTemplate', 'runNo', 'sccScore'
+    'needsMetadata'
   ]);
 
 
@@ -112,11 +116,14 @@
 
       const species = (a && Object.prototype.hasOwnProperty.call(a, 'species')) ? cellString(a.species) : '';
   const scientificName = (a && Object.prototype.hasOwnProperty.call(a, 'scientificName')) ? cellString(a.scientificName) : '';
+      const sex = (a && Object.prototype.hasOwnProperty.call(a, 'sex')) ? cellString(a.sex) : '';
+      const lifeStage = (a && Object.prototype.hasOwnProperty.call(a, 'lifeStage')) ? cellString(a.lifeStage) : '';
+      const soundType = (a && Object.prototype.hasOwnProperty.call(a, 'soundType')) ? cellString(a.soundType) : '';
       const notes = (a && Object.prototype.hasOwnProperty.call(a, 'notes')) ? cellString(a.notes) : '';
 
   // Remove _select column if present in extras and row data
   const extrasRow = extras.filter(k => k !== '_select').map(k => (a && Object.prototype.hasOwnProperty.call(a, k)) ? cellString(a[k]) : '');
-  lines.push([exportFileName, sel, view, channel, begin, end, low, high, species, scientificName, notes].concat(extrasRow).join('\t'));
+  lines.push([exportFileName, sel, view, channel, begin, end, low, high, species, scientificName, sex, lifeStage, soundType, notes].concat(extrasRow).join('\t'));
     });
 
     return { content: lines.join('\n') + '\n', filenameSuffix: '_annotations' };

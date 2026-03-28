@@ -46,7 +46,7 @@
   function getGrid() { try { return window.annotationGrid || null; } catch (e) { return null; } }
   function getSelectedRowIdsFromGrid() {
     const grid = getGrid();
-    if (!grid || typeof grid.getSelectedData !== 'function') return [];
+    if (!grid || typeof grid.getSelectedData !== 'function' || grid.initialized === false) return [];
     try { return (grid.getSelectedData() || []).map(r => r && r.id).filter(v => v !== undefined && v !== null); } catch (e) { return []; }
   }
   function onGridSelectionChanged() {
@@ -195,16 +195,14 @@
             return '';
           }
 
-          const keyCandidates = ['key','id','species_key','specieskey','code','taxon','taxonid','identifier'];
           const commonCandidates = ['common','commonname','name','common_name','vernacular'];
           const sciCandidates = ['scientific','scientificname','scientific_name','sci','binomial'];
 
           const norm = parsed.map(r => {
-            const key = (pickField(r, keyCandidates) || '').trim();
             const common = (pickField(r, commonCandidates) || '').trim();
             const scientific = (pickField(r, sciCandidates) || '').trim();
-            return { key: key, common: common, scientific: scientific };
-          }).filter(x => (x.key || x.common || x.scientific));
+            return { common: common, scientific: scientific };
+          }).filter(x => (x.common || x.scientific));
 
           window.__speciesRecords = norm;
           try { console.debug && console.debug('[species] setUseOwnSpecies: loaded parsed rows', parsed.length, 'normalized', norm.length, norm.slice(0,3)); } catch (e) {}
@@ -306,13 +304,12 @@
               }
               // Build CSV with header key,common,scientific
               function quote(v) { if (v === null || v === undefined) return ''; const s = String(v); if (s.includes(',') || s.includes('\"') || s.includes('\n') || s.includes('\r')) return '"' + s.replace(/"/g, '""') + '"'; return s; }
-              const header = ['key','common','scientific'];
+              const header = ['common','scientific'];
               const lines = [header.join(',')];
               for (const r of defaultRecs) {
-                const k = r && r.key ? r.key : '';
                 const c = r && r.common ? r.common : '';
                 const s = r && r.scientific ? r.scientific : '';
-                lines.push([quote(k), quote(c), quote(s)].join(','));
+                lines.push([quote(c), quote(s)].join(','));
               }
               const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
               const url = URL.createObjectURL(blob);
@@ -427,17 +424,18 @@
   // Note: We rely on the species control to update the label before dispatching 'species-select'.
 
   // Handle accepted species for bulk application
-  function handleSpeciesAccepted(commonName, scientificName) {
+  function handleSpeciesAccepted(commonName, scientificName, groupId) {
     if (selectedIds.size === 0) return;
 
     // Normalize and escape the incoming commonName for display and application
     const name = commonName && String(commonName).trim() ? String(commonName).trim() : '';
     let sci = scientificName && String(scientificName).trim() ? String(scientificName).trim() : '';
+    let gid = groupId && String(groupId).trim() ? String(groupId).trim() : '';
     if (!sci && name) {
       try {
         const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
         const rec = recs.find(r => String((r.common||'')).trim() === name);
-        if (rec) sci = rec.scientific || '';
+        if (rec) { sci = rec.scientific || ''; gid = rec.group_id || '0'; }
       } catch (e) { sci = ''; }
     }
     const safeNameForMessage = name.replace(/'/g, "\\'");
@@ -463,13 +461,13 @@
         const idSet = new Set(Array.from(selectedIds));
         const updated = anns.map(a => {
           const aid = String(a.id);
-          if (idSet.has(aid)) return { ...a, species: name || '', scientificName: sci || '' };
+          if (idSet.has(aid)) return { ...a, species: name || '', scientificName: sci || '', group_id: gid || '0' };
           return a;
         });
         replaceAnnotations(updated);
       } else {
         const ids = Array.from(selectedIds);
-        const updates = ids.map(id => ({ id: (isNaN(id) ? id : Number(id)), species: name || '', scientificName: sci || '' }));
+        const updates = ids.map(id => ({ id: (isNaN(id) ? id : Number(id)), species: name || '', scientificName: sci || '', group_id: gid || '0' }));
         grid.updateData(updates);
         try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'bulk-species', ids } })); } catch (e) {}
       }
@@ -516,7 +514,7 @@
         // Fallback to check if the label was a common name, just in case.
         const fallbackRec = recs.find(r => String(r.common || '').trim() === scientificName);
         if (fallbackRec) {
-          handleSpeciesAccepted(fallbackRec.common, fallbackRec.scientific);
+          handleSpeciesAccepted(fallbackRec.common, fallbackRec.scientific, fallbackRec.group_id);
         } else {
           alert('Could not find the selected species data. Please try selecting the species again.');
         }
@@ -527,9 +525,10 @@
     }
 
     const commonName = rec.common || '';
+    const groupId = rec.group_id || '0';
 
     try {
-      handleSpeciesAccepted(commonName, scientificName);
+      handleSpeciesAccepted(commonName, scientificName, groupId);
     } catch (e) {
       console.error('bulk: applySpeciesFromUI failed', e);
     }

@@ -343,6 +343,12 @@
           obj.species = raw;
         } else if (nh === 'scientificname' || nh === 'scientific_name' || nh === 'scientific-name') {
           obj.scientificName = raw;
+        } else if (nh === normalizeHeaderKey('Sex')) {
+          obj.sex = raw;
+        } else if (nh === normalizeHeaderKey('Life stage')) {
+          obj.lifeStage = raw;
+        } else if (nh === normalizeHeaderKey('Sound type(s)') || nh === 'soundtype' || nh === 'soundtypes') {
+          obj.soundType = raw;
         } else if (nh === normalizeHeaderKey('Notes')) {
           obj.notes = raw;
         } else if (nh === normalizeHeaderKey('Selection')) {
@@ -411,6 +417,9 @@
         highFreq: isFinite(highFreq) ? highFreq : 0,
         scientificName: scientificName,
         species: species,
+        sex: a.sex || '',
+        lifeStage: a.life_stage || '',
+        soundType: a.sound_type || '',
         notes: a.annotation_remarks || ''
       });
     });
@@ -810,13 +819,17 @@
 
       try {
         // Build grid rows with numeric id/Selection and carry extra columns
-        const requiredSet = new Set(["id","Selection","beginTime","endTime","lowFreq","highFreq","species","notes"]);
+        const requiredSet = new Set(["id","Selection","beginTime","endTime","lowFreq","highFreq","species","scientificName","sex","lifeStage","soundType","notes"]);
         const nBeginR = normalizeHeaderKey('Begin Time (s)');
         const nEndR = normalizeHeaderKey('End Time (s)');
         const nLowR = normalizeHeaderKey('Low Freq (Hz)');
         const nHighR = normalizeHeaderKey('High Freq (Hz)');
         const nNotesR = normalizeHeaderKey('Notes');
         const nSelR = normalizeHeaderKey('Selection');
+        const nSexR = normalizeHeaderKey('Sex');
+        const nLifeStageR = normalizeHeaderKey('Life stage');
+        const nSoundTypeR = normalizeHeaderKey('Sound type(s)');
+        const nSoundTypeAltR = normalizeHeaderKey('Sound types');
         const speciesNormsR = new Set(['species','commonname','common_name','common-name']);
         function isKnownHeaderName(k) {
           const nk = normalizeHeaderKey(k);
@@ -824,23 +837,25 @@
           if (nk === nBeginR || nk === nEndR || nk === nLowR || nk === nHighR) return true;
           if (nk === nNotesR || nk === nSelR) return true;
           if (nk === 'id') return true;
-          if (speciesNormsR.has(nk)) return true;
+          if (speciesNormsR.has(nk) || nk === 'scientificname') return true;
+          if (nk === nSexR || nk === nLifeStageR || nk === nSoundTypeR || nk === nSoundTypeAltR || nk === 'soundtype') return true;
           return false;
         }
-        const round4 = (v) => Number(Number(v).toFixed(4));
 
         const buildRows = (startIndex) => toInsert.map((obj, idx) => {
-          const base = {
-            id: startIndex + idx,
-            Selection: String(startIndex + idx),
-            beginTime: round4(obj.beginTime || 0),
-            endTime: round4(obj.endTime || (obj.beginTime || 0)),
-            lowFreq: round4(obj.lowFreq || 0),
-            highFreq: round4(obj.highFreq || 0),
-            species: obj.species || '',
-            scientificName: obj.scientificName || '',
-            notes: obj.notes || ''
-          };
+        const base = globalThis._annotations.createRow({
+          id: startIndex + idx,
+          beginTime: obj.beginTime || 0,
+          endTime: obj.endTime || (obj.beginTime || 0),
+          lowFreq: obj.lowFreq || 0,
+          highFreq: obj.highFreq || 0,
+          species: obj.species || '',
+          scientificName: obj.scientificName || '',
+          sex: obj.sex || obj['Sex'] || '',
+          lifeStage: obj.lifeStage || obj['Life stage'] || '',
+          soundType: obj.soundType || obj['Sound type(s)'] || '',
+          notes: obj.notes || ''
+        });
           // If scientific name is missing but we have a common name, try to map it
           try {
             if ((!base.scientificName || !String(base.scientificName).trim()) && base.species) {
@@ -863,22 +878,7 @@
         if (grid && typeof grid.getData === 'function') {
           if (action === 'replace' || existingCount === 0) {
             const rows = buildRows(1);
-            if (typeof grid.replaceData === 'function') {
-              await grid.replaceData(rows);
-            } else if (typeof grid.setData === 'function') {
-              await grid.setData(rows);
-            } else if (typeof grid.clearData === 'function' && typeof grid.addData === 'function') {
-              grid.clearData();
-              await grid.addData(rows, true);
-            } else {
-              // Fallback to API/DOM
-              const handledAPI = tryInsertAnnotationsViaAPI('replace', rows);
-              if (!handledAPI) {
-                const tbl = ensureDOMTableExistsAndReturn(parsed.headers.length ? parsed.headers : Object.keys(rows[0] || {}));
-                insertRowsIntoTableElement(tbl, parsed.headers.length ? parsed.headers : Object.keys(rows[0] || {}), rows, 'replace');
-              }
-            }
-            try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'upload-replace', count: toInsert.length } })); } catch (e) {}
+            globalThis._annotations.replaceAll(rows, 'upload-replace');
             try { fi.value = ''; } catch (e) {}
             return;
           }
@@ -886,17 +886,7 @@
           if (action === 'merge') {
             const startIndex = (grid.getData() || []).length + 1;
             const rows = buildRows(startIndex);
-            if (typeof grid.addData === 'function') {
-              await grid.addData(rows, true);
-            } else {
-              // Fallback to API/DOM
-              const handledAPI = tryInsertAnnotationsViaAPI('merge', rows);
-              if (!handledAPI) {
-                const tbl = ensureDOMTableExistsAndReturn(parsed.headers.length ? parsed.headers : Object.keys(rows[0] || {}));
-                insertRowsIntoTableElement(tbl, parsed.headers.length ? parsed.headers : Object.keys(rows[0] || {}), rows, 'merge');
-              }
-            }
-            try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'upload-merge', count: toInsert.length } })); } catch (e) {}
+            globalThis._annotations.addMany(rows, 'upload-merge');
             try { fi.value = ''; } catch (e) {}
             return;
           }

@@ -151,23 +151,14 @@
       const speciesVal = lastAnn.species;
       const scientificVal = lastAnn.scientificName;
       
-      let nextId = 1;
-      if (window.annotationGrid) {
-         const data = window.annotationGrid.getData();
-         if (data && data.length) nextId = Math.max(...data.map(r=>Number(r.id)||0)) + 1;
-         
-         window.annotationGrid.addData([{
-           id: nextId, Selection: String(nextId),
-           beginTime: t1, endTime: t2, lowFreq: f1, highFreq: f2,
-           species: speciesVal, scientificName: scientificVal,
-           notes: ''
-         }]);
-         
-         if (window.renderAllAnnotations) window.renderAllAnnotations();
-         else if (window.create_annotations && window.create_annotations.renderAllAnnotations) window.create_annotations.renderAllAnnotations();
-         
-         window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'repeat-create' } }));
-      }
+      globalThis._annotations.add({
+        beginTime: t1, 
+        endTime: t2, 
+        lowFreq: f1, 
+        highFreq: f2,
+        species: speciesVal, 
+        scientificName: scientificVal
+      }, 'repeat-create');
     }, true);
   }
 })();

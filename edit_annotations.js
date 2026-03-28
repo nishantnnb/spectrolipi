@@ -678,7 +678,7 @@
   /* Multi-delete logic: use Tabulator grid selection */
   function doMultiDelete() {
     try {
-      if (window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function') {
+      if (window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function' && window.annotationGrid.initialized !== false) {
         const selectedRows = window.annotationGrid.getSelectedRows();
         if (!selectedRows.length) { window.alert('No rows selected for Multi-delete'); return; }
 

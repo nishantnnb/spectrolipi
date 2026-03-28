@@ -46,8 +46,7 @@
         const g = getGrid();
         switch (act.type) {
           case 'create':
-            if (g && typeof g.deleteRow === 'function') { try { g.deleteRow(act.id); } catch (e) {} }
-            else if (window._annotations && typeof window._annotations.delete === 'function') try { window._annotations.delete(act.id); } catch (e) {}
+            if (globalThis._annotations && typeof globalThis._annotations.delete === 'function') try { globalThis._annotations.delete(act.id); } catch (e) {}
             break;
           case 'edit':
             if (g && typeof g.updateRow === 'function') { try { g.updateRow(act.id, act.before); } catch (e) {} }
@@ -56,9 +55,8 @@
             }
             break;
           case 'delete':
-            if (g && typeof g.addData === 'function') { try { g.addData([act.before]); } catch (e) {} }
-            else if (window._annotations && typeof window._annotations.import === 'function') {
-              try { const all = window._annotations.getAll(); all.push(act.before); if(typeof window._annotations.import==='function') window._annotations.import(all); } catch (e) {}
+            if (globalThis._annotations && typeof globalThis._annotations.add === 'function') {
+              try { globalThis._annotations.add(act.before, 'undo-delete'); } catch (e) {}
             }
             break;
         }
@@ -70,9 +68,8 @@
         const g = getGrid();
         switch (act.type) {
           case 'create':
-            if (g && typeof g.addData === 'function') { try { g.addData([act.row]); } catch (e) {} }
-            else if (window._annotations && typeof window._annotations.import === 'function') {
-              try { const all = window._annotations.getAll(); all.push(act.row); if(typeof window._annotations.import==='function') window._annotations.import(all); } catch (e) {}
+            if (globalThis._annotations && typeof globalThis._annotations.add === 'function') {
+              try { globalThis._annotations.add(act.row, 'undo-create'); } catch (e) {}
             }
             break;
           case 'edit':

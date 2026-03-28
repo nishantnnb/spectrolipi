@@ -43,43 +43,43 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 1px;
       background: #2196F3 !important;
       color: #fff;
       border: none;
       border-radius: 5px;
       padding: 2px 0;
-      font-size: 0.70rem;
+      font-size: 0.6rem;
       font-weight: 500;
       cursor: pointer;
       box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-      width: 68px;
-      min-width: 68px;
-      max-width: 68px;
-      height: 32px;
+      width: 54px;
+      min-width: 54px;
+      max-width: 54px;
+      height: 30px;
       text-align: center;
       white-space: normal;
       word-break: break-word;
       line-height: 1.1;
       overflow-wrap: break-word;
       flex-direction: row;
-      margin: 0 2px;
+      margin: 0 1px;
       transition: background 0.2s, color 0.2s;
     }
     .seg-btn span {
       display: inline-block;
       vertical-align: middle;
-      max-width: 50px;
+      max-width: 38px;
       overflow-wrap: break-word;
       word-break: break-word;
       white-space: normal;
-      font-size: 0.70rem;
+      font-size: 0.6rem;
     }
     .seg-btn svg {
-      margin-right: 3px;
+      margin-right: 1px;
       vertical-align: middle;
-      height: 16px;
-      width: 16px;
+      height: 12px;
+      width: 12px;
       fill: #fff;
     }
     .seg-btn:disabled {
@@ -91,6 +91,12 @@
       background: #1565c0 !important;
       color: #fff;
       outline: none;
+    }
+    /* Make the combined boundary of the Create/Edit toggle more visible */
+    .seg-toggle {
+      border: 1px solid rgba(255, 255, 255, 0.4) !important;
+      border-radius: 5px;
+      overflow: hidden;
     }
   </style>
   <style>
@@ -324,6 +330,9 @@
             <button id="exportXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Export annotations to Xeno-canto JSON">
               <span>Export JSON</span>
             </button>
+            <button id="createXcSetBtn" type="button" class="left-submenu-btn" role="menuitem" title="Combine multiple annotation files into a single Xeno-canto set">
+              <span>Create set</span>
+            </button>
             <button id="uploadXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Upload annotations to Xeno-canto via API">
               <span>Upload to Xeno-canto</span>
             </button>
@@ -343,6 +352,7 @@
             const parent = document.getElementById('xcMenuParent');
             const submenu = document.getElementById('xcSubMenu');
             const exportBtn = document.getElementById('exportXenoCantoBtn');
+            const createSetBtn = document.getElementById('createXcSetBtn');
             const uploadBtn = document.getElementById('uploadXenoCantoBtn');
             const settingsBtn = document.getElementById('xcSettingsBtn');
             
@@ -408,6 +418,17 @@
                   window.exportXenoCantoJSON();
                 } else {
                   alert('Xeno-canto export function not found. Make sure xc.js is loaded.');
+                }
+              });
+            }
+            if (createSetBtn) {
+              createSetBtn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                if (typeof window.__openXcCreateSetModal === 'function') {
+                  window.__openXcCreateSetModal();
+                } else {
+                  alert('Create set function not found. Ensure xc_create_set.js is loaded.');
                 }
               });
             }
@@ -689,9 +710,15 @@
 	
 	<!-- Segmented Create/Edit toggle (authoritative mode source) -->
     <!-- Bulk Update Species button inserted between Species control and Create/Edit toggle -->
-    <button id="bulkUpdateSpeciesBtn" type="button" class="seg-btn" title="Update Species in the selected row(s)." aria-label="Update species in selected rows" disabled style="margin-right:8px;">
+    <button id="bulkUpdateSpeciesBtn" type="button" class="seg-btn" title="Update Species in the selected row(s)." aria-label="Update species in selected rows" disabled style="margin-right:2px;">
       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M6 10h12" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
       <span>Update<br>Species</span>
+    </button>
+
+    <!-- Bulk Update Tags button -->
+    <button id="updateTagsBtn" type="button" class="seg-btn" title="Update Tags in the selected row(s)." aria-label="Update tags in selected rows" disabled style="margin-right:2px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+      <span>Update<br>Tags</span>
     </button>
 
     <!-- Initial overlay strip to prevent annotation before file load -->
@@ -862,71 +889,34 @@
     })();
   </script>
   <script src="species-data.js"></script>
+  <script src="tag-groups.js"></script>
 
     <!-- Tabulator grid setup -->
     <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+    <style>
+      .tabulator-col-title {
+        white-space: pre-wrap !important;
+        line-height: 1.2 !important;
+      }
+    </style>
     <script>
       // Create Tabulator grid with specified columns
       const gridColumns = [
         {title: "", field: "_select", formatter: "rowSelection", titleFormatter: "rowSelection", titleFormatterParams: {rowRange: "active"}, headerSort: false, frozen: true, width: 40, resizable: false},
         {title: "ID", field: "id", headerSort: true, frozen: true, resizable: true},
-          {title: "SCC Template", field: "sccTemplate", headerSort: true, resizable: true, width: 130, hozAlign: "center",
-            // Render an actual checkbox element so it's always visible like the row-selection checkbox.
-            formatter: function(cell, formatterParams, onRendered){
-              const v = !!cell.getValue();
-              // Use onRendered to attach handlers directly to the checkbox element so
-              // clicks on the checkbox do not propagate to the row and toggle the
-              // row-selection checkbox. The input click will toggle only the field.
-              try {
-                onRendered && onRendered(function(){
-                  try {
-                    const el = cell.getElement && cell.getElement().querySelector && cell.getElement().querySelector('.scc-template-checkbox');
-                    if (!el) return;
-                    // Capture-phase listener so we stop propagation as early as possible
-                    el.addEventListener('click', function(ev){
-                      try { ev.stopPropagation(); } catch (e) {}
-                      try { const newVal = !cell.getValue(); cell.setValue(!!newVal); } catch (e) {}
-                    }, true);
-                  } catch (e) {}
-                });
-              } catch (e) {}
-              // Return HTML; Tabulator will render the checkbox.
-              return `<input type="checkbox" class="scc-template-checkbox" ${v ? 'checked' : ''} />`;
-            },
-            // Prevent row selection when clicking inside this cell (final defensive stop)
-            cellClick: function(e, cell){
-              try { e.stopPropagation(); } catch(e){}
-            },
-            headerFilter: "select", headerFilterParams: {values: {"": "All", "Yes": "Yes", "No": "No"}},
-            headerFilterFunc: function(headerValue, rowValue){
-              if (!headerValue) return true;
-              const v = !!rowValue; // coerce to boolean
-              if (headerValue === 'Yes') return v === true;
-              if (headerValue === 'No') return v === false;
-              return true;
-            },
-            mutator: function(value){ return !!value; }
-          },
         {title: "Selection", field: "Selection", headerSort: true, resizable: true},
-        {title: "Begin Time (s)", field: "beginTime", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
-        {title: "End Time (s)", field: "endTime", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
-        {title: "Low Freq (Hz)", field: "lowFreq", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
-        {title: "High Freq (Hz)", field: "highFreq", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
-  {title: "Common name", field: "species", headerSort: true, width: 250, resizable: true},
-  {title: "Scientific name", field: "scientificName", headerSort: true, width: 250, resizable: true},
-          {title: "Notes", field: "notes", headerSort: true, editor: "input", width: 250, resizable: true},
-          {title: "SCC run no.", field: "runNo", headerSort: true, resizable: true, width: 120, hozAlign: "right", editable: false, headerFilter: true, headerFilterPlaceholder: 'e.g. 1 or >2',
-            headerFilterFunc: function(headerValue, rowValue){ if (headerValue == null || String(headerValue||'').trim()==='') return true; const hv = String(headerValue).trim(); const m = hv.match(/^\s*(<=|>=|<|>|=|==)?\s*([0-9]+)\s*$/); if (!m) return true; const op = m[1] || '='; const val = Number(m[2]); const cellVal = Number(rowValue); switch(op){ case '<': return cellVal < val; case '<=': return cellVal <= val; case '>': return cellVal > val; case '>=': return cellVal >= val; case '=': case '==': return cellVal === val; default: return false; } },
-          },
-          {title: "SCC score %", field: "sccScore", headerSort: true, resizable: true, width: 120, hozAlign: "right", editable: false,
-            formatter: function(cell){ const v = cell.getValue(); if (v == null || v === '') return ''; try { return String(Math.round(Math.max(0, Number(v)) * 100)); } catch(e){ return ''; } },
-            headerFilter: true,
-            headerFilterPlaceholder: '<40',
-            headerFilterFunc: function(headerValue, rowValue){ if (headerValue == null || String(headerValue||'').trim()==='') return true; const hv = String(headerValue).trim(); // accept operator + integer percent e.g. '<40' or '>=75'
-              const m = hv.match(/^\s*(<=|>=|<|>|=|==)?\s*([0-9]+)\s*$/);
-              if (!m) return true; const op = m[1] || '='; const val = Number(m[2]); const cellNum = (rowValue == null || rowValue === '') ? NaN : Number(rowValue) * 100; if (!isFinite(cellNum)) return false; switch(op){ case '<': return cellNum < val; case '<=': return cellNum <= val; case '>': return cellNum > val; case '>=': return cellNum >= val; case '=': case '==': return Math.abs(cellNum - val) < 1e-6; default: return false; } },
-          }
+        {title: "Begin\nTime (s)", field: "beginTime", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+        {title: "End\nTime (s)", field: "endTime", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+        {title: "Low\nFreq (Hz)", field: "lowFreq", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+        {title: "High\nFreq (Hz)", field: "highFreq", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
+  {title: "Common\nname", field: "species", headerSort: true, width: 250, resizable: true},
+  {title: "Scientific\nname", field: "scientificName", headerSort: true, width: 250, resizable: true},
+        {title: "Group\nID", field: "group_id", visible: false},
+        {title: "Sex", field: "sex", headerSort: true, width: 100, resizable: true},
+        {title: "Life\nstage", field: "lifeStage", headerSort: true, width: 100, resizable: true},
+        {title: "Sound\ntype", field: "soundType", headerSort: true, width: 150, resizable: true},
+          {title: "Notes", field: "notes", headerSort: true, editor: "input", width: 250, resizable: true}
       ];
   window.annotationGrid = new Tabulator("#annotationGrid", {
         columns: gridColumns,
@@ -942,34 +932,6 @@
     headerFilterLiveFilter: true,
     headerFilterLiveFilterDelay: 250
       });
-      // After grid is created, attach operator dropdowns next to numeric header filters
-      (function attachHeaderOps(){
-        try {
-          const attach = (field)=>{
-            const col = document.querySelector('.tabulator-col[data-field="'+field+'"]');
-            if (!col) return;
-            const hf = col.querySelector('.tabulator-header-filter');
-            if (!hf) return;
-            // avoid re-adding
-            if (hf.querySelector('.scc-op-select')) return;
-            const sel = document.createElement('select');
-            sel.className = 'scc-op-select';
-            sel.style.marginRight = '6px'; sel.title = 'Operator';
-            ['=','<','<=','>','>='].forEach(op=>{ const o=document.createElement('option'); o.value=op; o.textContent=op; sel.appendChild(o); });
-            // place before input
-            hf.insertBefore(sel, hf.firstChild);
-            // restrict input to numeric characters
-            const input = hf.querySelector('input');
-            if (input) {
-              input.addEventListener('input', ()=>{ input.value = input.value.replace(/[^0-9\-<>=%\s]/g,'').trim(); });
-            }
-            // when select changes, trigger header filter update
-            sel.addEventListener('change', ()=>{ try { // simulate filter change by re-applying header filter value
-                const ev = new Event('input',{bubbles:true}); if (hf.querySelector('input')) hf.querySelector('input').dispatchEvent(ev); } catch(e){} });
-          };
-          attach('runNo'); attach('sccScore');
-        } catch(e){}
-      })();
 
       // Deselect all rows after any filtering completes
       try {
@@ -1082,6 +1044,7 @@
 
   <script src="edit_annotations.js"></script>
   <script src="species_bulkedit.js"></script>
+  <script src="update_tags.js"></script>
   <script src="display_label.js"></script>
 
   <!-- Advanced Species Search Control (Fuzzy, Token-based, Modes) -->
@@ -1220,16 +1183,15 @@
       if (!elInput || !elSuggest || !elResult || !elHidden || !elResultWrap) { setTimeout(() => wireSpeciesControl(recs), 120); return; }
 
       /* Mode State */
-      const MODES = ['Scientific','Common','eBird'];
+      const MODES = ['Scientific','Common'];
       let modeIndex = 0;
       function applyModeUI(){
         const m = MODES[modeIndex];
         if (elModeBadge) {
-          elModeBadge.textContent = (m==='Scientific'?'Sci':(m==='Common'?'Com':m));
-          elModeBadge.className = 'mode-badge ' + (m==='eBird' ? 'm-eBird' : m==='Common' ? 'm-Common' : 'm-Sci');
+          elModeBadge.textContent = (m==='Scientific'?'Sci':'Com');
+          elModeBadge.className = 'mode-badge ' + (m==='Common' ? 'm-Common' : 'm-Sci');
         }
-        if (m === 'eBird') elInput.placeholder = "Search eBird Code";
-        else if (m === 'Common') elInput.placeholder = "Search Common Name";
+        if (m === 'Common') elInput.placeholder = "Search Common Name";
         else elInput.placeholder = "Search Scientific Name";
       }
       applyModeUI();
@@ -1241,14 +1203,6 @@
           elInput.focus();
           if (elInput.value.trim()) runSearch(elInput.value);
         };
-      }
-
-      /* Code Map for eBird */
-      const codeMap = new Map();
-      for (const r of recs){
-        if (!r || !('key' in r)) continue;
-        const k = norm(stripBOM(r.key));
-        if (k) { if (!codeMap.has(k)) codeMap.set(k, []); codeMap.get(k).push(r); }
       }
 
       elHidden.value = '';
@@ -1291,7 +1245,6 @@
           const secondaryParts = [];
           if (primaryField !== 'common' && r.common) secondaryParts.push(r.common);
           if (primaryField !== 'scientific' && r.scientific) secondaryParts.push(r.scientific);
-          if (primaryField !== 'key' && r.key) secondaryParts.push(r.key);
           const secondaryText = secondaryParts.join(' — ');
 
           const hPrimary = highlightText(primaryText, qTokens);
@@ -1299,7 +1252,7 @@
 
           el.innerHTML = `
             <div>
-              <div class="title">${hPrimary} ${r.key?'<span class="muted">('+escapeHtml(r.key)+')</span>':''}</div>
+              <div class="title">${hPrimary}</div>
               <div class="muted">${hSecondary} ${r.meta? ' • ' + escapeHtml(r.meta):''}</div>
             </div>
           `;
@@ -1314,25 +1267,9 @@
         const qTokens = q ? tokensOf(q) : [];
         const queryId = ++lastQueryId;
         const mode = MODES[modeIndex];
-        let allowedField = 'scientific', allowFuzzy = true, primaryField = 'scientific';
-        if (mode === 'eBird') { allowedField = 'key'; allowFuzzy = false; primaryField = 'key'; }
-        else if (mode === 'Common') { allowedField = 'common'; allowFuzzy = true; primaryField = 'common'; }
-
-        if (mode === 'eBird') {
-          if (!q) { render([], qTokens, primaryField); return; }
-          if (codeMap.has(q)) {
-            const recs = codeMap.get(q);
-            render(recs.map(r => ({ rec: r, matchedField: 'key', matchType: 'Exact Code', score: 9999 })), qTokens, primaryField);
-            return;
-          }
-          const prefixMatches = [];
-          for (const [k, recs] of codeMap.entries()){
-            if (k.startsWith(q)) { for (const r of recs) prefixMatches.push({ rec: r, matchedField: 'key', matchType: 'prefix', score: 80 }); }
-          }
-          render(prefixMatches.slice(0,50), qTokens, primaryField);
-          return;
-        }
-
+        let allowedField = (mode === 'Common') ? 'common' : 'scientific';
+        let allowFuzzy = true;
+        let primaryField = allowedField;
         const shortTokenMask = qTokens.map(t => (t.length <= 2));
         const anyShort = shortTokenMask.some(Boolean);
         const singleShort = (qTokens.length === 1 && qTokens[0].length <= 2);
@@ -1363,7 +1300,7 @@
           if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
           const la = (norm(a.rec[allowedField]||'')).length, lb = (norm(b.rec[allowedField]||'')).length;
           if (la !== lb) return la - lb;
-          return (a.rec.key||'').localeCompare(b.rec.key||'') || 0;
+          return (a.rec.scientific||'').localeCompare(b.rec.scientific||'') || 0;
         });
 
         const out = candidates.slice(0,50).map(c=>{
@@ -1386,7 +1323,7 @@
       }
 
       function applySelection(chosen) {
-        elHidden.value = chosen.key || '';
+        elHidden.value = chosen.scientific || '';
         elResult.textContent = chosen.scientific || chosen.common || '';
         elResult.title = chosen.scientific || chosen.common || '';
         elResult.dataset.common = chosen.common || '';
@@ -1395,7 +1332,7 @@
         elResultWrap.classList.remove('empty');
         elHidden.dispatchEvent(new Event('input', { bubbles: true }));
         const wrapper = elResultWrap.closest('.species-search') || document.querySelector('.species-search');
-        if (wrapper) wrapper.dispatchEvent(new CustomEvent('species-select', { detail: { key: chosen.key, common: chosen.common, scientific: chosen.scientific }, bubbles: true }));
+        if (wrapper) wrapper.dispatchEvent(new CustomEvent('species-select', { detail: { common: chosen.common, scientific: chosen.scientific }, bubbles: true }));
         elInput.value = '';
         close();
       }
@@ -1606,6 +1543,7 @@
   <script src="annotation-highlight.js"></script>
   <script src="xc.js"></script>
   <script src="generate_clips.js"></script>
+  <script src="xc_create_set.js"></script>
   <script src="spectrogram_settings.js"></script>
   
   <script>

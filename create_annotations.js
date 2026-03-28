@@ -76,14 +76,12 @@
         if (!arr) { try { arr = JSON.parse(p.raw || '[]'); } catch(e){ arr = []; } }
         if (!Array.isArray(arr) || arr.length === 0) { console.info('[backup] nothing to restore'); return; }
 
-        // Normalize and load via our import API to match Upload semantics
-        if (globalThis._annotations && typeof globalThis._annotations.import === 'function') {
-          try { globalThis._annotations.import(arr); } catch(e) { console.warn('[backup] _annotations.import failed, direct replace fallback', e); try { window.annotationGrid.replaceData(arr); } catch(ex){} }
+        // Normalize and load via our replaceAll API to match Upload semantics
+        if (globalThis._annotations && typeof globalThis._annotations.replaceAll === 'function') {
+          try { globalThis._annotations.replaceAll(arr, 'restore-backup-apply'); } catch(e) { console.warn('[backup] _annotations.replaceAll failed, direct replace fallback', e); try { window.annotationGrid.replaceData(arr); } catch(ex){} }
         } else {
           try { window.annotationGrid.replaceData(arr); } catch(e) { console.error('[backup] replaceData failed', e); return; }
         }
-        try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'restore-backup-apply', count: arr.length } })); } catch(e){}
-        try { renderAllAnnotations(); } catch(e){}
         try { console.info('[backup] applied to grid:', arr.length, 'rows'); } catch(e){}
         // Important: clear pending and stop pump so we don't keep replacing data and block edits
         try { window.__pendingAnnotationRestore = null; } catch(e){}
@@ -503,8 +501,8 @@
         
         // 1. Try lookup by Key
         if (key) {
-          const rec = recs.find(r => String((r.key||'')).trim() === key);
-          if (rec) { speciesVal = rec.common||''; scientificVal = rec.scientific||''; }
+          const rec = recs.find(r => String((r.scientific||'')).trim().toLowerCase() === key.toLowerCase());
+          if (rec) { speciesVal = rec.common || ''; scientificVal = rec.scientific || ''; }
         }
         
         // 2. Try Label Dataset (if key lookup failed or key empty)
@@ -536,40 +534,21 @@
     // Mark row for later metadata completion if species absent.
     const needsMetadata = !speciesVal;
 
-    // Add annotation to Tabulator grid from index.html
-    try {
-      if (window.annotationGrid && typeof window.annotationGrid.addData === 'function') {
-        // Generate a unique id for each annotation
-        const gridData = window.annotationGrid.getData();
-        const nextId = gridData.length > 0 ? Math.max(...gridData.map(a => Number(a.id) || 0)) + 1 : 1;
-          const round4 = v => Number(v).toFixed(4);
+    const rowObj = {
+      beginTime: begin,
+      endTime: end,
+      lowFreq: low,
+      highFreq: high,
+      species: speciesVal,
+      scientificName: scientificVal,
+      needsMetadata: needsMetadata,
+      notes: ''
+    };
 
-          const rowObj = {
-                  id: nextId,
-                  Selection: String(nextId),
-                  beginTime: Number(round4(begin)),
-                  endTime: Number(round4(end)),
-                  lowFreq: Number(round4(low)),
-                  highFreq: Number(round4(high)),
-                  species: speciesVal,
-                  scientificName: scientificVal,
-                  needsMetadata: needsMetadata,
-                  notes: ''
-                };
-        window.annotationGrid.addData([rowObj]);
-        // remember last created id for right-click cancel behavior
-        try { lastCreatedId = nextId; } catch (e) {}
-        try {
-          if (window.DEBUG_ANNOTATION_TIME) {
-            console.log('[annot][commit]', rowObj, {
-              duration: globalThis._spectroDuration,
-              pxPerSec: (globalThis._spectroMap && globalThis._spectroMap.pxPerSec && globalThis._spectroMap.pxPerSec()) || globalThis._spectroPxPerSec,
-              imageWidth: globalThis._spectroImageWidth,
-              viewportWidth: scrollArea && scrollArea.clientWidth,
-              scrollLeft: scrollArea && scrollArea.scrollLeft
-            });
-          }
-        } catch(e){}
+    try {
+      const addedRow = globalThis._annotations.add(rowObj, 'create');
+      if (addedRow) {
+        try { lastCreatedId = addedRow.id; } catch (e) {}
       }
     } catch (e) {
       try { window.alert('Failed to add annotation to grid. Annotation not saved.'); } catch (ex) {}
@@ -783,46 +762,98 @@
 
   // Expose authoritative API proxied to GridLib
   globalThis._annotations = globalThis._annotations || {};
+
+  globalThis._annotations.getNextId = function() {
+    let nextId = 1;
+    try {
+      if (window.annotationGrid && typeof window.annotationGrid.getData === 'function') {
+        const data = window.annotationGrid.getData() || [];
+        if (data.length > 0) nextId = Math.max(...data.map(a => Number(a.id) || 0)) + 1;
+      }
+    } catch(e) {}
+    return nextId;
+  };
+
+  globalThis._annotations.createRow = function(data) {
+    const round4 = v => Number(v).toFixed(4);
+    const id = data.id !== undefined ? data.id : globalThis._annotations.getNextId();
+    
+    let groupId = data.group_id;
+    if ((groupId === null || groupId === undefined || groupId === '') && (data.scientificName || data.species)) {
+      try {
+        const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        let rec = recs.find(r => r.scientific && r.scientific.toLowerCase() === String(data.scientificName).trim().toLowerCase());
+        if (!rec) rec = recs.find(r => r.common && r.common.toLowerCase() === String(data.species).trim().toLowerCase());
+        if (rec && rec.group_id !== undefined) groupId = String(rec.group_id);
+      } catch (e) {}
+    }
+    if (groupId === null || groupId === undefined) groupId = '';
+
+    return {
+      ...data,
+      id: id,
+      Selection: data.Selection !== undefined ? String(data.Selection) : String(id),
+      beginTime: Number(round4(data.beginTime || 0)),
+      endTime: Number(round4(data.endTime !== undefined ? data.endTime : (data.beginTime || 0))),
+      lowFreq: Number(round4(data.lowFreq || 0)),
+      highFreq: Number(round4(data.highFreq || 0)),
+      species: data.species || '',
+      scientificName: data.scientificName || '',
+      group_id: groupId,
+      sex: data.sex || '',
+      lifeStage: data.lifeStage || '',
+      soundType: data.soundType || '', 
+      notes: data.notes || ''
+    };
+  };
+
+  globalThis._annotations.add = function(rowObj, reason = 'create') {
+    const added = globalThis._annotations.addMany([rowObj], reason);
+    return added ? added[0] : null;
+  };
+
+  globalThis._annotations.addMany = function(rowArrays, reason = 'create') {
+    if (!rowArrays || !rowArrays.length) return [];
+    let nextId = globalThis._annotations.getNextId();
+    const rows = rowArrays.map(r => {
+        if (r.id === undefined) { r.id = nextId++; }
+        return globalThis._annotations.createRow(r);
+    });
+    try {
+      if (window.annotationGrid && typeof window.annotationGrid.addData === 'function') {
+        window.annotationGrid.addData(rows);
+        // Keep global track of the last created ID so Right-Click delete stays accurate!
+        if (rows.length > 0) lastCreatedId = rows[rows.length - 1].id;
+        
+        try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: reason, count: rows.length } })); } catch (e) {}
+        try { if (typeof window.renderAllAnnotations === 'function') window.renderAllAnnotations(); } catch (e) {}
+        try { if (typeof onChangeCb === 'function') onChangeCb(authoritativeGetAll()); } catch (e) {}
+      }
+    } catch (e) { console.error('Failed to add annotations', e); }
+    return rows;
+  };
+
+  globalThis._annotations.replaceAll = function(rowArrays, reason = 'replace') {
+    if (!rowArrays) return [];
+    let nextId = 1;
+    const rows = rowArrays.map(r => {
+        if (r.id === undefined) { r.id = nextId++; }
+        return globalThis._annotations.createRow(r);
+    });
+    try {
+      if (window.annotationGrid && typeof window.annotationGrid.replaceData === 'function') {
+        window.annotationGrid.replaceData(rows);
+        try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: reason, count: rows.length } })); } catch (e) {}
+        try { if (typeof window.renderAllAnnotations === 'function') window.renderAllAnnotations(); } catch (e) {}
+        try { if (typeof onChangeCb === 'function') onChangeCb(authoritativeGetAll()); } catch (e) {}
+      }
+    } catch (e) { console.error('Failed to replace annotations', e); }
+    return rows;
+  };
+
   globalThis._annotations.getAll = () => authoritativeGetAll();
   globalThis._annotations.import = (arr) => {
-    try {
-      if (window.GridLib && typeof window.GridLib.loadData === 'function') {
-        const headers = window.GridLib.tableInstance && typeof window.GridLib.tableInstance.getColumns === 'function' ? window.GridLib.tableInstance.getColumns().map(c => c.getField()) : ['Selection','Begin Time (s)','End Time (s)','Low Freq (Hz)','High Freq (Hz)','Common name','Notes'];
-        window.GridLib.loadData(headers, arr || []);
-        try { if (typeof onChangeCb === 'function') onChangeCb(authoritativeGetAll()); } catch (e) {}
-        return;
-      }
-      // Preferred: load directly into Tabulator grid if present
-      if (window.annotationGrid && typeof window.annotationGrid.replaceData === 'function') {
-        const input = Array.isArray(arr) ? arr : [];
-        const norm = input.map((r, i) => {
-          const begin = Number(r && r.beginTime != null ? r.beginTime : r.begin);
-          const end = Number(r && r.endTime != null ? r.endTime : r.end);
-          const low = Number(r && r.lowFreq != null ? r.lowFreq : r.low);
-          const high = Number(r && r.highFreq != null ? r.highFreq : r.high);
-          const id = i + 1;
-          return {
-            ...(r || {}),
-            id,
-            Selection: String(id),
-            beginTime: isFinite(begin) ? +begin : 0,
-            endTime: isFinite(end) ? +end : (isFinite(begin) ? +begin : 0),
-            lowFreq: isFinite(low) ? +low : 0,
-            highFreq: isFinite(high) ? +high : 0,
-            species: r && r.species != null ? r.species : (r && r['Common name'] != null ? r['Common name'] : ''),
-            scientificName: r && r.scientificName != null ? r.scientificName : (r && r['Scientific name'] != null ? r['Scientific name'] : ''),
-            notes: r && r.notes != null ? r.notes : (r && r.Notes != null ? r.Notes : '')
-          };
-        });
-        try { window.annotationGrid.replaceData(norm); } catch (e) { console.error('replaceData failed', e); }
-        try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'import' } })); } catch (e) {}
-        try { renderAllAnnotations(); } catch (e) {}
-        try { if (typeof onChangeCb === 'function') onChangeCb(authoritativeGetAll()); } catch (e) {}
-        return;
-      }
-    } catch (e) {}
-    try { if (typeof onChangeCb === 'function') onChangeCb(authoritativeGetAll()); } catch (e) {}
-    try { renderAllAnnotations(); } catch (e) {}
+    globalThis._annotations.replaceAll(arr, 'import');
   };
   globalThis._annotations.onChange = (cb) => { onChangeCb = cb; };
   globalThis._annotations.delete = (id) => {

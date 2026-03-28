@@ -31,7 +31,8 @@
     try { document.dispatchEvent(new CustomEvent('species-updated', { detail: { count: (arr||[]).length } })); } catch (e) {}
   }
 
-  function normalizeKey(k) { return String(k||'').trim().toUpperCase(); }
+  // Use scientific name as the unique key
+  function normalizeKey(s) { return String(s||'').trim().toLowerCase(); }
 
   function buildModal() {
     const overlay = document.createElement('div');
@@ -40,7 +41,7 @@
     overlay.setAttribute('aria-modal','true');
     overlay.style.position = 'fixed';
     overlay.style.inset = '0';
-    overlay.style.display = 'flex';
+        overlay.style.display = 'flex';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
     overlay.style.zIndex = '2147483650';
@@ -96,7 +97,7 @@
     const searchWrap = document.createElement('div');
     searchWrap.style.marginBottom = '8px';
     const searchLabel = document.createElement('label');
-    searchLabel.textContent = 'Search (key or common)';
+    searchLabel.textContent = 'Search (common or scientific)';
     searchLabel.style.fontSize = '12px';
     searchLabel.style.display = 'block';
     searchLabel.style.marginBottom = '4px';
@@ -126,22 +127,17 @@
       w.appendChild(lab); w.appendChild(inp); return w;
     }
 
-  const keyWrap = labeledInput('__sp_key', 'Key', 'e.g. ABCD');
   const commonWrap = labeledInput('__sp_common', 'Common name', 'Common name');
   const sciWrap = labeledInput('__sp_scientific', 'Scientific name', 'Scientific name');
     // Arrange: key + common on first row, scientific spans full width below
-    const topRow = document.createElement('div'); topRow.style.display='grid'; topRow.style.gridTemplateColumns='1fr 1fr'; topRow.style.gap='8px'; topRow.appendChild(keyWrap); topRow.appendChild(commonWrap);
+    const topRow = document.createElement('div'); topRow.style.display='grid'; topRow.style.gridTemplateColumns='1fr 1fr'; topRow.style.gap='8px'; topRow.appendChild(commonWrap);
     grid.appendChild(topRow);
     const sciRow = document.createElement('div'); sciRow.appendChild(sciWrap); grid.appendChild(sciRow);
 
   left.appendChild(grid);
 
-  // grab direct references to inputs (use these instead of document.getElementById)
-  const keyInput = keyWrap.querySelector('input');
   const commonInput = commonWrap.querySelector('input');
   const sciInput = sciWrap.querySelector('input');
-  // style sizes: key smaller, common & scientific larger
-  keyInput.style.maxWidth = '120px';
   commonInput.style.width = '100%'; commonInput.style.padding = '10px';
   sciInput.style.width = '100%'; sciInput.style.padding = '10px';
 
@@ -186,27 +182,26 @@
     // wiring helpers
   function setStatus(msg, isErr) { status.textContent = msg || ''; status.style.color = isErr ? '#fbb' : '#bfe'; }
 
-    function findRecordByKey(records, key) { const nk = normalizeKey(key); return (records||[]).find(r => normalizeKey(r.key) === nk); }
+    // Find record by scientific name (our new key)
+    function findRecordBySci(records, sciName) { const nk = normalizeKey(sciName); return (records||[]).find(r => normalizeKey(r.scientific) === nk); }
 
     // when search input changes, populate fields with first matched record
     function onSearchChange() {
-      const qv = (searchInput.value || '').trim();
-      if (!qv) { keyInput.value=''; commonInput.value=''; sciInput.value=''; updateBtn.disabled = true; lastLoaded = { key:'', common:'', scientific:'' }; return; }
+      const qv = (searchInput.value || '').trim().toLowerCase();
+      if (!qv) { commonInput.value=''; sciInput.value=''; updateBtn.disabled = true; lastLoaded = { common:'', scientific:'' }; return; }
       const records = loadRecords();
-      const found = records.find(r => (r.key && r.key.toLowerCase() === qv.toLowerCase()) || (r.common && r.common.toLowerCase().includes(qv.toLowerCase())));
+      const found = records.find(r => (r.scientific && r.scientific.toLowerCase().includes(qv)) || (r.common && r.common.toLowerCase().includes(qv)));
       if (found) {
-        keyInput.value = found.key || '';
         commonInput.value = found.common || '';
         sciInput.value = found.scientific || '';
-        setStatus('Loaded matching species: ' + (found.common || found.key));
-        lastLoaded = { key: found.key||'', common: found.common||'', scientific: found.scientific||'' };
+        setStatus('Loaded matching species: ' + (found.common || found.scientific));
+        lastLoaded = { common: found.common||'', scientific: found.scientific||'' };
         updateBtn.disabled = true; // no changes yet
       } else {
         // clear fields but allow create
-        keyInput.value = qv;
         commonInput.value = '';
-        sciInput.value = '';
-        lastLoaded = { key: '', common: '', scientific: '' };
+        sciInput.value = qv; // Assume search was for scientific name if not found
+        lastLoaded = { common: '', scientific: '' };
         setStatus('No matching species. You may create a new one.');
         updateBtn.disabled = true;
       }
@@ -215,21 +210,20 @@
     searchInput.addEventListener('input', debounce(onSearchChange, 160));
 
     // enable update button when any field changes relative to loaded record
-    let lastLoaded = { key: '', common: '', scientific: '' };
+    let lastLoaded = { common: '', scientific: '' };
     function recordFieldsChanged() {
-      const k = (keyInput && keyInput.value) ? keyInput.value : '';
       const c = (commonInput && commonInput.value) ? commonInput.value : '';
       const s = (sciInput && sciInput.value) ? sciInput.value : '';
-      return k !== (lastLoaded.key||'') || c !== (lastLoaded.common||'') || s !== (lastLoaded.scientific||'');
+      return c !== (lastLoaded.common||'') || s !== (lastLoaded.scientific||'');
     }
 
-    function refreshLastLoadedFromKey(key) {
+    function refreshLastLoadedFromSci(sciName) {
       const records = loadRecords();
-      const rec = findRecordByKey(records, key) || { key: '', common: '', scientific: '' };
-      lastLoaded = { key: rec.key || '', common: rec.common || '', scientific: rec.scientific || '' };
+      const rec = findRecordBySci(records, sciName) || { common: '', scientific: '' };
+      lastLoaded = { common: rec.common || '', scientific: rec.scientific || '' };
     }
 
-    [keyInput, commonInput, sciInput].forEach(el => {
+    [commonInput, sciInput].forEach(el => {
       if (!el) return;
       el.addEventListener('input', () => {
         // update button state
@@ -241,20 +235,19 @@
     // Helper: apply update
     updateBtn.addEventListener('click', () => {
       try {
-    const k = (keyInput.value || '').trim();
-        if (!k) { setStatus('Key is required for update.', true); return; }
+        const s = (sciInput.value || '').trim();
+        if (!s) { setStatus('Scientific name is required for update.', true); return; }
         const records = loadRecords();
-        const existing = findRecordByKey(records, k);
+        const existing = findRecordBySci(records, lastLoaded.scientific);
         if (!existing) { setStatus('Species not found for update. Use Create new to add.', true); return; }
-        // check new key collision (if key field was changed to another key)
-        const newKey = normalizeKey(k);
-        const other = (records||[]).find(r => normalizeKey(r.key) === newKey && r !== existing);
+        // check new scientific name collision
+        const newSci = normalizeKey(s);
+        const other = (records||[]).find(r => normalizeKey(r.scientific) === newSci && r !== existing);
         if (other) { setStatus('Species already exists.', true); return; }
-  existing.key = k;
-  existing.common = (commonInput.value || '').trim();
-  existing.scientific = (sciInput.value || '').trim();
+        existing.common = (commonInput.value || '').trim();
+        existing.scientific = s;
         saveRecords(records);
-        refreshLastLoadedFromKey(k);
+        refreshLastLoadedFromSci(s);
         updateBtn.disabled = true;
         setStatus('Species updates successfully.');
       } catch (e) { console.error(e); setStatus('Update failed: ' + String(e), true); }
@@ -263,14 +256,14 @@
     // Create new
     createBtn.addEventListener('click', () => {
       try {
-        const k = (keyInput.value || '').trim();
-        if (!k) { setStatus('Key is required to create new species.', true); return; }
+        const s = (sciInput.value || '').trim();
+        if (!s) { setStatus('Scientific name is required to create new species.', true); return; }
         const records = loadRecords();
-        if (findRecordByKey(records, k)) { setStatus('Species already exists.', true); return; }
-          const newRec = { key: k, common: (commonInput.value || '').trim(), scientific: (sciInput.value || '').trim() };
+        if (findRecordBySci(records, s)) { setStatus('Species with this scientific name already exists.', true); return; }
+        const newRec = { common: (commonInput.value || '').trim(), scientific: s, group_id: '0' };
         records.push(newRec);
         saveRecords(records);
-        refreshLastLoadedFromKey(k);
+        refreshLastLoadedFromSci(s);
         updateBtn.disabled = true;
         setStatus('Species created successfully.');
       } catch (e) { console.error(e); setStatus('Create failed: ' + String(e), true); }
@@ -279,17 +272,17 @@
     // Delete
     deleteBtn.addEventListener('click', () => {
       try {
-    const k = (keyInput.value || '').trim();
-        if (!k) { setStatus('Key is required to delete species.', true); return; }
+        const s = (sciInput.value || '').trim();
+        if (!s) { setStatus('Scientific name is required to delete species.', true); return; }
         let records = loadRecords();
-        const nk = normalizeKey(k);
-        const idx = records.findIndex(r => normalizeKey(r.key) === nk);
+        const ns = normalizeKey(s);
+        const idx = records.findIndex(r => normalizeKey(r.scientific) === ns);
         if (idx === -1) { setStatus('Species not available.', true); return; }
         records.splice(idx,1);
         saveRecords(records);
         // clear fields
-  keyInput.value=''; commonInput.value=''; sciInput.value='';
-        refreshLastLoadedFromKey('');
+        commonInput.value=''; sciInput.value='';
+        refreshLastLoadedFromSci('');
         updateBtn.disabled = true;
         setStatus('Species deleted successfully.');
       } catch (e) { console.error(e); setStatus('Delete failed: ' + String(e), true); }
@@ -303,27 +296,26 @@
         const text = await readFileAsText(f);
         const parsed = parseTableText(text);
         if (!parsed || !parsed.rows || parsed.rows.length === 0) { setStatus('Uploaded file empty or malformed.', true); return; }
-        // Expect first three columns to be key, common, scientific or headers
-  const rows = parsed.rows.map(r => r.slice(0,3));
-        const mapped = rows.map(r => ({ key: (r[0]||'').trim(), common: (r[1]||'').trim(), scientific: (r[2]||'').trim() })).filter(rr => (rr.key || rr.common || rr.scientific));
+        // Expect columns to be common, scientific, group_id or headers
+        const rows = parsed.rows.map(r => r.slice(0,3));
+        const mapped = rows.map(r => ({ common: (r[0]||'').trim(), scientific: (r[1]||'').trim(), group_id: (r[2]||'').trim() })).filter(rr => (rr.common || rr.scientific));
         if (mapped.length === 0) { setStatus('No usable rows found in upload.', true); return; }
         const mode = (document.querySelector('input[name="__sp_bulk_mode"]:checked') || { value: 'merge' }).value;
         let records = loadRecords();
         if (mode === 'replace') {
           // replace all with mapped, but normalize keys
-          records = mapped.map(m => ({ key: m.key || m.common || generateKeyFromName(m.common || m.scientific || 'SP'), common: m.common || '', scientific: m.scientific || '' }));
+          records = mapped.map(m => ({ common: m.common || '', scientific: m.scientific || '', group_id: m.group_id || '0' }));
         } else {
-          // merge: update by key (if present), else add
-          const byKey = {};
-          records.forEach(r => { byKey[normalizeKey(r.key)] = r; });
+          // merge: update by scientific name (if present), else add
+          const bySci = {};
+          records.forEach(r => { bySci[normalizeKey(r.scientific)] = r; });
           mapped.forEach(m => {
-            const nk = normalizeKey(m.key || '');
-            if (nk && byKey[nk]) {
-              byKey[nk].common = m.common || byKey[nk].common;
-              byKey[nk].scientific = m.scientific || byKey[nk].scientific;
+            const ns = normalizeKey(m.scientific || '');
+            if (ns && bySci[ns]) {
+              bySci[ns].common = m.common || bySci[ns].common;
+              if (m.group_id) bySci[ns].group_id = m.group_id;
             } else {
-              const newk = m.key || m.common || generateKeyFromName(m.common || m.scientific || 'SP');
-              records.push({ key: newk, common: m.common || '', scientific: m.scientific || '' });
+              records.push({ common: m.common || '', scientific: m.scientific || '', group_id: m.group_id || '0' });
             }
           });
         }
@@ -336,8 +328,8 @@
   downloadBtn.addEventListener('click', () => {
       try {
         const records = loadRecords();
-        const lines = ['key,common,scientific'];
-        records.forEach(r => lines.push([escapeCsv(r.key || ''), escapeCsv(r.common || ''), escapeCsv(r.scientific || '')].join(',')));
+        const lines = ['common,scientific,group_id'];
+        records.forEach(r => lines.push([escapeCsv(r.common || ''), escapeCsv(r.scientific || ''), escapeCsv(r.group_id || '')].join(',')));
         const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url; a.download = 'species_list.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 3000);
@@ -358,11 +350,6 @@
     });
 
     // Helpers
-    function generateKeyFromName(name) {
-      const n = (name || '').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,4) || 'SP';
-      return n + Math.floor(Math.random()*9000 + 1000);
-    }
-
     function escapeCsv(s) { return '"' + String(s||'').replace(/"/g,'""') + '"'; }
 
     function readFileAsText(file) {

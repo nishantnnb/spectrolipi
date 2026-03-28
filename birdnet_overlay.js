@@ -396,30 +396,25 @@
             finalDetections = mergeBirdNETDetections(detections);
         }
 
-        const currentData = window.annotationGrid.getData();
-        let maxId = 0;
-        if (currentData && currentData.length > 0) {
-            for (let i = 0; i < currentData.length; i++) {
-                const val = Number(currentData[i].id);
-                if (!isNaN(val) && val > maxId) maxId = val;
-            }
-        }
-
-        const rows = finalDetections.map((d, i) => {
+        const rowsToCreate = finalDetections.map((d) => {
             const note = d.isMerged ? "Birdnet detection: Scores - NA (Merged)" : `Birdnet detection. Score - ${Number(d.confidence).toFixed(2)}`;
             return {
-                id: maxId + i + 1,
-                Selection: String(maxId + i + 1),
-                beginTime: Number(d.start.toFixed(4)),
-                endTime: Number(d.end.toFixed(4)),
-                lowFreq: 0, highFreq: 15000, species: d.common, scientificName: d.scientific, notes: note
+                beginTime: d.start,
+                endTime: d.end,
+                lowFreq: 0,
+                highFreq: 15000,
+                species: d.common,
+                scientificName: d.scientific,
+                sex: '',
+                lifeStage: '',
+                soundType: '', 
+                notes: note
             };
         });
-        window.annotationGrid.addData(rows);
-        window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'birdnet-insert' } }));
+        const addedRows = globalThis._annotations.addMany(rowsToCreate, 'birdnet-insert');
 
         // Provide feedback and close the overlay
-        alert(`Successfully inserted ${rows.length} annotations into the annotation table.`);
+        alert(`Successfully inserted ${addedRows.length} annotations into the annotation table.`);
         const modal = document.getElementById(MODAL_ID);
         if (modal) modal.style.display = 'none';
     }

@@ -218,7 +218,7 @@
   // Row 2: Rating   | Type      | Target species
   // Row 3: Recorder | Microphone| Accessories
   // Row 4: Contributors (left) | (spacer) | (spacer)
-  // Row 5: Comments (full width)
+    // Row 5: Comments (full width)
   grid.appendChild(latWrap);
   grid.appendChild(lonWrap);
   grid.appendChild(dtWrap);
@@ -562,14 +562,14 @@
     function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || '&amp;'); }
     function score(rec, q) {
       const nq = norm(q);
-      const k = norm(rec.key || '');
       const c = norm(rec.common || '');
+      const s_sci = norm(rec.scientific || '');
       let s = 0;
-      if (k.startsWith(nq)) s += 120;
-      else if (k.includes(nq)) s += 80;
       if (c.startsWith(nq)) s += 60;
       else if (c.includes(nq)) s += 30;
-      s += Math.max(0, 10 - Math.min(9, (k.length || 0) / 10));
+      if (s_sci.startsWith(nq)) s += 60;
+      else if (s_sci.includes(nq)) s += 30;
+      s += Math.max(0, 10 - Math.min(9, ((rec.common || '').length || 0) / 10));
       return s;
     }
     function highlight(orig, q) {
@@ -607,7 +607,7 @@
         const div = document.createElement('div');
         div.className = 'item';
         div.dataset.idx = i;
-        div.innerHTML = '<div class="common">' + (r.common ? highlight(r.common, q) : escapeHtml(r.key)) + (r.scientific ? ' <small style="color:#666">(' + escapeHtml(r.scientific) + ')</small>' : '') + '</div>';
+        div.innerHTML = '<div class="common">' + (r.common ? highlight(r.common, q) : highlight(r.scientific, q)) + (r.scientific && r.common ? ' <small style="color:#666">(' + escapeHtml(r.scientific) + ')</small>' : '') + '</div>';
         div.addEventListener('mousedown', (ev) => { ev.preventDefault(); pick(i); });
         suggestEl.appendChild(div);
       });
@@ -616,11 +616,10 @@
 
     function applySelection(rec) {
       if (!rec) return;
-      inputEl.value = rec.common || rec.key || '';
-      try { inputEl.dataset.speciesKey = rec.key || ''; } catch (e) {}
+      inputEl.value = rec.common || rec.scientific || '';
       closeList();
       inputEl.focus();
-      try { inputEl.dispatchEvent(new CustomEvent('species-chosen', { detail: { key: rec.key, common: rec.common, scientific: rec.scientific }, bubbles: true })); } catch (e) {}
+      try { inputEl.dispatchEvent(new CustomEvent('species-chosen', { detail: { common: rec.common, scientific: rec.scientific }, bubbles: true })); } catch (e) {}
     }
 
     function pick(idx) {
@@ -764,26 +763,6 @@
 
     // wire species autocomplete (waits for species-data)
     try { wireSpeciesAutocompleteWithWait(nodes.species, nodes.speciesSuggest); } catch (e) {}
-
-    // If user types/pastes a species KEY directly into the metadata species input and blurs,
-    // try to resolve it to the common name from the active species list and dispatch the
-    // same 'species-chosen' event the autocomplete uses. This handles cases where users
-    // paste an identifier (Key) instead of selecting from suggestions.
-    try {
-      nodes.species.addEventListener('blur', function () {
-        try {
-          const v = (nodes.species.value || '').toString().trim();
-          if (!v) return;
-          const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
-          // try exact key match (case-insensitive)
-          const found = recs.find(r => (r && r.key || '').toString().trim().toLowerCase() === v.toLowerCase());
-          if (!found) return;
-          // replace visible input with common name if available
-          if (found.common && String(found.common).trim()) nodes.species.value = found.common;
-          try { nodes.species.dispatchEvent(new CustomEvent('species-chosen', { detail: { key: found.key, common: found.common, scientific: found.scientific }, bubbles: true })); } catch (e) {}
-        } catch (e) {}
-      });
-    } catch (e) {}
 
     // OK handler (reads rating dropdown and persists)
     nodes.ok.addEventListener('click', () => {
