@@ -522,17 +522,22 @@
       } catch (e) { }
     }
 
-    // If species is missing, block creation: alert with OK-only and cancel the pending
-    if (!speciesVal) {
+    // If scientific name is missing, block creation with a specific message.
+    if (!scientificVal) {
       try {
-        window.alert('Please Select a species first and try again.');
+        // If a common name was found/entered but not a corresponding scientific one.
+        if (speciesVal) {
+            window.alert('scientific name not found');
+        } else {
+            window.alert('Please Select a species first and try again.');
+        }
       } catch (e) {}
       // discard pending annotation
       cancelPending();
       return;
     }
     // Mark row for later metadata completion if species absent.
-    const needsMetadata = !speciesVal;
+    const needsMetadata = !scientificVal;
 
     const rowObj = {
       beginTime: begin,

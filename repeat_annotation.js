@@ -143,8 +143,8 @@
       const f2 = Math.min(yMax, freqCenter + lastAnn.bandwidth / 2);
       
       // Use the species info stored from the last annotation
-      if (!lastAnn.species) {
-        alert('The annotation you are repeating has no species. Please select a species for it or create a new annotation.');
+      if (!lastAnn.scientificName) {
+        alert('The annotation you are repeating does not have a scientific name. Please select a species for it or create a new annotation.');
         return;
       }
 

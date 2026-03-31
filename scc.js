@@ -1032,9 +1032,9 @@
           alert('Please select only 1 template row to run SCC.');
           return;
         }
-        const uniq = Array.from(new Set(selRows.map(r => (r.species||'').trim()).filter(Boolean)));
+        const uniq = Array.from(new Set(selRows.map(r => (r.scientificName||'').trim()).filter(Boolean)));
         if (uniq.length === 0) {
-          alert('Selected template contains no Species. Please set the Species for your template row before running SCC.');
+          alert('Selected template contains no Scientific Name. Please set the Species for your template row before running SCC.');
           return;
         }
       } catch (e) { /* continue to open modal on unexpected error */ }
