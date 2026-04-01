@@ -4,6 +4,7 @@
 (function() {
     const MODAL_ID = 'xcCreateSetModal';
     let selectedFolderHandle = null;
+    let selectedFilesList = [];
   
     function q(id) { return document.getElementById(id); }
   
@@ -28,9 +29,17 @@
           <button id="xc-cs-close" style="background:transparent;border:0;color:#9ca3af;font-size:24px;cursor:pointer;line-height:1;">&times;</button>
         </div>
         
+        <div style="margin-bottom:12px; display:flex; align-items:center; gap:16px;">
+          <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="xc-cs-source-type" value="folder" checked> Select Folder
+          </label>
+          <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="xc-cs-source-type" value="files"> Select Files
+          </label>
+        </div>
         <div style="margin-bottom:16px; display:flex; align-items:center; gap:12px;">
-          <button id="xc-cs-pick-folder" type="button" class="seg-btn" style="width:70px;height:auto;padding:4px 8px;font-size:12px;line-height:1.2;white-space:normal;">Select<br>Folder</button>
-          <span id="xc-cs-folder-name" style="font-size:13px;color:#aaa;">No folder selected</span>
+          <button id="xc-cs-pick-btn" type="button" class="seg-btn" style="width:70px;height:auto;padding:4px 8px;font-size:12px;line-height:1.2;white-space:normal;">Select<br>Folder</button>
+          <span id="xc-cs-selection-info" style="font-size:13px;color:#aaa;">No files selected</span>
         </div>
   
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:20px;">
@@ -50,7 +59,7 @@
   
         <div style="margin-bottom:20px;background:#1a1a1a;padding:12px;border-radius:6px;border:1px solid #333;display:flex;gap:24px;">
           <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;font-size:14px;">
-            <input type="checkbox" id="xc-cs-action-export"> Save JSON to selected folder
+            <input type="checkbox" id="xc-cs-action-export"> Save / Download JSON output
           </label>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
             <input type="checkbox" id="xc-cs-action-upload"> Upload directly to Xeno-canto
@@ -72,20 +81,53 @@
           const exp = overlay.querySelector('#xc-cs-action-export').checked;
           const upl = overlay.querySelector('#xc-cs-action-upload').checked;
           const nameVal = overlay.querySelector('#xc-cs-name').value.trim();
-          btn.disabled = !(selectedFolderHandle && (exp || upl) && nameVal !== '');
+          btn.disabled = !(selectedFilesList.length > 0 && (exp || upl) && nameVal !== '');
       }
       
       // Wiring events
+      const radios = overlay.querySelectorAll('input[name="xc-cs-source-type"]');
+      radios.forEach(r => {
+          r.onchange = () => {
+              const btn = overlay.querySelector('#xc-cs-pick-btn');
+              if (r.value === 'folder') {
+                  btn.innerHTML = 'Select<br>Folder';
+              } else {
+                  btn.innerHTML = 'Select<br>Files';
+              }
+              selectedFolderHandle = null;
+              selectedFilesList = [];
+              overlay.querySelector('#xc-cs-selection-info').textContent = 'No files selected';
+              updateProceedState();
+          };
+      });
+
       overlay.querySelector('#xc-cs-close').onclick = () => overlay.style.display = 'none';
       overlay.querySelector('#xc-cs-cancel').onclick = () => overlay.style.display = 'none';
-      overlay.querySelector('#xc-cs-pick-folder').onclick = async () => {
+      overlay.querySelector('#xc-cs-pick-btn').onclick = async () => {
+          const mode = overlay.querySelector('input[name="xc-cs-source-type"]:checked').value;
           try {
-              selectedFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-              q('xc-cs-folder-name').textContent = selectedFolderHandle.name;
+              if (mode === 'folder') {
+                  selectedFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                  selectedFilesList = [];
+                  for await (const entry of selectedFolderHandle.values()) {
+                      if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.json')) {
+                          selectedFilesList.push(entry);
+                      }
+                  }
+                  q('xc-cs-selection-info').textContent = `${selectedFilesList.length} .json file(s) found in folder: ${selectedFolderHandle.name}`;
+              } else {
+                  const handles = await window.showOpenFilePicker({
+                      multiple: true,
+                      types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }]
+                  });
+                  selectedFolderHandle = null;
+                  selectedFilesList = handles;
+                  q('xc-cs-selection-info').textContent = `${selectedFilesList.length} .json file(s) selected`;
+              }
               updateProceedState();
           } catch (e) {
               // AbortError is typical if user cancels the picker
-              if (e.name !== 'AbortError') alert('Folder picker failed: ' + e.message);
+              if (e.name !== 'AbortError') alert('Selection failed: ' + e.message);
           }
       };
       overlay.querySelector('#xc-cs-proceed').onclick = processFiles;
@@ -125,18 +167,10 @@
       status.textContent = 'Processing files...';
   
       try {
-          const files = [];
-          for await (const entry of selectedFolderHandle.values()) {
-              if (entry.kind === 'file') {
-                  const n = entry.name.toLowerCase();
-                  if (n.endsWith('.json')) {
-                      files.push(entry);
-                  }
-              }
-          }
+          const files = selectedFilesList;
           
           if (files.length === 0) {
-              alert('No .json files found in the selected folder.');
+              alert('No .json files selected.');
               btn.disabled = false;
               status.style.display = 'none';
               return;
@@ -232,8 +266,15 @@
           // Assemble final annotations array
           const finalAnnotations = [];
           for (const [xc_nr, data] of xcMap.entries()) {
-              for (const rec of data.records) {
-                  finalAnnotations.push({ ...rec, xc_nr: xc_nr });
+              for (let rec of data.records) {
+                  const {
+                    annotation_xc_id,
+                    signal_noise_ratio,
+                    annotation_speed_ratio,
+                    ...rest
+                  } = rec;
+
+                  finalAnnotations.push({ ...rest, xc_nr: xc_nr });
               }
           }
   
@@ -250,23 +291,15 @@
               logCsv += `${idx + 1},${safeName},${log.xc_nr},${log.status},${safeReason}\n`;
           });
           
-          try {
-              const logHandle = await selectedFolderHandle.getFileHandle(`Log_${baseFileName}.csv`, { create: true });
-              const writable = await logHandle.createWritable();
-              await writable.write(logCsv);
-              await writable.close();
-          } catch(e) {
-              console.warn('Could not write log directly, falling back to download', e);
-              const logBlob = new Blob([logCsv], { type: 'text/csv;charset=utf-8' });
-              const logUrl = URL.createObjectURL(logBlob);
-              const logA = document.createElement('a');
-              logA.href = logUrl;
-              logA.download = `Log_${baseFileName}.csv`;
-              document.body.appendChild(logA);
-              logA.click();
-              logA.remove();
-              setTimeout(() => URL.revokeObjectURL(logUrl), 2000);
-          }
+          const logBlob = new Blob([logCsv], { type: 'text/csv;charset=utf-8' });
+          const logUrl = URL.createObjectURL(logBlob);
+          const logA = document.createElement('a');
+          logA.href = logUrl;
+          logA.download = `Log_${baseFileName}.csv`;
+          document.body.appendChild(logA);
+          logA.click();
+          logA.remove();
+          setTimeout(() => URL.revokeObjectURL(logUrl), 2000);
 
           if (finalAnnotations.length === 0) {
               alert('No valid annotations with XC file numbers were found. Please check the downloaded Log file for details.');
@@ -302,37 +335,31 @@
   
           if (doExport) {
               status.textContent = 'Exporting JSON...';
-              try {
-                  const jsonHandle = await selectedFolderHandle.getFileHandle(`${baseFileName}.json`, { create: true });
-                  const writable = await jsonHandle.createWritable();
-                  await writable.write(JSON.stringify(finalJson, null, 2));
-                  await writable.close();
-              } catch(e) {
-                  console.warn('Could not write JSON directly, falling back to download', e);
-                  const blob = new Blob([JSON.stringify(finalJson, null, 2)], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${baseFileName}.json`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  setTimeout(() => URL.revokeObjectURL(url), 2000);
-              }
+              const blob = new Blob([JSON.stringify(finalJson, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${baseFileName}.json`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 2000);
           }
   
           if (doUpload) {
               status.textContent = 'Uploading to Xeno-canto API...';
               const raw = localStorage.getItem('xc.settings.v1');
               if (!raw) throw new Error('XC settings not found. Please configure Xeno-canto settings first.');
-              const settings = JSON.parse(raw);
-              const token = settings.apiToken || settings.token || '';
-              if (!token) throw new Error('XC API token missing in settings.');
+              const settings = JSON.parse(raw) || {};
+              const apiKey = settings.apiKey || '';
+              if (!apiKey) throw new Error('XC API key missing in settings.');
+              const endpoint = settings.endpoint || 'https://xeno-canto.org/api/3/upload/annotation-set';
   
-              const res = await fetch('https://xeno-canto.org/api/2/annotations', {
+              const res = await fetch(endpoint, {
                   method: 'POST',
                   headers: {
-                      'Authorization': `Bearer ${token}`,
+                      'key': apiKey,
+                      'Authorization': 'Basic ' + btoa('xc:xc'),
                       'Content-Type': 'application/json',
                       'Accept': 'application/json'
                   },

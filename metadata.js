@@ -761,6 +761,20 @@
     // apply initial values
     applyInitial(initial && Object.keys(initial).length ? initial : window.__lastMetadata || null);
 
+    // Auto-populate annotation set name when XC file no loses focus
+    if (nodes.xcfileno && nodes.setname) {
+      nodes.xcfileno.addEventListener('blur', () => {
+        const val = nodes.xcfileno.value.trim();
+        const currentSetName = nodes.setname.value.trim();
+        if (val && (!currentSetName || /^Annotation set for \d*$/i.test(currentSetName))) {
+          const match = val.match(/\d+/);
+          const num = match ? match[0] : val.replace(/^XC/i, '');
+          nodes.setname.value = 'Annotation set for ' + num;
+          nodes.setname.dispatchEvent(new Event('input')); // Trigger background backup
+        }
+      });
+    }
+
     // wire species autocomplete (waits for species-data)
     try { wireSpeciesAutocompleteWithWait(nodes.species, nodes.speciesSuggest); } catch (e) {}
 
@@ -887,7 +901,7 @@
         const match = fi.files[0].name.match(/^XC(\d+)/i);
         if (match) {
           if (source.xcfileno === undefined) source.xcfileno = match[1];
-          if (source.setname === undefined) source.setname = 'Annotation set for XC' + match[1];
+          if (source.setname === undefined) source.setname = 'Annotation set for ' + match[1];
         }
       }
     } catch(e) {}
@@ -978,7 +992,7 @@
         const match = fi.files[0].name.match(/^XC(\d+)/i);
         if (match) {
           if (source.xcfileno === undefined) source.xcfileno = match[1];
-          if (source.setname === undefined) source.setname = 'Annotation set for XC' + match[1];
+          if (source.setname === undefined) source.setname = 'Annotation set for ' + match[1];
         }
       }
     } catch(e) {}

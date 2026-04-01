@@ -27,14 +27,7 @@
   function getSettings() { return { ...__xcSettings }; }
 
   function getMetadata() {
-    if (window.__lastMetadata) return window.__lastMetadata;
-    if (typeof window.__openMetadataModal === 'function') {
-      try {
-        const modal = window.__openMetadataModal();
-        if (modal && typeof modal.getValues === 'function') return modal.getValues();
-      } catch(e){}
-    }
-    return {};
+    return window.__lastMetadata ? { ...window.__lastMetadata } : {};
   }
   function getAnnotations() {
     if (globalThis._annotations && typeof globalThis._annotations.getAll === 'function') {
@@ -67,7 +60,6 @@
     const completeness = meta['completeness'] || meta['set_completeness'] || '';
 
     const annotations = anns.map(row => ({
-      annotation_xc_id: '',
       annotation_source_id: safeField(row.Selection || row.selection || row['Selection']),
       sound_file: '',
       xc_nr: safeField(xcFileNo),
@@ -88,9 +80,7 @@
       collection_specimen: '',
       temperature: '',
       annotation_remarks: safeField(row.notes ?? row['Notes']),
-      signal_noise_ratio: '',
-      overlap: '',
-      annotation_speed_ratio: ''
+      overlap: ''
     }));
 
     const payload = {
@@ -111,7 +101,6 @@
           completeness: completeness
         }
       ],
-      set_creation_date: '',
       annotations
     };
     return { ok: true, data: payload, meta: { annotationsCount: annotations.length, xcFileNo } };
@@ -270,6 +259,9 @@
     const built = buildAnnotationSet();
     if (!built.ok) {
       alert(built.reason || 'Unable to build Xeno-canto JSON.');
+      if (/metadata/i.test(built.reason || '')) {
+        try { window.__openMetadataModal && window.__openMetadataModal(); } catch (e) {}
+      }
       return;
     }
     const endpoint = settings.endpoint || DEFAULT_SETTINGS.endpoint;
