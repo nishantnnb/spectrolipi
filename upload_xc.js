@@ -243,13 +243,12 @@
         const val = nodes.fileno.value.trim();
         const currentSetName = nodes.setname.value.trim();
         if (val) {
-          if (!currentSetName || /^Annotation set for \d*$/i.test(currentSetName)) {
-            const match = val.match(/\d+/);
-            const num = match ? match[0] : val.replace(/^XC/i, '');
+          if (!currentSetName || /^Annotation set for/i.test(currentSetName)) {
+            const num = val.replace(/^XC/i, '');
             nodes.setname.value = 'Annotation set for ' + num;
           }
         } else {
-          if (/^Annotation set for \d*$/i.test(currentSetName)) {
+          if (/^Annotation set for/i.test(currentSetName)) {
             nodes.setname.value = '';
           }
         }
