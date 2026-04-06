@@ -27,7 +27,6 @@
 
   // State (from Tabulator selection)
   const selectedIds = new Set(); // stringified ids
-  let gridWired = false;
 
   // Helpers to access authoritative annotations
   function getAnnotations() {
@@ -46,14 +45,15 @@
   function getGrid() { try { return window.annotationGrid || null; } catch (e) { return null; } }
   function getSelectedRowIdsFromGrid() {
     const grid = getGrid();
-    if (!grid || typeof grid.getSelectedData !== 'function' || grid.initialized === false) return [];
-    try { return (grid.getSelectedData() || []).map(r => r && r.id).filter(v => v !== undefined && v !== null); } catch (e) { return []; }
-  }
-  function onGridSelectionChanged() {
-    const ids = getSelectedRowIdsFromGrid();
-    selectedIds.clear();
-    ids.forEach(id => selectedIds.add(String(id)));
-    onSelectionChanged();
+    let ids = [];
+    if (grid && typeof grid.getSelectedData === 'function' && grid.initialized !== false) {
+      try { ids = (grid.getSelectedData() || []).map(r => r && r.id).filter(v => v !== undefined && v !== null); } catch (e) {}
+    }
+    // Fallback to active edit session if grid selection lags
+    if (ids.length === 0) {
+      try { if (globalThis._editAnnotations && globalThis._editAnnotations.getEditingId()) ids = [globalThis._editAnnotations.getEditingId()]; } catch(e){}
+    }
+    return ids;
   }
 
   // DOM refs (look up fresh when needed)
@@ -383,44 +383,6 @@
     } catch (e) { console.warn('wireOwnSpeciesControls failed', e); }
   }
 
-  // Called when selection changes
-  function onSelectionChanged() {
-    if (selectedIds.size === 0) {
-      // No bulk selection: restore species control to normal (do not override edit mode behavior)
-      const spInput = findSpeciesInputEl();
-      const spLabel = findSpeciesLabelEl();
-      const spClear = findSpeciesClearBtn();
-      if (spInput && typeof spInput.disabled !== 'undefined') {
-        // leave disabled state as set by edit_annotations; if not in edit mode it should be enabled already
-      }
-      // nothing else to do
-      return;
-    }
-    // Bulk mode active: don't clear or change the species input/label on selection.
-    // Instead enable the explicit "Update Species" button so user can apply the current species to selected rows.
-    try {
-      const btn = document.getElementById('bulkUpdateSpeciesBtn');
-      if (btn) btn.disabled = false;
-    } catch (e) {}
-  }
-
-  // Determine if species control is currently disabled by edit mode
-  function isSpeciesControlDisabled() {
-    const spInput = findSpeciesInputEl();
-    const spLabel = findSpeciesLabelEl();
-    if (spInput) {
-      if (spInput.disabled) return true;
-      if (spInput.getAttribute('aria-disabled') === 'true') return true;
-    }
-    if (spLabel) {
-      if (spLabel.getAttribute('aria-disabled') === 'true') return true;
-    }
-    if (globalThis._editAnnotations && typeof globalThis._editAnnotations.isEditMode === 'function') {
-      try { if (globalThis._editAnnotations.isEditMode()) return true; } catch (e) {}
-    }
-    return false;
-  }
-
   // Note: We rely on the species control to update the label before dispatching 'species-select'.
 
   // Handle accepted species for bulk application
@@ -488,9 +450,6 @@
 
   // species clear event handler when bulk active
   function onSpeciesCleared(ev) {
-    if (selectedIds.size === 0) return;
-    // Do not clear the species UI when rows are selected; keep UI stable.
-    // No-op here to avoid surprising the user.
   }
   window.addEventListener('species-select-cleared', onSpeciesCleared, { passive: true });
 
@@ -543,6 +502,8 @@
       btn.addEventListener('click', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
+        selectedIds.clear();
+        getSelectedRowIdsFromGrid().forEach(id => selectedIds.add(String(id)));
         // ensure there is a selection
         if (selectedIds.size === 0) {
           try { alert('No rows selected. Please select one or more rows to update.'); } catch (e) {}
@@ -566,6 +527,9 @@
   // Enter handling is owned by the species control; it dispatches 'species-select' after updating the label.
 
   // Wire Tabulator selection change listeners
+  let gridWired = false;
+  function onGridSelectionChanged() {} // No-op, selection is gathered on-demand via getSelectedRowIdsFromGrid
+
   function wireGridSelectionListeners() {
     const grid = getGrid();
     if (!grid || gridWired) return;
@@ -631,7 +595,6 @@
       }
     } catch (e) {}
     selectedIds.clear();
-    onSelectionChanged();
   };
   // Debug state hook
   globalThis._speciesBulkEdit.__debugState = async () => {

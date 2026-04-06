@@ -1682,6 +1682,79 @@
   } catch(e){}
 
 })();
+
+// Global Modal Focus Trap and Background Shield
+(function setupGlobalModalManager() {
+  const MODAL_IDS = [
+    'updateTagsModal', 'sccModal', 'xcOverlay', 'xcSettingsBackdrop', 'xcResultBackdrop',
+    '__species_manage_overlay', 'genClipsModal', 'filtersModal', 'silenceModal',
+    'normalizeModal', 'spectroSettingsModal', 'exportModal', 'waitOverlay', 'birdnetOverlayModal',
+    'metaOverlay', 'videoExportModal', 'xcCreateSetModal'
+  ];
+
+  window.getTopmostModal = function() {
+    let activeModal = null;
+    let highestZ = -1;
+
+    const checkEl = (el) => {
+      if (el && el.style.display !== 'none' && el.offsetWidth > 0) {
+        const z = parseInt(window.getComputedStyle(el).zIndex) || 1;
+        if (z > highestZ) { highestZ = z; activeModal = el; }
+      }
+    };
+
+    for (const id of MODAL_IDS) { checkEl(document.getElementById(id)); }
+    checkEl(document.querySelector('.__upload_modal_overlay'));
+    const dialogs = document.querySelectorAll('[role="dialog"], dialog');
+    for (let i = 0; i < dialogs.length; i++) { checkEl(dialogs[i]); }
+
+    return activeModal;
+  };
+
+  window.isAnyModalOpen = function() {
+    return window.getTopmostModal() !== null;
+  };
+
+  // 1. CAPTURE PHASE: Strict Focus Trap for Tab Navigation
+  window.addEventListener('keydown', function(e) {
+    if (e.key !== 'Tab') return;
+
+    const activeModal = window.getTopmostModal();
+    if (!activeModal) return;
+
+    const focusableElements = activeModal.querySelectorAll('a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    const focusable = Array.from(focusableElements).filter(el => el.offsetWidth > 0);
+
+    if (focusable.length === 0) {
+        e.preventDefault();
+        return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey) { // Shift + Tab
+        if (document.activeElement === first || !activeModal.contains(document.activeElement)) {
+            e.preventDefault();
+            last.focus();
+        }
+    } else { // Tab
+        if (document.activeElement === last || !activeModal.contains(document.activeElement)) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+  }, true); // `true` ensures this runs first on the way down
+
+  // 2. BUBBLE PHASE: Shield the window object from background shortcuts
+  document.addEventListener('keydown', function(e) {
+    if (window.isAnyModalOpen()) {
+        // Stop the event from bubbling up to `window` where background shortcuts 
+        // (playback, editing, undo) are attached. This natively isolates the active modal.
+        e.stopPropagation();
+    }
+  });
+})();
 // ---- Cut Feature: selection + splice of spectra and audio (integrates with existing globals) ----
 (function(){
   // Short note: Includes optional undo (single-level) via in-memory snapshot lasting a short time.

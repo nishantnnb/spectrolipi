@@ -369,6 +369,10 @@
       const g = window.annotationGrid;
       if (!g || typeof g.on !== 'function') return;
       if (g.__overlayRenderHooked) return; // idempotent
+
+      try { g.hideColumn("id"); } catch(e){}
+      g.on('tableBuilt', () => { try { g.hideColumn("id"); } catch(e){} });
+
       const rerender = () => {
         try { renderAllAnnotations(); } catch (e) {}
         try { renderSelectionOverlay(); } catch (e) {}

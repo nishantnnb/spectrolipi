@@ -243,15 +243,6 @@
           <span>Metadata</span>
         </button>
 
-        <button id="saveMetaBtn" type="button" class="left-menu-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M12 3v12" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8.5 10.5L12 14l3.5-3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M5 20h14" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
-          </svg>
-          <span>Save Metadata</span>
-        </button>
-
         <button id="uploadAnnoBtn" type="button" class="left-menu-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 21V9" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -294,6 +285,13 @@
           </svg>
           <span>Export Audio</span>
         </button>
+        <button id="exportVideoBtn" type="button" class="left-menu-btn" title="Export video (1 min max)">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M23 7l-7 5 7 5V7z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Export Video</span>
+        </button>
         <button id="generateClipsBtn" type="button" class="left-menu-btn" title="Generate clips from annotations">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6 9c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 0l5 5m-5 5l5-5m2-2l5-5m-5 5l5 5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
@@ -335,14 +333,11 @@
             </svg>
           </button>
           <div id="xcSubMenu" class="left-submenu" role="menu" aria-label="Xeno-canto actions">
-            <button id="exportXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Export annotations to Xeno-canto JSON">
-              <span>Export JSON</span>
+            <button id="uploadXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Upload annotations to Xeno-canto via API">
+              <span>Upload to Xeno-canto</span>
             </button>
             <button id="createXcSetBtn" type="button" class="left-submenu-btn" role="menuitem" title="Combine multiple annotation files into a single Xeno-canto set">
               <span>Create set</span>
-            </button>
-            <button id="uploadXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Upload annotations to Xeno-canto via API">
-              <span>Upload to Xeno-canto</span>
             </button>
             <button id="xcSettingsBtn" type="button" class="left-submenu-btn" role="menuitem" title="Configure Xeno-canto API settings">
               <span>Xeno-canto Settings</span>
@@ -359,9 +354,9 @@
             const group = document.getElementById('xcMenuGroup');
             const parent = document.getElementById('xcMenuParent');
             const submenu = document.getElementById('xcSubMenu');
-            const exportBtn = document.getElementById('exportXenoCantoBtn');
             const createSetBtn = document.getElementById('createXcSetBtn');
             const uploadBtn = document.getElementById('uploadXenoCantoBtn');
+            const exportVideoBtn = document.getElementById('exportVideoBtn');
             const settingsBtn = document.getElementById('xcSettingsBtn');
             
             const setGroup = document.getElementById('settingsMenuGroup');
@@ -418,17 +413,6 @@
                 if (!group.contains(document.activeElement)) setOpen(false);
               }, 50));
             }
-            if (exportBtn) {
-              exportBtn.addEventListener('click', function(ev) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                if (typeof window.exportXenoCantoJSON === 'function') {
-                  window.exportXenoCantoJSON();
-                } else {
-                  alert('Xeno-canto export function not found. Make sure xc.js is loaded.');
-                }
-              });
-            }
             if (createSetBtn) {
               createSetBtn.addEventListener('click', function(ev) {
                 ev.preventDefault();
@@ -444,13 +428,24 @@
               uploadBtn.addEventListener('click', function(ev) {
                 ev.preventDefault();
                 ev.stopPropagation();
-                if (typeof window.uploadXenoCantoAnnotationSet === 'function') {
-                  window.uploadXenoCantoAnnotationSet();
+                if (typeof window.__openUploadXcModal === 'function') {
+                  window.__openUploadXcModal();
                 } else {
-                  alert('Upload function not found. Ensure xc.js is loaded.');
+                  alert('Upload form not found. Ensure upload_xc.js is loaded.');
                 }
               });
             }
+          if (exportVideoBtn) {
+            exportVideoBtn.addEventListener('click', function(ev) {
+              ev.preventDefault();
+              ev.stopPropagation();
+              if (typeof window.__openVideoExportModal === 'function') {
+                window.__openVideoExportModal();
+              } else {
+                alert('Video export function not found. Make sure video_export.js is loaded.');
+              }
+            });
+          }
             if (settingsBtn) {
               settingsBtn.addEventListener('click', function(ev) {
                 ev.preventDefault();
@@ -458,7 +453,7 @@
                 if (typeof window.__openXcSettingsModal === 'function') {
                   window.__openXcSettingsModal();
                 } else {
-                  alert('Settings modal not available. Ensure xc.js is loaded.');
+                  alert('Settings modal not available. Ensure upload_xc.js is loaded.');
                 }
               });
             }
@@ -716,61 +711,42 @@
       <input type="hidden" id="selectedSpeciesKey" value="" />
     </div>
 	
-	<!-- Segmented Create/Edit toggle (authoritative mode source) -->
-    <!-- Bulk Update Species button inserted between Species control and Create/Edit toggle -->
-    <button id="bulkUpdateSpeciesBtn" type="button" class="seg-btn" title="Update Species in the selected row(s)." aria-label="Update species in selected rows" disabled style="margin-right:2px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M6 10h12" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
-      <span>Update<br>Species</span>
-    </button>
-
-    <!-- Bulk Update Tags button -->
-    <button id="updateTagsBtn" type="button" class="seg-btn" title="Update Tags in the selected row(s)." aria-label="Update tags in selected rows" disabled style="margin-right:2px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-      <span>Update<br>Tags</span>
-    </button>
-
     <!-- Initial overlay strip to prevent annotation before file load -->
     <div id="annotationControlsOverlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 500; pointer-events: auto; border-radius: 8px; backdrop-filter: blur(1px);">
       Please load an audio file to enable annotation tools
     </div>
 
-    <!-- Repeat Annotation Button -->
-    <button id="repeatBtn" type="button" class="seg-btn" title="Repeat last annotation dimensions" aria-pressed="false">
-      <span>Repeat</span>
-    </button>
-
     <div id="createEditToggle" class="seg-toggle" role="group" aria-label="Annotation mode" data-mode="create">
       <button type="button" id="toggleCreate" class="seg-option" data-mode="create" aria-pressed="true">Create</button>
       <button type="button" id="toggleEdit" class="seg-option" data-mode="edit" aria-pressed="false">Edit</button>
     </div>
-  <!-- Single Delete -->
-  <button id="annoDeleteBtn" type="button" title="Delete a Box in edit mode" aria-label="Delete annotation" class="seg-btn">
+
+  <!-- Unified Delete Button -->
+  <button id="multiDeleteBtn" type="button" title="Delete" aria-label="Delete selected rows" class="seg-btn">
     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M3 6h18" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
       <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-    <span>Delete<br>Box</span>
+    <span>Delete</span>
   </button>
 
-  <!-- Multi-delete -->
-  <button id="multiDeleteBtn" type="button" title="Select row(s) & delete" aria-label="Multi-delete selected rows" class="seg-btn">
-    <svg width="20" height="20" viewBox="0 0 36 24" aria-hidden="true">
-      <g transform="translate(0,0)" fill="#fff" stroke="#fff" stroke-width="1.5">
-        <path d="M3 6h18" stroke-linecap="round"/>
-        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>
-      <g transform="translate(14,0)" fill="#fff" stroke="#fff" stroke-width="1.5">
-        <path d="M3 6h18" stroke-linecap="round"/>
-        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke-linecap="round" stroke-linejoin="round"/>
-      </g>
-    </svg>
-    <span>Delete<br>rows</span>
+  <!-- Repeat Annotation Button -->
+  <button id="repeatBtn" type="button" class="seg-btn" title="Repeat last annotation dimensions" aria-pressed="false">
+    <span>Repeat</span>
   </button>
 
-  <!-- (Toolbar buttons moved into the left overlay and removed from top toolbar.) -->
+  <!-- Bulk Update Tags button -->
+  <button id="updateTagsBtn" type="button" class="seg-btn" title="Update Tags in the selected row(s)." aria-label="Update tags in selected rows" disabled style="margin-right:2px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+    <span>Update<br>Tags</span>
+  </button>
+
+  <!-- Bulk Update Species button -->
+  <button id="bulkUpdateSpeciesBtn" type="button" class="seg-btn" title="Update Species in the selected row(s)." aria-label="Update species in selected rows" disabled style="margin-right:2px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M6 10h12" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
+    <span>Update<br>Species</span>
+  </button>
 
   <!-- Run SCC (Spectrogram Cross-Correlation) -->
   <button id="runSccBtn" type="button" title="Run SCC on selected templates" aria-label="Run SCC" class="seg-btn">
@@ -1447,14 +1423,12 @@
   (function () {
     const FILE_ID = 'file';
     const META_BTN_ID = 'metaOpenBtn';
-    const SAVE_META_BTN_ID = 'saveMetaBtn';
     const SAVE_ANNO_BTN_ID = 'saveAnnoBtn';
     const UPLOAD_ANNO_BTN_ID = 'uploadAnnoBtn';
     const EXPORT_BTN_ID = 'exportBtn';
 
     function findFile() { return document.getElementById(FILE_ID); }
     function findMetaBtn() { return document.getElementById(META_BTN_ID); }
-    function findSaveMetaBtn() { return document.getElementById(SAVE_META_BTN_ID); }
     function findSaveAnnoBtn() { return document.getElementById(SAVE_ANNO_BTN_ID); }
     function findUploadAnnoBtn() { return document.getElementById(UPLOAD_ANNO_BTN_ID); }
     function findExportBtn() { return document.getElementById(EXPORT_BTN_ID); }
@@ -1471,12 +1445,6 @@
 
       const exportBtn = findExportBtn();
       if (exportBtn) exportBtn.disabled = !hasFile;
-
-      const saveMetaBtn = findSaveMetaBtn();
-      if (saveMetaBtn) {
-        const hasMeta = window.__lastMetadata && Object.keys(window.__lastMetadata).length > 0;
-        saveMetaBtn.disabled = !(hasFile && hasMeta);
-      }
 
       const saveAnnoBtn = findSaveAnnoBtn();
       if (saveAnnoBtn) {
@@ -1555,12 +1523,11 @@
 
   <script src="metadata.js"></script>
   <script src="upload_annotations.js"></script>
-  <script src="download_metadata.js"></script>
   <script src="download_annotations.js"></script>
   <script src="scc.js"></script>
   <script src="annotation-highlight.js"></script>
-  <script src="xc.js"></script>
   <script src="generate_clips.js"></script>
+  <script src="upload_xc.js"></script>
   <script src="xc_create_set.js"></script>
   <script src="spectrogram_settings.js"></script>
   
@@ -1638,5 +1605,6 @@
   }
   </script>
   <script src="birdnet_overlay.js"></script>
+  <script src="video_export.js"></script>
 </body>
 </html>

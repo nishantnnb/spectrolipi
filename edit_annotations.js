@@ -51,7 +51,6 @@
   const toggleWrap = document.getElementById('createEditToggle');
   const createBtn = document.getElementById('toggleCreate') || document.querySelector('button[title="Create"]') || document.querySelector('#annoCreateBtn');
   const editBtn = document.getElementById('toggleEdit') || document.querySelector('button[title="Edit"]') || document.querySelector('#annoEditBtn');
-  const deleteBtn = document.querySelector('button[title="Delete"]') || document.getElementById('annoDeleteBtn');
   const multiDeleteBtn = document.getElementById('multiDeleteBtn');
 
   // Helpers to access authoritative annotations API
@@ -275,13 +274,14 @@
   hoverEnabled = true;
   highlightedId = null;
     drawWorkingBoxWithHandles(editSession.working);
-    // populate species label if present
-    try {
-      const sp = document.querySelector('#speciesResult');
-      if (sp) sp.textContent = String(authoritative.species || '').trim();
-    } catch (e) {}
-    setDeleteEnabled(true);
     broadcastEditSelectionChanged();
+
+      // --- NEW: Sync playback to box beginTime ---
+      try {
+        if (globalThis._playbackScrollJump && typeof globalThis._playbackScrollJump.setPosition === 'function') {
+          globalThis._playbackScrollJump.setPosition(authoritative.beginTime);
+        }
+      } catch(e) {}
 
     // --- NEW: Immediate grid selection + selection overlay sync (robust) ---
     try { ensureGridSelectionAndOverlay(authoritative.id); } catch(e) { console.warn('ensureGridSelectionAndOverlay failed', e); }
@@ -290,28 +290,25 @@
   function persistWorkingToAuthoritative() {
     if (!editSession) return;
     try {
-      const updated = getAnnotations();
-      const idx = updated.findIndex(x => x.id === editSession.id);
-      if (idx >= 0) {
-        const w = editSession.working;
-        const round4 = v => Number(v).toFixed(4);
-        updated[idx] = Object.assign({}, updated[idx], {
-          beginTime: Number(round4(w.beginTime)),
-          endTime: Number(round4(w.endTime)),
-          lowFreq: Number(round4(w.lowFreq)),
-          highFreq: Number(round4(w.highFreq))
-        });
-        replaceAnnotations(updated);
-        // Update Tabulator grid row
-        if (window.annotationGrid && typeof window.annotationGrid.updateRow === 'function') {
-          window.annotationGrid.updateRow(editSession.id, {
-            beginTime: Number(round4(w.beginTime)),
-            endTime: Number(round4(w.endTime)),
-            lowFreq: Number(round4(w.lowFreq)),
-            highFreq: Number(round4(w.highFreq))
-          });
-          // Proactively notify and trigger overlay refresh for immediate visual update
-          try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'edit-commit', id: editSession.id } })); } catch (e) {}
+      const w = editSession.working;
+      const round4 = v => Number(v).toFixed(4);
+      const updateObj = {
+        beginTime: Number(round4(w.beginTime)),
+        endTime: Number(round4(w.endTime)),
+        lowFreq: Number(round4(w.lowFreq)),
+        highFreq: Number(round4(w.highFreq))
+      };
+
+      if (window.annotationGrid && typeof window.annotationGrid.updateRow === 'function') {
+        window.annotationGrid.updateRow(editSession.id, updateObj);
+        // Proactively notify and trigger overlay refresh for immediate visual update
+        try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'edit-commit', id: editSession.id } })); } catch (e) {}
+      } else {
+        const updated = getAnnotations();
+        const idx = updated.findIndex(x => x.id === editSession.id);
+        if (idx >= 0) {
+          updated[idx] = Object.assign({}, updated[idx], updateObj);
+          replaceAnnotations(updated);
         }
       }
     } catch (e) { console.error('persist failed', e); }
@@ -345,19 +342,26 @@
     try {
       const original = editSession.originalSnapshot;
       if (original) {
-        const updated = getAnnotations();
-        const idx = updated.findIndex(x => x.id === editSession.id);
-        if (idx >= 0) {
-          updated[idx] = Object.assign({}, updated[idx], {
-            beginTime: Number(original.beginTime),
-            endTime: Number(original.endTime),
-            lowFreq: Number(original.lowFreq),
-            highFreq: Number(original.highFreq)
-          });
-          if ('label' in original) updated[idx].label = original.label;
-          if ('notes' in original) updated[idx].notes = original.notes;
-          if ('color' in original) updated[idx].color = original.color;
-          replaceAnnotations(updated);
+        const updateObj = {
+          beginTime: Number(original.beginTime),
+          endTime: Number(original.endTime),
+          lowFreq: Number(original.lowFreq),
+          highFreq: Number(original.highFreq)
+        };
+        if ('label' in original) updateObj.label = original.label;
+        if ('notes' in original) updateObj.notes = original.notes;
+        if ('color' in original) updateObj.color = original.color;
+
+        if (window.annotationGrid && typeof window.annotationGrid.updateRow === 'function') {
+          window.annotationGrid.updateRow(editSession.id, updateObj);
+          try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'edit-revert', id: editSession.id } })); } catch (e) {}
+        } else {
+          const updated = getAnnotations();
+          const idx = updated.findIndex(x => x.id === editSession.id);
+          if (idx >= 0) {
+            updated[idx] = Object.assign({}, updated[idx], updateObj);
+            replaceAnnotations(updated);
+          }
         }
       }
     } catch (e) { console.error('revert failed', e); }
@@ -368,43 +372,16 @@
   function endEditSessionFinal() {
     if (!editSession) return;
     try { delete globalThis._annotations._editingId; } catch (e) {}
+    
+    if (editSession.pointerId != null) {
+      try { pointerLayer.releasePointerCapture && pointerLayer.releasePointerCapture(editSession.pointerId); } catch(e){}
+    }
+
     editSession = null;
     highlightedId = null;
     hoverEnabled = true;
     try { if (pointerLayer) pointerLayer.style.cursor = ''; } catch (e) {}
     clearHighlightCanvas();
-  }
-
-  function deleteSelectedAnnotation() {
-    if (!editSession) return;
-    try {
-      const updated = getAnnotations();
-      const idx = updated.findIndex(x => x.id === editSession.id);
-        if (idx >= 0) {
-        updated.splice(idx, 1);
-        // Reindex remaining annotations so ids and Selection are sequential
-        let remaining = updated.map((a, i) => Object.assign({}, a, { id: i + 1, Selection: String(i + 1) }));
-        replaceAnnotations(remaining);
-        // Update Tabulator grid rows to match reindexed annotations
-        if (window.annotationGrid) {
-          try {
-            if (typeof window.annotationGrid.replaceData === 'function') {
-              window.annotationGrid.replaceData(remaining);
-            } else if (typeof window.annotationGrid.deleteRow === 'function') {
-              // Fallback: delete the row by old id
-              window.annotationGrid.deleteRow(editSession.id);
-            }
-          } catch (e) {}
-        }
-
-        // Notify listeners and refresh overlays immediately so UI updates without a full page reload
-        try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'delete', id: editSession.id } })); } catch (e) {}
-        try { if (typeof window.renderAllAnnotations === 'function') window.renderAllAnnotations(); } catch (e) {}
-      }
-    } catch (e) { console.error('delete failed', e); }
-    endEditSessionFinal();
-    updateHover(lastPointerPos.x, lastPointerPos.y);
-    broadcastEditSelectionChanged();
   }
 
   // Hover and hit-testing
@@ -427,45 +404,172 @@
 
   // Pointer handlers for editing handles
   function onEditPointerDown(ev) {
-    if (!editSession) return;
+    if (!editModeActive) return;
     if (ev.button !== 0) return;
-    ev.preventDefault();
+
     const rect = highlightCanvas.getBoundingClientRect();
     const localX = ev.clientX - rect.left;
     const localY = ev.clientY - rect.top;
-    const rectPx = annotationToRectPx(editSession.working);
-    const hit = hitTestHandle(localX, localY, rectPx);
-    if (hit) {
-      editSession.activeHandle = hit;
-      editSession.pointerId = ev.pointerId;
-      editSession.dragging = true;
-      try { pointerLayer.setPointerCapture && pointerLayer.setPointerCapture(ev.pointerId); } catch (e) {}
-      drawWorkingBoxWithHandles(editSession.working);
+    const isMulti = ev.ctrlKey || ev.metaKey;
+
+    // 1. If we have an active edit session, check if we are interacting with IT (resizing/moving)
+    if (editSession && !isMulti) {
+      const rectPx = annotationToRectPx(editSession.working);
+      const hit = hitTestHandle(localX, localY, rectPx);
+
+      if (hit) {
+        ev.preventDefault();
+        editSession.activeHandle = hit;
+        editSession.pointerId = ev.pointerId;
+        editSession.dragging = true;
+        try { pointerLayer.setPointerCapture && pointerLayer.setPointerCapture(ev.pointerId); } catch (e) {}
+        drawWorkingBoxWithHandles(editSession.working);
+        return;
+      }
+
+      // Check if we are over a DIFFERENT box (nested box)
+      let isOverBetterTarget = false;
+      const nearestHover = findNearestAnnotation(localX, localY);
+      if (nearestHover && nearestHover.id !== editSession.id) {
+          isOverBetterTarget = true;
+      }
+
+      // Only allow move if we are not hovering over a DIFFERENT box
+      if (!isOverBetterTarget) {
+        if (pointToRectEdgeDistance(localX, localY, rectPx) === 0) {
+          ev.preventDefault();
+          const w = editSession.working;
+          editSession.activeHandle = 'move';
+          editSession.pointerId = ev.pointerId;
+          editSession.dragging = true;
+          editSession.moveStart = { beginTime: w.beginTime, endTime: w.endTime, lowFreq: w.lowFreq, highFreq: w.highFreq };
+          try {
+            const { pxPerSec, imageHeight, ymaxHz } = getMapping();
+            const secsPerPx = 1 / Math.max(1e-9, pxPerSec);
+            const originY = Math.max(0, Math.min(imageHeight, localY));
+            editSession.dragOrigin = { x: localX, y: originY };
+            editSession.dragOriginGlobalX = (localX + Math.round(scrollArea.scrollLeft || 0));
+            editSession.dragOriginTime = editSession.dragOriginGlobalX * secsPerPx;
+            editSession.dragOriginFreq = Math.max(0, Math.min(ymaxHz, (1 - (originY / imageHeight)) * ymaxHz));
+          } catch (e) { editSession.dragOrigin = { x: localX, y: localY }; editSession.dragOriginGlobalX = null; editSession.dragOriginTime = null; editSession.dragOriginFreq = null; }
+          try { pointerLayer.setPointerCapture && pointerLayer.setPointerCapture(ev.pointerId); } catch (e) {}
+            
+          drawWorkingBoxWithHandles(editSession.working);
+          return;
+        }
+      }
+    }
+
+    // 2. If we reach here, we are clicking to select a new box, empty space, or toggle multi-select.
+    // Instantly calculate exact target under the mouse, completely immune to hover lag.
+    const nearest = (localY >= -EDGE_TOL_PX && localY <= rect.height + EDGE_TOL_PX) ? findNearestAnnotation(localX, localY) : null;
+    const targetId = nearest ? nearest.id : null;
+
+    // Empty space click
+    if (!targetId) {
+      if (isMulti) return; // Ctrl+click empty space does nothing
+      if (editSession) {
+        commitEditSessionAndEnd();
+      }
+      window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+      try { 
+        const grid = window.annotationGrid; 
+        if (grid) {
+          if (typeof grid.deselectRow === 'function') grid.deselectRow(); 
+          if (typeof grid.getSelectedRows === 'function') {
+             (grid.getSelectedRows() || []).forEach(r => { try { r.deselect && r.deselect(); } catch(e){} });
+          }
+        }
+      } catch(e){} finally { window.__syncingGridSelection--; }
+      syncToolbarButtons();
+      updateHover(ev.clientX, ev.clientY);
       return;
     }
 
-    // if user pressed inside the rect (but not on a handle) start a move/translate
-    if (pointToRectEdgeDistance(localX, localY, rectPx) === 0) {
-      const w = editSession.working;
-      editSession.activeHandle = 'move';
-      editSession.pointerId = ev.pointerId;
-      editSession.dragging = true;
-      // snapshot of starting values for stable translation math
-      editSession.moveStart = { beginTime: w.beginTime, endTime: w.endTime, lowFreq: w.lowFreq, highFreq: w.highFreq };
-      // record robust drag origin (local pixels + global X + mapped time/frequency)
+    // Multi-select mode (Ctrl / Cmd held down)
+    if (isMulti) {
+      let prevId = editSession ? editSession.id : null;
+      
+      if (editSession) {
+        persistWorkingToAuthoritative();
+        endEditSessionFinal();
+      }
+
+      window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
       try {
-        const { pxPerSec, imageHeight, ymaxHz } = getMapping();
-        const secsPerPx = 1 / Math.max(1e-9, pxPerSec);
-        const originY = Math.max(0, Math.min(imageHeight, localY));
-        editSession.dragOrigin = { x: localX, y: originY };
-        editSession.dragOriginGlobalX = (localX + Math.round(scrollArea.scrollLeft || 0));
-        editSession.dragOriginTime = editSession.dragOriginGlobalX * secsPerPx;
-        editSession.dragOriginFreq = Math.max(0, Math.min(ymaxHz, (1 - (originY / imageHeight)) * ymaxHz));
-      } catch (e) { editSession.dragOrigin = { x: localX, y: localY }; editSession.dragOriginGlobalX = null; editSession.dragOriginTime = null; editSession.dragOriginFreq = null; }
-      try { pointerLayer.setPointerCapture && pointerLayer.setPointerCapture(ev.pointerId); } catch (e) {}
-        
-      drawWorkingBoxWithHandles(editSession.working);
+        const grid = window.annotationGrid;
+        if (grid) {
+          const selData = typeof grid.getSelectedData === 'function' ? grid.getSelectedData() : [];
+          let currentSelIds = new Set(selData.map(x => String(x.id)));
+
+          // CRITICAL FIX: If we were actively editing a box, it MUST be in the multi-select pool.
+          // Tabulator frequently drops it from getSelectedData() when virtualization recycles the row.
+          if (prevId != null) {
+            currentSelIds.add(String(prevId));
+          }
+
+          const strTarget = String(targetId);
+          
+          if (currentSelIds.has(strTarget)) {
+            currentSelIds.delete(strTarget);
+          } else {
+            currentSelIds.add(strTarget);
+          }
+
+          // Force Tabulator to perfectly match our computed set
+          if (typeof grid.deselectRow === 'function') grid.deselectRow();
+          if (typeof grid.getSelectedRows === 'function') {
+             (grid.getSelectedRows() || []).forEach(r => { try { r.deselect && r.deselect(); } catch(e){} });
+          }
+          
+          const finalIds = Array.from(currentSelIds);
+          if (typeof grid.selectRow === 'function' && finalIds.length > 0) {
+             grid.selectRow(finalIds);
+          }
+
+          // Evaluate outcome based on our strictly managed Set
+          if (currentSelIds.size === 1) {
+            startEditSession(finalIds[0]);
+          } else {
+            endEditSessionFinal(); // Ensure handles stay hidden
+            try { if (typeof window.renderSelectionOverlay === 'function') window.renderSelectionOverlay(finalIds); } catch(e){}
+          }
+        }
+      } catch(e) {
+        console.error('Exception in Multi-Select:', e);
+      } finally {
+        window.__syncingGridSelection--;
+      }
+      syncToolbarButtons();
+
+      ev.preventDefault && ev.preventDefault();
+      return;
     }
+
+    // Standard single selection (No Ctrl key)
+    window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+    try {
+      try { 
+        const grid = window.annotationGrid; 
+        if (grid) {
+          if (typeof grid.deselectRow === 'function') grid.deselectRow(); 
+          if (typeof grid.getSelectedRows === 'function') {
+             (grid.getSelectedRows() || []).forEach(r => { try { r.deselect && r.deselect(); } catch(e){} });
+          }
+        }
+      } catch(e){}
+
+      try {
+        if (editSession && editSession.id !== targetId) {
+          persistWorkingToAuthoritative();
+        }
+      } catch (e) {}
+      startEditSession(targetId);
+    } finally {
+      window.__syncingGridSelection--;
+    }
+    syncToolbarButtons();
+    ev.preventDefault && ev.preventDefault();
   }
 
   function onEditPointerMove(ev) {
@@ -561,24 +665,41 @@
   function onEditPointerUp(ev) {
     if (!editSession) return;
     if (editSession.pointerId != null && ev.pointerId !== editSession.pointerId) return;
-    ev.preventDefault();
+    
+    const wasDragging = !!(editSession && editSession.dragging);
+    if (wasDragging) {
+      ev.preventDefault();
+    }
+
     try { pointerLayer.releasePointerCapture && pointerLayer.releasePointerCapture(ev.pointerId); } catch (e) {}
 
     // clear transient pointer/handle state
-    const wasDragging = !!(editSession && editSession.dragging);
     if (editSession) {
       editSession.activeHandle = null;
       editSession.pointerId = null;
+    }
+
+    // persist the in-progress working snapshot ONLY if we were actively dragging
+    if (wasDragging) {
+      window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+      try {
+        persistWorkingToAuthoritative();
+        if (editSession) {
+          ensureGridSelectionAndOverlay(editSession.id);
+        }
+      } finally {
+        window.__syncingGridSelection--;
+      }
+      broadcastEditSelectionChanged();
+    }
+
+    if (editSession) {
       editSession.dragging = false;
     }
 
-    // persist the in-progress working snapshot
-    persistWorkingToAuthoritative();
-    // allow hover/selection for other boxes now that the drag finished
+    // allow hover/selection for other boxes now that the interaction finished
     hoverEnabled = true;
     drawWorkingBoxWithHandles(editSession ? editSession.working : null);
-    // Broadcast selection change so UI (buttons, delete state) updates.
-    broadcastEditSelectionChanged();
 
     // NOTE: do not end the edit session here. Keeping the editSession active
     // allows the user to continue editing the same box without needing to
@@ -586,30 +707,102 @@
     // persist and switch sessions.
   }
 
-  // Click selection to start edit session
-  function handleClickSelection(ev) {
-    if (!editModeActive) return;
-    if (!highlightedId) return;
-    // If an edit session exists for a different box, persist it first so edits are saved
-    // before switching to a new selection.
-    try {
-      if (editSession && editSession.id !== highlightedId) {
-        persistWorkingToAuthoritative();
-      }
-    } catch (e) {}
-    startEditSession(highlightedId);
-    ev.preventDefault && ev.preventDefault();
-  }
-
   // Keyboard handling inside edit mode
   function handleKeyDown(ev) {
-    if (!editModeActive) return;
-    if (!editSession) return;
-    // Leave Enter and Escape unassigned by design. Support Delete for deletion.
-    const delBtnLocal = document.querySelector('button[title="Delete"]') || document.getElementById('annoDeleteBtn');
-    if (delBtnLocal && !delBtnLocal.disabled && (ev.key === 'Delete' || ev.key === 'd' || ev.key === 'D')) {
-      deleteSelectedAnnotation();
+    // Ignore keydown if focus is inside an input, textarea, select, or any dialog.
+    if (document.activeElement) {
+      const tag = (document.activeElement.tagName || '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement.isContentEditable) return;
+      if (document.activeElement.closest && document.activeElement.closest('[role="dialog"]')) return;
+    }
+
+    let multiCount = 0;
+    try { const grid = window.annotationGrid; if (grid && grid.initialized && typeof grid.getSelectedData === 'function') multiCount = grid.getSelectedData().length; } catch(e){}
+
+    if (!editSession && multiCount === 0) return;
+    
+    // Escape instantly clears all active selections
+    if (ev.key === 'Escape') {
+      if (editSession) {
+        commitEditSessionAndEnd();
+        updateHover(lastPointerPos.x, lastPointerPos.y);
+      }
+      window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+      try { 
+        const grid = window.annotationGrid; 
+        if (grid) {
+          if (typeof grid.deselectRow === 'function') grid.deselectRow(); 
+          if (typeof grid.getSelectedRows === 'function') {
+             (grid.getSelectedRows() || []).forEach(r => { try { r.deselect && r.deselect(); } catch(e){} });
+          }
+        }
+      } catch(e){} finally { window.__syncingGridSelection--; }
+      syncToolbarButtons();
       ev.preventDefault();
+      return;
+    }
+
+    const delBtnLocal = document.getElementById('multiDeleteBtn') || document.querySelector('button[title="Delete"]');
+    if (delBtnLocal && !delBtnLocal.disabled && (ev.key === 'Delete' || ev.key === 'd' || ev.key === 'D')) {
+      doMultiDelete();
+      ev.preventDefault();
+      return;
+    }
+
+    if (!editModeActive) return;
+
+    // In multi-select mode, playback jumping and Tab navigation are intentionally suppressed
+    if (multiCount > 1 && ev.key === 'Tab') {
+      ev.preventDefault();
+      return;
+    }
+
+    // Tab / Shift+Tab Navigation
+    if (ev.key === 'Tab') {
+      ev.preventDefault(); // Prevent browser focus from leaving the canvas
+      const anns = getAnnotations();
+      if (!anns || anns.length === 0) return;
+
+      // Sort boxes by beginTime, then by Selection number
+      const sortedAnns = anns.slice().sort((a, b) => {
+        const tDiff = (Number(a.beginTime) || 0) - (Number(b.beginTime) || 0);
+        if (tDiff !== 0) return tDiff;
+        const selA = Number(a.Selection) || Number(a.id) || 0;
+        const selB = Number(b.Selection) || Number(b.id) || 0;
+        return selA - selB;
+      });
+
+      const currentIndex = sortedAnns.findIndex(a => a.id === editSession.id);
+      if (currentIndex < 0) return;
+
+      let targetIndex = -1;
+      if (ev.shiftKey) {
+        if (currentIndex > 0) targetIndex = currentIndex - 1; // Previous
+      } else {
+        if (currentIndex < sortedAnns.length - 1) targetIndex = currentIndex + 1; // Next
+      }
+
+      if (targetIndex >= 0 && targetIndex < sortedAnns.length) {
+        const targetAnn = sortedAnns[targetIndex];
+        persistWorkingToAuthoritative();
+        window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+        try { startEditSession(targetAnn.id); } finally { window.__syncingGridSelection--; }
+        syncToolbarButtons();
+
+        // Auto-scroll to keep the selected box in view if it is off-screen
+        try {
+          const { pxPerSec } = getMapping();
+          const boxLeft = targetAnn.beginTime * pxPerSec;
+          const boxRight = targetAnn.endTime * pxPerSec;
+          const viewLeft = scrollArea.scrollLeft;
+          const viewRight = viewLeft + scrollArea.clientWidth;
+          
+          if (boxLeft < viewLeft || boxRight > viewRight) {
+            // Center the box in the viewport
+            scrollArea.scrollLeft = Math.max(0, boxLeft - (scrollArea.clientWidth / 2) + ((boxRight - boxLeft) / 2));
+          }
+        } catch(e) {}
+      }
       return;
     }
   }
@@ -635,26 +828,49 @@
         // map handle names to resize cursors
         const m = { left: 'ew-resize', right: 'ew-resize', top: 'ns-resize', bottom: 'ns-resize', topleft: 'nwse-resize', bottomright: 'nwse-resize', topright: 'nesw-resize', bottomleft: 'nesw-resize' };
         pointerLayer.style.cursor = m[handle] || 'default';
+              if (hoverEnabled) {
+                highlightedId = editSession.id;
+                drawWorkingBoxWithHandles(editSession.working);
+              }
         return;
       }
 
-      // If pointer is over the working rect, show grab cursor. Otherwise allow hover
-      // to highlight other boxes (if hoverEnabled) so user can pick a different box
-      // without having to cancel the current edit session.
-      if (pointToRectEdgeDistance(localX, localY, rectPx) === 0) {
-        pointerLayer.style.cursor = 'grab';
-        return;
-      }
+            let nearest = null;
+            if (localY >= -EDGE_TOL_PX && localY <= rect.height + EDGE_TOL_PX) {
+                nearest = findNearestAnnotation(localX, localY);
+            }
 
-      // pointer not over working rect — allow normal hover behavior when enabled
-      if (hoverEnabled) {
-        updateHover(ev.clientX, ev.clientY);
-        // redraw working box so both highlight and working box are visible
-        try { drawWorkingBoxWithHandles(editSession.working); } catch (e) {}
-      } else {
-        pointerLayer.style.cursor = '';
-      }
-      return;
+            // If we are over a better target (e.g. a smaller nested box), let it highlight so we can click it
+            if (nearest && nearest.id !== editSession.id) {
+                pointerLayer.style.cursor = '';
+                if (hoverEnabled) {
+                    if (highlightedId !== nearest.id) {
+                        highlightedId = nearest.id;
+                        drawWorkingBoxWithHandles(editSession.working);
+                    }
+                }
+                return;
+            }
+
+            // Otherwise, if we are inside the active box body, show grab cursor
+            if (pointToRectEdgeDistance(localX, localY, rectPx) === 0) {
+                pointerLayer.style.cursor = 'grab';
+                if (hoverEnabled && highlightedId !== editSession.id) {
+                    highlightedId = editSession.id;
+                    drawWorkingBoxWithHandles(editSession.working);
+                }
+                return;
+            }
+
+            // Pointer not over working rect and no other box found
+            pointerLayer.style.cursor = '';
+            if (hoverEnabled) {
+                if (highlightedId !== null) {
+                    highlightedId = null;
+                    drawWorkingBoxWithHandles(editSession.working);
+                }
+            }
+            return;
     }
 
     // default hover highlighting behavior when not actively editing
@@ -675,12 +891,21 @@
     else clearHighlightCanvas();
   }
 
-  /* Multi-delete logic: use Tabulator grid selection */
+  /* Multi-delete logic: use Tabulator grid selection (restored original working logic) */
   function doMultiDelete() {
     try {
+      let ids = [];
       if (window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function' && window.annotationGrid.initialized !== false) {
         const selectedRows = window.annotationGrid.getSelectedRows();
-        if (!selectedRows.length) { window.alert('No rows selected for Multi-delete'); return; }
+        ids = selectedRows.map(row => row.getData().id);
+      }
+        
+      // Fallback for canvas edit mode if grid is out of sync
+      if (ids.length === 0 && editSession) {
+        ids = [editSession.id];
+      }
+
+      if (!ids.length) { window.alert('No annotations selected to delete.'); return; }
 
         const overlayCtl = (function(){
           let active = false;
@@ -715,10 +940,8 @@
           };
         })();
 
-        const totalRows = selectedRows.length;
-        overlayCtl.show({ etaText: totalRows === 1 ? 'Deleting row…' : `Deleting ${totalRows} rows…`, titleText: 'Deleting rows', bodyText: 'Removing selected annotations. Please wait…' });
-
-        const ids = selectedRows.map(row => row.getData().id);
+        const totalRows = ids.length;
+        if (totalRows > 1) overlayCtl.show({ etaText: `Deleting ${totalRows} rows…`, titleText: 'Deleting rows', bodyText: 'Removing selected annotations. Please wait…' });
 
         const deleteInChunks = async () => {
           try {
@@ -726,7 +949,7 @@
             for (let i = 0; i < ids.length; i += chunkSize) {
               const chunk = ids.slice(i, i + chunkSize);
               window.annotationGrid.deleteRow(chunk);
-              overlayCtl.updateEta(`Deleting rows ${Math.min(ids.length, i + chunkSize)} / ${ids.length}…`);
+              if (totalRows > 1) overlayCtl.updateEta(`Deleting rows ${Math.min(ids.length, i + chunkSize)} / ${ids.length}…`);
               await new Promise(r => setTimeout(r, 0));
             }
 
@@ -742,43 +965,34 @@
                 id: i + 1,
                 Selection: String(i + 1)
               };
-              if ((i % 500) === 0) await new Promise(r => setTimeout(r, 0));
+              if (totalRows > 1 && (i % 500) === 0) await new Promise(r => setTimeout(r, 0));
             }
             replaceAnnotations(reindexed);
             if (window.annotationGrid && typeof window.annotationGrid.replaceData === 'function') {
               await window.annotationGrid.replaceData(reindexed);
             }
             try { window.dispatchEvent(new CustomEvent('annotations-changed', { detail: { reason: 'multi-delete', deleted: ids } })); } catch (e) {}
+            
+            // Clear any active edit session if it was deleted
+            if (editSession && idSet.has(String(editSession.id))) {
+              endEditSessionFinal();
+              updateHover(lastPointerPos.x, lastPointerPos.y);
+            }
           } catch (err) {
             console.error('multi-delete error', err);
             window.alert('Deletion failed; see console');
           } finally {
-            overlayCtl.hide();
+            if (totalRows > 1) overlayCtl.hide();
           }
         };
 
         // Start deletion on a short timer so the overlay can paint immediately
-        // (avoid blocking the UI before the overlay is visible).
         setTimeout(deleteInChunks, 20);
         return;
-      }
     } catch (err) {
       console.error('multi-delete error', err);
       window.alert('Deletion failed; see console');
     }
-  }
-
-  // set delete button enabled/disabled visuals
-  function setDeleteEnabled(enabled) {
-    const deleteBtnLocal = document.querySelector('button[title="Delete"]') || document.getElementById('annoDeleteBtn');
-    if (!deleteBtnLocal) return;
-    deleteBtnLocal.disabled = !enabled;
-    try {
-      deleteBtnLocal.style.opacity = enabled ? '1.0' : '0.45';
-      deleteBtnLocal.style.cursor = enabled ? 'pointer' : 'default';
-      deleteBtnLocal.style.border = enabled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent';
-      if (!enabled) deleteBtnLocal.style.background = 'transparent';
-    } catch (e) {}
   }
 
   // Wire listeners when edit mode active
@@ -786,7 +1000,6 @@
     pointerLayer.style.pointerEvents = 'auto';
     pointerLayer.addEventListener('pointermove', onPointerMoveForHover);
     pointerLayer.addEventListener('pointerleave', onPointerLeaveForHover);
-    pointerLayer.addEventListener('click', handleClickSelection);
 
     pointerLayer.addEventListener('pointerdown', onEditPointerDown);
     pointerLayer.addEventListener('pointermove', onEditPointerMove);
@@ -795,33 +1008,16 @@
 
     pointerLayer.addEventListener('contextmenu', onPointerContextMenu);
 
-    window.addEventListener('keydown', handleKeyDown);
     scrollArea.addEventListener('scroll', onScrollOrResize);
   window.addEventListener('resize', onScrollOrResize);
   // Ensure highlight/pointer layers resize when spectrogram is regenerated (ymax/zoom changes)
   window.addEventListener('spectrogram-generated', onScrollOrResize, { passive: true });
-
-    // disable species control visually when editing (unless bulk selection exists)
-    try {
-      const spIn = document.querySelector('#speciesKwInput');
-      const spLbl = document.querySelector('#speciesResult');
-      const spClear = document.querySelector('#speciesClearBtn');
-      const bulkSelected = (globalThis._speciesBulkEdit && typeof globalThis._speciesBulkEdit.getSelectedIds === 'function')
-        ? (globalThis._speciesBulkEdit.getSelectedIds() || []).length > 0
-        : false;
-      if (!bulkSelected) {
-        if (spIn) { spIn.disabled = true; spIn.setAttribute('aria-disabled', 'true'); }
-        if (spLbl) { spLbl.setAttribute('aria-disabled', 'true'); spLbl.style.opacity = '0.6'; }
-        if (spClear) { spClear.style.display = 'none'; }
-      }
-    } catch (e) {}
   }
 
   function detachEditModeListeners() {
     pointerLayer.style.pointerEvents = 'none';
     pointerLayer.removeEventListener('pointermove', onPointerMoveForHover);
     pointerLayer.removeEventListener('pointerleave', onPointerLeaveForHover);
-    pointerLayer.removeEventListener('click', handleClickSelection);
 
     pointerLayer.removeEventListener('pointerdown', onEditPointerDown);
     pointerLayer.removeEventListener('pointermove', onEditPointerMove);
@@ -830,62 +1026,18 @@
 
     pointerLayer.removeEventListener('contextmenu', onPointerContextMenu);
 
-    window.removeEventListener('keydown', handleKeyDown);
     scrollArea.removeEventListener('scroll', onScrollOrResize);
   window.removeEventListener('resize', onScrollOrResize);
   try { window.removeEventListener('spectrogram-generated', onScrollOrResize); } catch (e) {}
-
-    // restore species control state
-    try {
-      const spIn = document.querySelector('#speciesKwInput');
-      const spLbl = document.querySelector('#speciesResult');
-      const spClear = document.querySelector('#speciesClearBtn');
-      if (spIn) { spIn.disabled = false; spIn.removeAttribute('aria-disabled'); }
-      if (spLbl) { spLbl.removeAttribute('aria-disabled'); spLbl.style.opacity = ''; }
-      if (spClear) {
-        if (spLbl && (spLbl.textContent || '').trim()) spClear.style.display = 'inline-flex';
-        else spClear.style.display = 'none';
-      }
-    } catch (e) {}
   }
 
   function onPointerContextMenu(ev) {
-    // Do not use right-click in edit mode. Leave the native context menu alone
-    // and do not cancel or otherwise change the edit session. This prevents
-    // accidental cancellation via contextmenu while editing.
-    return;
-  }
-
-  // Delete toolbar button: do not toggle mode. If editSession exists delete it; otherwise show message and keep mode.
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', (ev) => {
-      ev.preventDefault && ev.preventDefault();
-      // Prefer central API handler if present
-      try {
-        if (globalThis._editAnnotations && typeof globalThis._editAnnotations.deleteEditing === 'function') {
-          globalThis._editAnnotations.deleteEditing();
-          return;
-        }
-      } catch (e) { console.error('Delegation to _editAnnotations.deleteEditing failed', e); }
-
-      // if local editSession present, delete it
-      if (editSession) {
-        deleteSelectedAnnotation();
-        broadcastEditSelectionChanged();
-        return;
-      }
-
-      // No edit selection — keep current mode and inform user
-      try { window.alert('No annotation selected to delete. Select a box first or switch to edit mode.'); } catch (e) {}
-    }, false);
-  }
-
-  // Multi-delete toolbar button
-  if (multiDeleteBtn) {
-    multiDeleteBtn.addEventListener('click', (ev) => {
-      ev.preventDefault && ev.preventDefault();
-      doMultiDelete();
-    }, false);
+    if (!editModeActive) return;
+    if (editSession) {
+      ev.preventDefault();
+      commitEditSessionAndEnd();
+      updateHover(lastPointerPos.x, lastPointerPos.y);
+    }
   }
 
   // Keep legacy button visuals in pages without toggle; otherwise synchronize with toggle.
@@ -934,6 +1086,17 @@
         cancelAndEndEditSession();
       }
     }
+    window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+    try { 
+      const grid = window.annotationGrid; 
+      if (grid) {
+        if (typeof grid.deselectRow === 'function') grid.deselectRow(); 
+        if (typeof grid.getSelectedRows === 'function') {
+           (grid.getSelectedRows() || []).forEach(r => { try { r.deselect && r.deselect(); } catch(e){} });
+        }
+      }
+    } catch(e){} finally { window.__syncingGridSelection--; }
+    syncToolbarButtons();
     detachEditModeListeners();
     clearHighlightCanvas();
     // sync visual to toggle if present
@@ -969,41 +1132,51 @@
     else stopEditMode();
   }
 
-  // --- start: ensure Delete button enabled only in edit mode ---
-  (function syncDeleteButtonWithMode_edit() {
-    const deleteBtnLocal = document.getElementById('annoDeleteBtn') || document.querySelector('button[title="Delete"]');
+  // Multi-delete toolbar button
+  if (multiDeleteBtn) {
+    multiDeleteBtn.addEventListener('click', (ev) => {
+      ev.preventDefault && ev.preventDefault();
+      doMultiDelete();
+    }, false);
+  }
 
-    function applyMode(m) {
+  // COMMON LISTENER: Centralized toolbar state manager for all annotation tools
+  function syncToolbarButtons() {
+    let count = 0;
+    try { if (window.annotationGrid && window.annotationGrid.initialized && typeof window.annotationGrid.getSelectedData === 'function') count = window.annotationGrid.getSelectedData().length; } catch(e){}
+
+    // IMPORTANT: Guarantee that an active canvas edit session counts as at least 1 selection,
+    // bypassing any async delays or virtual DOM mismatch from Tabulator
+    if (editSession && count <= 1) {
+      count = 1;
+    }
+
+    const canAction = (count > 0);
+    const canScc = (count === 1);
+
+    function setBtnState(id, enabled) {
+      const btn = document.getElementById(id) || document.querySelector(`button[title="${id}"]`);
+      if (!btn) return;
+      btn.disabled = !enabled;
       try {
-        const isEdit = (m === 'edit');
-        if (typeof setDeleteEnabled === 'function') {
-          setDeleteEnabled(isEdit);
-        } else if (deleteBtnLocal) {
-          deleteBtnLocal.disabled = !isEdit;
-          deleteBtnLocal.style.opacity = isEdit ? '1.0' : '0.45';
-          deleteBtnLocal.style.cursor = isEdit ? 'pointer' : 'default';
-        }
-        try { window.dispatchEvent(new CustomEvent('annotation-mode-changed', { detail: { mode: (isEdit ? 'edit' : 'create') } })); } catch(e) {}
-      } catch (e) {}
+        btn.style.opacity = enabled ? '1.0' : '0.45';
+        btn.style.cursor = enabled ? 'pointer' : 'default';
+        btn.style.border = enabled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent';
+        if (!enabled) btn.style.background = 'transparent';
+      } catch(e){}
     }
 
-    try { applyMode((function () { try { return (toggleWrap && toggleWrap.dataset && toggleWrap.dataset.mode) ? toggleWrap.dataset.mode : null; } catch (e) { return null; } })() || (globalThis._editAnnotations && typeof globalThis._editAnnotations.isEditMode === 'function' && globalThis._editAnnotations.isEditMode() ? 'edit' : 'create')); } catch (e) {}
+    setBtnState('multiDeleteBtn', canAction);
+    setBtnState('Delete', canAction);
+    setBtnState('updateTagsBtn', canAction);
+    setBtnState('bulkUpdateSpeciesBtn', canAction);
+    setBtnState('runSccBtn', canScc);
+  }
 
-    if (toggleWrap) {
-      toggleWrap.addEventListener('mode-change', (ev) => {
-        const m = (ev && ev.detail && ev.detail.mode) ? ev.detail.mode : (toggleWrap.dataset && toggleWrap.dataset.mode) ? toggleWrap.dataset.mode : null;
-        applyMode(m || 'create');
-      }, { passive: true });
-    } else {
-      window.addEventListener('edit-selection-changed', () => {
-        try {
-          const isEdit = (globalThis._editAnnotations && typeof globalThis._editAnnotations.isEditMode === 'function' && globalThis._editAnnotations.isEditMode());
-          applyMode(isEdit ? 'edit' : 'create');
-        } catch (e) {}
-      });
-    }
-  })();
-  // --- end
+  window.addEventListener('mode-change', () => setTimeout(syncToolbarButtons, 0));
+  window.addEventListener('edit-selection-changed', () => setTimeout(syncToolbarButtons, 0));
+  window.addEventListener('annotations-changed', () => setTimeout(syncToolbarButtons, 0));
+  window.addEventListener('keydown', handleKeyDown);
 
   // init
   resizeLayers();
@@ -1031,14 +1204,30 @@
           }
         } catch (e) { console.error('grid change handler failed', e); }
       };
-      // Cover wide range of Tabulator events
       try { g.on('dataChanged', handleGridChange); } catch (e) {}
       try { g.on('dataLoaded', handleGridChange); } catch (e) {}
       try { g.on('rowDeleted', handleGridChange); } catch (e) {}
-      try { g.on('rowDeleted', handleGridChange); } catch (e) {}
-      try { g.on('rowSelectionChanged', handleGridChange); } catch (e) {}
       try { g.on('cellEdited', handleGridChange); } catch (e) {}
       try { g.on('rowUpdated', handleGridChange); } catch (e) {}
+
+      // Tie Tabulator Selection natively to the Canvas Edit state & update common buttons
+      try {
+        g.on('rowSelectionChanged', function(data, rows) {
+          if (window.__syncingGridSelection > 0) return;
+          if (data.length === 1) {
+            if (editModeActive && (!editSession || String(editSession.id) !== String(data[0].id))) {
+              if (!editSession || !editSession.dragging) startEditSession(data[0].id);
+            }
+          } else {
+            if (editSession && !editSession.dragging) {
+              endEditSessionFinal();
+              updateHover(lastPointerPos.x, lastPointerPos.y);
+            }
+          }
+          syncToolbarButtons();
+        });
+      } catch(e){}
+
       g.__editOverlayHooked = true;
     } catch (e) {}
   }
@@ -1076,7 +1265,7 @@
     }
   };
   globalThis._editAnnotations.commitEdit = () => { if (editSession) commitEditSessionAndEnd(); };
-  globalThis._editAnnotations.deleteEditing = () => { if (editSession) deleteSelectedAnnotation(); };
+  globalThis._editAnnotations.deleteEditing = () => { if (editSession) doMultiDelete(); };
 
   // Broadcast helper
   function broadcastEditSelectionChanged() {
@@ -1089,47 +1278,75 @@
   // --- Selection sync helper ---
   function ensureGridSelectionAndOverlay(id){
     if (!id) return;
-    // Draw selection overlay immediately even if grid selection lags
     try { if (typeof window.renderSelectionOverlay === 'function') window.renderSelectionOverlay([id]); } catch(e){}
+
     const grid = window.annotationGrid;
     if (!grid) { console.debug('[edit-sync] grid not ready yet for id', id); return; }
 
-    let attempts = 0; const MAX_ATTEMPTS = 10; const DELAY_MS = 100;
-    function attempt(){
-      attempts++;
-      let selectedOk = false;
+    // Helper to attempt selection once
+    const trySelect = (tryId) => {
       try {
-        // Deselect previous selection explicitly
+        // clear existing selection first
+        if (typeof grid.deselectRow === 'function') grid.deselectRow();
         if (typeof grid.getSelectedRows === 'function') {
-          (grid.getSelectedRows()||[]).forEach(r=>{ try { r.deselect && r.deselect(); } catch(e){} });
+          (grid.getSelectedRows() || []).forEach(r => { try { r.deselect && r.deselect(); } catch(e){} });
         }
-        // Try select via getRow(id)
+
+        // Prefer getting a row object (materialized), else fall back to selectRow
+        let rc = null;
         if (typeof grid.getRow === 'function') {
-          let rc = grid.getRow(id);
-          if (!rc) rc = grid.getRow(String(id));
-          if (rc && typeof rc.select === 'function') { rc.select(); selectedOk = true; }
+          rc = grid.getRow(tryId) || grid.getRow(String(tryId)) || (isNaN(tryId) ? null : grid.getRow(Number(tryId)));
         }
-        // Fallback: selectRow API
-        if (!selectedOk && typeof grid.selectRow === 'function') {
-          grid.selectRow([id, String(id)]);
-          selectedOk = (grid.getSelectedRows && grid.getSelectedRows().length > 0) || (grid.getSelectedData && (grid.getSelectedData()||[]).length>0);
+
+        if (rc && typeof rc.select === 'function') {
+          // ensure row is visible (Tabulator will materialize it)
+          try { if (typeof grid.scrollToRow === 'function') grid.scrollToRow(rc); } catch(e){}
+          rc.select();
+          return true;
         }
-        // Visual fallback: add a CSS marker class to the matching row element if selection APIs failed
-        if (!selectedOk && typeof grid.getRow === 'function') {
-          let rc = grid.getRow(id) || grid.getRow(String(id));
-          if (rc && rc.getElement) {
-            const el = rc.getElement();
-            try { el.classList.add('row-active-edit'); } catch(e){}
+
+        // Tabulator accepts arrays for selectRow reliably; try array form
+        if (typeof grid.selectRow === 'function') {
+          try {
+            grid.selectRow([tryId]);
+            return true;
+          } catch (e) {
+            try { grid.selectRow(String(tryId)); return true; } catch(e2) {}
+            try { if (!isNaN(tryId)) { grid.selectRow(Number(tryId)); return true; } } catch(e3) {}
           }
         }
-      } catch(e) { /* swallow */ }
+      } catch (e) { /* swallow and return false */ }
+      return false;
+    };
 
-      // Ensure overlay redraw reflects final selection state
-      try { if (typeof window.renderSelectionOverlay === 'function') window.renderSelectionOverlay([id]); } catch(e){}
-      if (!selectedOk && attempts < MAX_ATTEMPTS) setTimeout(attempt, DELAY_MS);
-      else console.debug('[edit-sync] selection sync attempts:', attempts, 'success:', selectedOk, 'id:', id);
-    }
-    attempt();
+    // Try immediate selection, then retry a couple times with small delays if needed
+    let attempts = 0;
+    const maxAttempts = 5;
+    const attemptSelectWithRetry = () => {
+      attempts++;
+      window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+      try {
+        const ok = trySelect(id);
+        if (!ok && attempts < maxAttempts) {
+          // If row not materialized, try scrolling to approximate row index if possible
+          try {
+            if (typeof grid.getRow === 'function') {
+              const rc = grid.getRow(id) || grid.getRow(String(id));
+              if (!rc && typeof grid.scrollToRow === 'function') {
+                // best-effort: try scrollToRow with id (some Tabulator builds accept it)
+                try { grid.scrollToRow(id); } catch(e){}
+              }
+            }
+          } catch(e){}
+          setTimeout(attemptSelectWithRetry, 80 * attempts); // increasing backoff
+        }
+      } finally {
+        window.__syncingGridSelection--;
+      }
+    };
+
+    attemptSelectWithRetry();
+    try { if (typeof window.renderSelectionOverlay === 'function') window.renderSelectionOverlay([id]); } catch(e){}
   }
 
   // Inject minimal CSS once for visual fallback highlight

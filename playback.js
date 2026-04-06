@@ -856,6 +856,34 @@
         drawTimeFooter(0);
       }
       reachedEOF = false;
+      },
+    setPosition: async (sec) => {
+      const s = spectro();
+      if (!s.duration) return;
+      
+      // Guard against rapid keypresses to prevent Web Audio node races
+      if (startInProgress) {
+        const deadline = performance.now() + 250;
+        while (startInProgress && performance.now() < deadline) { await new Promise(r => setTimeout(r, 8)); }
+      }
+
+      pausedAt = clamp(sec, 0, s.duration);
+      reachedEOF = false;
+      if (isPlaying) {
+        if (source) {
+          try { source.onended = null; source.stop(0); source.disconnect(); } catch (e) {}
+          source = null;
+        }
+        await startPlayback();
+      } else {
+        const globalX = Math.round(pausedAt * (s.pxPerSec || 1));
+        const currentScroll = Math.round(scrollArea.scrollLeft || 0);
+        if (axisReady) {
+          drawPlayheadAt(globalX - currentScroll);
+          renderXAxisTicks();
+          drawTimeFooter(currentScroll / Math.max(1, s.pxPerSec || 1));
+        }
+      }
     },
     status: () => ({ playing: isPlaying, pausedAt, playbackMeta, audioState: audioCtx ? audioCtx.state : 'none' })
   };

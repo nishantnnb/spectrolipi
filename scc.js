@@ -58,11 +58,24 @@
   }
 
   function getGridSelectedTemplates() {
+    let rows = [];
     try {
-      if (!window.annotationGrid || typeof window.annotationGrid.getSelectedRows !== 'function' || window.annotationGrid.initialized === false) return [];
-      const rows = window.annotationGrid.getSelectedRows();
-      return rows.map(r => r.getData());
+      if (window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function' && window.annotationGrid.initialized !== false) {
+        rows = window.annotationGrid.getSelectedRows().map(r => r.getData());
+      }
     } catch (e) { return []; }
+    // Fallback to active edit session if grid selection lags
+    if (rows.length === 0) {
+      try { 
+        const eid = globalThis._editAnnotations && globalThis._editAnnotations.getEditingId(); 
+        if (eid) {
+          const all = globalThis._annotations && typeof globalThis._annotations.getAll === 'function' ? globalThis._annotations.getAll() : [];
+          const found = all.find(x => String(x.id) === String(eid));
+          if (found) rows = [found];
+        }
+      } catch(e){}
+    }
+    return rows;
   }
 
   function getSpectroMeta() {
@@ -471,6 +484,7 @@
   // last scan state (keeps preset scan results and last selected preset index)
   let __scc_lastScanRows = null;
   let __scc_lastSelectedPresetIndex = null;
+  let __scc_lastScanParams = null;
   // active scan abort token (used to cancel long-running preset scans)
   let __scc_currentScan = null;
   function _showModal() {
@@ -1024,16 +1038,47 @@
     const btn = document.getElementById(RUN_BTN_ID);
     if (!btn) return;
     if (btn.__sccWired) return;
+
+    function checkScanBtnState() {
+      const scanBtn = document.getElementById('scc-scan');
+      if (!scanBtn) return;
+      if (!__scc_lastScanParams) { scanBtn.disabled = false; return; }
+      const sel = getGridSelectedTemplates();
+      const currentId = sel && sel.length === 1 ? sel[0].id : null;
+      const mdEl = document.getElementById('scc-mindur');
+      const mfEl = document.getElementById('scc-minfreq');
+      const xfEl = document.getElementById('scc-maxfreq');
+      const currentMinDurMs = Math.max(0, Number(mdEl ? mdEl.value : '0')) || 0;
+      const minFreq = Number(mfEl ? mfEl.value : '0') || 0;
+      const maxFreq = Number(xfEl ? xfEl.value : '0') || 0;
+
+      if (String(currentId) !== String(__scc_lastScanParams.id) ||
+          currentMinDurMs !== __scc_lastScanParams.minDur ||
+          minFreq !== __scc_lastScanParams.minFreq ||
+          maxFreq !== __scc_lastScanParams.maxFreq) {
+          scanBtn.disabled = false;
+          const presetsArea = document.getElementById('scc-presets-area');
+          if (presetsArea) presetsArea.style.display = 'none';
+      } else {
+          scanBtn.disabled = true;
+          const presetsArea = document.getElementById('scc-presets-area');
+          if (presetsArea && __scc_lastScanRows) presetsArea.style.display = 'block';
+      }
+    }
+
     btn.addEventListener('click', async () => {
+      try {
       // Before opening SCC modal, ensure exactly one template is selected and species is set.
       try {
         const selRows = getGridSelectedTemplates() || [];
         if (!selRows || selRows.length !== 1) {
+          console.warn('SCC abort: No single row selected.');
           alert('Please select only 1 template row to run SCC.');
           return;
         }
         const uniq = Array.from(new Set(selRows.map(r => (r.scientificName||'').trim()).filter(Boolean)));
         if (uniq.length === 0) {
+          console.warn('SCC abort: No scientific name.');
           alert('Selected template contains no Scientific Name. Please set the Species for your template row before running SCC.');
           return;
         }
@@ -1042,8 +1087,45 @@
       try { await safePausePlayback(800); } catch (e) {}
       const modal = _showModal();
       const $ = (id) => document.getElementById(id);
-      // Prefill frequency include defaults based on selected templates
+
+      setTimeout(() => {
+        const firstInput = $('scc-mindur');
+        if (firstInput) firstInput.focus();
+      }, 50);
+
+      let shouldPrefill = true;
       try {
+        const selRows = getGridSelectedTemplates() || [];
+        const currentId = selRows.length === 1 ? selRows[0].id : null;
+        if (__scc_lastScanParams && currentId && String(__scc_lastScanParams.id) === String(currentId)) {
+            const presetsArea = document.getElementById('scc-presets-area');
+            if (presetsArea && __scc_lastScanRows) {
+                presetsArea.style.display = 'block';
+            }
+            
+            const minDurEl = $('scc-mindur');
+            const minFreqEl = $('scc-minfreq');
+            const maxFreqEl = $('scc-maxfreq');
+            if (minDurEl) minDurEl.value = String(__scc_lastScanParams.minDur);
+            if (minFreqEl) minFreqEl.value = String(__scc_lastScanParams.minFreq);
+            if (maxFreqEl) maxFreqEl.value = String(__scc_lastScanParams.maxFreq);
+            
+            const scanBtn = document.getElementById('scc-scan');
+            if (scanBtn) scanBtn.disabled = true;
+            shouldPrefill = false;
+        } else {
+            const presetsArea = document.getElementById('scc-presets-area');
+            if (presetsArea) {
+                presetsArea.style.display = 'none';
+            }
+            const scanBtn = document.getElementById('scc-scan');
+            if (scanBtn) scanBtn.disabled = false;
+        }
+      } catch(e) {}
+
+      if (shouldPrefill) {
+        // Prefill frequency include defaults based on selected templates
+        try {
         const selRows = getGridSelectedTemplates();
         if (selRows && selRows.length) {
           const minF = Math.max(0, Math.min(...selRows.map(r => Number(r.lowFreq)||0)) - 100);
@@ -1063,6 +1145,7 @@
           } catch (e) {}
         }
       } catch (e) {}
+      }
   const run = $('scc-run');
   const cancel = $('scc-cancel');
   const close = () => _hideModal();
@@ -1073,6 +1156,14 @@
     const closeX = $('scc-close-x');
     if (closeX && !closeX.__wired) { closeX.addEventListener('click', close); closeX.__wired = true; }
   } catch(e) {}
+
+      const minDurEl = $('scc-mindur');
+      const minFreqEl = $('scc-minfreq');
+      const maxFreqEl = $('scc-maxfreq');
+      if (minDurEl && !minDurEl.__sccWired) { minDurEl.addEventListener('input', checkScanBtnState); minDurEl.__sccWired = true; }
+      if (minFreqEl && !minFreqEl.__sccWired) { minFreqEl.addEventListener('input', checkScanBtnState); minFreqEl.__sccWired = true; }
+      if (maxFreqEl && !maxFreqEl.__sccWired) { maxFreqEl.addEventListener('input', checkScanBtnState); maxFreqEl.__sccWired = true; }
+
       // Wire the preset scan and stop buttons
       const scanBtn = $('scc-scan');
       const stopBtn = $('scc-stop');
@@ -1110,6 +1201,15 @@
             const maxFreq = Number(($('scc-maxfreq').value||String(Math.max(1000, (meta.sampleRate||44100)/2)))) || Math.max(1000, (meta.sampleRate||44100)/2);
             const fullDuration = (typeof globalThis._spectroDuration === 'number' && isFinite(globalThis._spectroDuration)) ? globalThis._spectroDuration : Math.max(...sel.map(r => Number(r.endTime)||0));
             const extractSearch = extractTemplate2D(meta.spectra, meta.bins, meta.framesPerSec, meta.sampleRate, 0, fullDuration, minFreq, maxFreq);
+            const currentMinDurMs = Math.max(0, Number(($('scc-mindur').value||'0')) || 0);
+
+            __scc_lastScanParams = {
+              id: sel[0].id,
+              minDur: currentMinDurMs,
+              minFreq: minFreq,
+              maxFreq: maxFreq
+            };
+
             // build templates
             const templates = sel.map(r => extractTemplate2D(meta.spectra, meta.bins, meta.framesPerSec, meta.sampleRate, Number(r.beginTime)||0, Number(r.endTime)||0, Number(r.lowFreq)||0, Number(r.highFreq)||0));
 
@@ -1251,8 +1351,9 @@
                   }));
 
                 if (rowsToCreate.length) {
+                  let addedRows = [];
                   try {
-                    const addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-apply');
+                    addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-apply');
                       // Deselect previous, select newly-added
                       const grid = window.annotationGrid;
                       if (grid && typeof grid.getSelectedRows === 'function') {
@@ -1263,6 +1364,7 @@
                         for (const r of addedRows) { try { grid.selectRow(r.id); } catch(e){} }
                       }
                     } catch(e){}
+                  if (addedRows && addedRows.length > 0) applyBtn.disabled = true;
                   }
 
                 } catch (e) {
@@ -1290,6 +1392,12 @@
         scanBtn.__scanned = true;
       }
       // The "Run" button was removed from the modal UI per simplified workflow; keep wiring complete but do not attach a run handler here.
+      checkScanBtnState();
+
+      } catch (err) {
+        console.error('SCC Error:', err);
+        alert('An unexpected error occurred opening SCC: ' + err.message);
+      }
     });
     btn.__sccWired = true;
   }

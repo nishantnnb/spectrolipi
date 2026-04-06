@@ -20,6 +20,33 @@
   const META_BACKUP_SIZE_LIMIT = 1024 * 1024 * 3; // 3MB soft guard
   let __metaBackupTimer = 0;
 
+  // Formatting helpers for TSV export
+  function cellString(v) {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'object') {
+      try { return JSON.stringify(v); } catch (e) { return String(v); }
+    }
+    return String(v);
+  }
+
+  function formatDateAndTimeFromISO(iso) {
+    if (!iso) return { date: '', time: '' };
+    try {
+      const s = String(iso).trim();
+      if (s === '') return { date: '', time: '' };
+      const d = new Date(s);
+      if (isNaN(d)) return { date: '', time: '' };
+      const pad = (n) => String(n).padStart(2, '0');
+      return { date: `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+    } catch (e) { return { date: '', time: '' }; }
+  }
+
+  function normalizeComments(s) {
+    if (s === null || s === undefined) return '';
+    try { return String(s).replace(/\r\n|\r|\n/g, ' ').replace(/\s+/g, ' ').trim(); }
+    catch (e) { return String(s).replace(/\r\n|\r|\n/g, ' '); }
+  }
+
   // DOM builder helper
   function el(tag, props, ...children) {
     const node = document.createElement(tag);
@@ -164,40 +191,6 @@
       el('input', { type: 'text', className: 'meta-input', id: 'meta-accessories', placeholder: 'e.g. windscreen, preamp, parabola' })
     );
 
-
-    // New fields for Xeno-canto and project/annotator info
-    const xcFileNoWrap = el('div', null,
-      el('label', { cls: 'meta-label', html: 'Xeno-canto file no:' }),
-      el('input', { type: 'text', className: 'meta-input', id: 'meta-xcfileno', placeholder: 'e.g. 666145', title: 'Mandatory for XC upload' })
-    );
-    const annotatorNameWrap = el('div', null,
-      el('label', { cls: 'meta-label', html: 'Name of the Annotator (for Xeno-canto):' }),
-      el('input', { type: 'text', className: 'meta-input', id: 'meta-annname', placeholder: '', title: 'Optional for XC upload' })
-    );
-    // NEW: Annotation license dropdown
-    const licenseWrap = el('div', null,
-      el('label', { cls: 'meta-label', html: 'Annotation license (for Xeno-canto):' }),
-      el('select', { className: 'meta-select', id: 'meta-license' },
-        el('option', { value: '' }, ''), // Default blank
-        el('option', { value: 'CC-BY-4.0' }, 'CC-BY-4.0'),
-        el('option', { value: 'CC-BY-NC-4.0' }, 'CC-BY-NC-4.0')
-      )
-    );
-
-    // New fields: Annotation set name and creator (fix: define outside of annotatorNameWrap)
-    const setNameWrap = el('div', null,
-      el('label', { cls: 'meta-label', html: 'Annotation set name (for Xeno-canto):' }),
-      el('input', { type: 'text', className: 'meta-input', id: 'meta-setname', placeholder: '', title: 'Optional for XC upload' })
-    );
-    const setCreatorWrap = el('div', null,
-      el('label', { cls: 'meta-label', html: 'Annotation set creator (for Xeno-canto):' }),
-      el('input', { type: 'text', className: 'meta-input', id: 'meta-setcreator', placeholder: '', title: 'Optional for XC upload' })
-    );
-    const projectWrap = el('div', null,
-      el('label', { cls: 'meta-label', html: 'Project (for Xeno-canto):' }),
-      el('input', { type: 'text', className: 'meta-input', id: 'meta-project', placeholder: '', title: 'Optional for XC upload' })
-    );
-
     const contribWrap = el('div', null, // Removed 'meta-span-2' for adjustable length
       el('label', { cls: 'meta-label', html: 'Sound record Contributor(s)' }),
       (function () {
@@ -231,15 +224,6 @@
   grid.appendChild(micWrap);
   grid.appendChild(accWrap);
 
-
-  // Insert new fields before contributors/comments
-  grid.appendChild(xcFileNoWrap);
-  grid.appendChild(licenseWrap); // NEW: Annotation license
-  grid.appendChild(annotatorNameWrap);
-  grid.appendChild(setNameWrap);
-  grid.appendChild(setCreatorWrap);
-  grid.appendChild(projectWrap);
-
   // Place contributors in the first column of the next row; leave two empty cells then comments full-width
   grid.appendChild(contribWrap);
   grid.appendChild(el('div', null));
@@ -248,8 +232,10 @@
   grid.appendChild(commentsWrap);
 
     const actions = el('div', { cls: 'meta-actions' });
+    const saveFileBtn = el('button', { type: 'button', className: 'btn btn-primary', id: 'meta-save-file', style: 'margin-right: auto;' }, 'Save to file');
     const okBtn = el('button', { type: 'button', className: 'btn btn-primary', id: 'meta-ok' }, 'OK');
     const cancelBtn = el('button', { type: 'button', className: 'btn btn-muted', id: 'meta-cancel' }, 'Cancel');
+    actions.appendChild(saveFileBtn);
     actions.appendChild(okBtn);
     actions.appendChild(cancelBtn);
 
@@ -735,14 +721,9 @@
       recorder: overlayScope.querySelector('#meta-recorder'),
       mic: overlayScope.querySelector('#meta-mic'),
       accessories: overlayScope.querySelector('#meta-accessories'),
-      xcfileno: overlayScope.querySelector('#meta-xcfileno'),
-      license: overlayScope.querySelector('#meta-license'), // NEW
-      annname: overlayScope.querySelector('#meta-annname'),
-      project: overlayScope.querySelector('#meta-project'),
-      setname: overlayScope.querySelector('#meta-setname'),
-      setcreator: overlayScope.querySelector('#meta-setcreator'),
       contributorsWrap: overlayScope.querySelector('#meta-contrib-wrap'),
       comments: overlayScope.querySelector('#meta-comments'),
+      saveFile: overlayScope.querySelector('#meta-save-file'),
       ok: overlayScope.querySelector('#meta-ok'),
       cancel: overlayScope.querySelector('#meta-cancel')
     };
@@ -761,22 +742,65 @@
     // apply initial values
     applyInitial(initial && Object.keys(initial).length ? initial : window.__lastMetadata || null);
 
-    // Auto-populate annotation set name when XC file no loses focus
-    if (nodes.xcfileno && nodes.setname) {
-      nodes.xcfileno.addEventListener('blur', () => {
-        const val = nodes.xcfileno.value.trim();
-        const currentSetName = nodes.setname.value.trim();
-        if (val && (!currentSetName || /^Annotation set for \d*$/i.test(currentSetName))) {
-          const match = val.match(/\d+/);
-          const num = match ? match[0] : val.replace(/^XC/i, '');
-          nodes.setname.value = 'Annotation set for ' + num;
-          nodes.setname.dispatchEvent(new Event('input')); // Trigger background backup
-        }
-      });
-    }
-
     // wire species autocomplete (waits for species-data)
     try { wireSpeciesAutocompleteWithWait(nodes.species, nodes.speciesSuggest); } catch (e) {}
+
+    // Save to file handler (exports current modal data to TSV)
+    nodes.saveFile.addEventListener('click', () => {
+      const ratingVal = (nodes.rating && nodes.rating.value) ? Number(nodes.rating.value) : null;
+      const current = {
+        latitude: nodes.lat.value ? nodes.lat.value.trim() : null,
+        longitude: nodes.lon.value ? nodes.lon.value.trim() : null,
+        datetime: nodes.datetime.value ? new Date(nodes.datetime.value).toISOString() : null,
+        rating: (ratingVal === null || isNaN(ratingVal)) ? null : ratingVal,
+        type: nodes.type.value || null,
+        species: nodes.species.value ? nodes.species.value.trim() : null,
+        recorder: nodes.recorder.value ? nodes.recorder.value.trim() : null,
+        microphone: nodes.mic.value ? nodes.mic.value.trim() : null,
+        accessories: nodes.accessories.value ? nodes.accessories.value.trim() : null,
+        contributors: (nodes.contributorsWrap && nodes.contributorsWrap.__contribAPI) ? nodes.contributorsWrap.__contribAPI.get().map(s => String(s).trim()).filter(Boolean) : [],
+        comments: nodes.comments.value ? nodes.comments.value.trim() : null
+      };
+
+      // Determine scientific name based on species input
+      let scientificName = '';
+      try {
+        const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        if (current.species) {
+          const rec2 = recs.find(r => String((r.common||'')).trim() === current.species);
+          if (rec2) scientificName = rec2.scientific || '';
+        }
+      } catch (e) {}
+
+      const dt = formatDateAndTimeFromISO(current.datetime);
+      const fileInputEl = document.getElementById('file');
+      const exportFileName = (fileInputEl && fileInputEl.files && fileInputEl.files.length > 0 && fileInputEl.files[0] && fileInputEl.files[0].name) ? String(fileInputEl.files[0].name) : '';
+
+      const headers = ['File', 'Latitude', 'Longitude', 'Recording date', 'Recording time', 'Rating', 'Type of recording', 'Target species', 'Scientific name', 'Recorder', 'Microphone', 'Accessories', 'Contributor(s)', 'Overall comments'];
+      const row = [
+        exportFileName, cellString(current.latitude), cellString(current.longitude),
+        dt.date, dt.time, cellString(current.rating), cellString(current.type),
+        cellString(current.species), cellString(scientificName), cellString(current.recorder),
+        cellString(current.microphone), cellString(current.accessories),
+        cellString(current.contributors ? current.contributors.join(', ') : ''),
+        normalizeComments(current.comments)
+      ];
+
+      const content = headers.join('\t') + '\n' + row.join('\t') + '\n';
+      const mdBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      
+      let base = 'export';
+      if (exportFileName) {
+        const idx = exportFileName.lastIndexOf('.');
+        base = idx > 0 ? exportFileName.slice(0, idx) : exportFileName;
+      }
+      
+      const url = URL.createObjectURL(mdBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${base}_Matadata.txt`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    });
 
     // OK handler (reads rating dropdown and persists)
     nodes.ok.addEventListener('click', () => {
@@ -791,12 +815,6 @@
         recorder: nodes.recorder.value ? nodes.recorder.value.trim() : null,
         microphone: nodes.mic.value ? nodes.mic.value.trim() : null,
         accessories: nodes.accessories.value ? nodes.accessories.value.trim() : null,
-        xcfileno: nodes.xcfileno && nodes.xcfileno.value ? nodes.xcfileno.value.trim() : null,
-        annname: nodes.annname && nodes.annname.value ? nodes.annname.value.trim() : null,
-        project: nodes.project && nodes.project.value ? nodes.project.value.trim() : null,
-        set_license: nodes.license && nodes.license.value ? nodes.license.value.trim() : null, // NEW
-        setname: nodes.setname && nodes.setname.value ? nodes.setname.value.trim() : null,
-        setcreator: nodes.setcreator && nodes.setcreator.value ? nodes.setcreator.value.trim() : null,
         contributors: (nodes.contributorsWrap && nodes.contributorsWrap.__contribAPI) ? nodes.contributorsWrap.__contribAPI.get().map(s => String(s).trim()).filter(Boolean) : [],
         comments: nodes.comments.value ? nodes.comments.value.trim() : null,
         savedAt: new Date().toISOString()
@@ -829,7 +847,7 @@
 
     // Wire live-change backups: schedule a backup on user edits inside the modal
     try {
-      const inputNodeIds = ['meta-lat','meta-lon','meta-datetime','meta-rating','meta-type','meta-species','meta-recorder','meta-mic','meta-accessories','meta-xcfileno','meta-license','meta-annname','meta-project','meta-comments','meta-contrib-input','meta-setname','meta-setcreator'];
+      const inputNodeIds = ['meta-lat','meta-lon','meta-datetime','meta-rating','meta-type','meta-species','meta-recorder','meta-mic','meta-accessories','meta-comments','meta-contrib-input'];
       inputNodeIds.forEach(id => {
         const n = overlayScope.querySelector('#' + id);
         if (!n) return;
@@ -846,11 +864,6 @@
               recorder: overlayScope.querySelector('#meta-recorder') ? overlayScope.querySelector('#meta-recorder').value : null,
               microphone: overlayScope.querySelector('#meta-mic') ? overlayScope.querySelector('#meta-mic').value : null,
               accessories: overlayScope.querySelector('#meta-accessories') ? overlayScope.querySelector('#meta-accessories').value : null,
-              xcfileno: overlayScope.querySelector('#meta-xcfileno') ? overlayScope.querySelector('#meta-xcfileno').value : null,
-              set_license: overlayScope.querySelector('#meta-license') ? overlayScope.querySelector('#meta-license').value : null, // NEW
-              set_license: overlayScope.querySelector('#meta-license') ? overlayScope.querySelector('#meta-license').value : null, // NEW
-              annname: overlayScope.querySelector('#meta-annname') ? overlayScope.querySelector('#meta-annname').value : null,
-              project: overlayScope.querySelector('#meta-project') ? overlayScope.querySelector('#meta-project').value : null,
               contributors: (function () { const wrap = overlayScope.querySelector('#meta-contrib-wrap'); if (!wrap) return []; const chips = Array.from(wrap.querySelectorAll('.meta-chip')).map(ch => ch.childNodes[0].textContent.trim()); const input = wrap.querySelector('#meta-contrib-input'); return chips.concat(input && input.value ? [input.value.trim()] : []).filter(Boolean); })(),
               comments: overlayScope.querySelector('#meta-comments') ? overlayScope.querySelector('#meta-comments').value : null,
               savedAt: new Date().toISOString()
@@ -874,13 +887,6 @@
         recorder: document.getElementById('meta-recorder') ? document.getElementById('meta-recorder').value : null,
         microphone: document.getElementById('meta-mic') ? document.getElementById('meta-mic').value : null,
         accessories: document.getElementById('meta-accessories') ? document.getElementById('meta-accessories').value : null,
-        xcfileno: document.getElementById('meta-xcfileno') ? document.getElementById('meta-xcfileno').value : null,
-        set_license: document.getElementById('meta-license') ? document.getElementById('meta-license').value : null, // NEW
-        set_license: document.getElementById('meta-license') ? document.getElementById('meta-license').value : null, // NEW
-        annname: document.getElementById('meta-annname') ? document.getElementById('meta-annname').value : null,
-        project: document.getElementById('meta-project') ? document.getElementById('meta-project').value : null,
-        setname: document.getElementById('meta-setname') ? document.getElementById('meta-setname').value : null,
-        setcreator: document.getElementById('meta-setcreator') ? document.getElementById('meta-setcreator').value : null,
         contributors: (function () {
           const wrap = document.getElementById('meta-contrib-wrap'); if (!wrap) return [];
           const chips = Array.from(wrap.querySelectorAll('.meta-chip')).map(ch => ch.childNodes[0].textContent.trim());
@@ -895,16 +901,6 @@
   // applyInitial helpers
   function applyInitial(init) {
     const source = Object.assign({}, window.__lastMetadata || {}, init || {});
-    try {
-      const fi = document.getElementById('file');
-      if (fi && fi.files && fi.files.length > 0) {
-        const match = fi.files[0].name.match(/^XC(\d+)/i);
-        if (match) {
-          if (source.xcfileno === undefined) source.xcfileno = match[1];
-          if (source.setname === undefined) source.setname = 'Annotation set for ' + match[1];
-        }
-      }
-    } catch(e) {}
     nodesSafeSet('meta-lat', (source.latitude !== undefined && source.latitude !== null) ? source.latitude : '');
     nodesSafeSet('meta-lon', (source.longitude !== undefined && source.longitude !== null) ? source.longitude : '');
     if (source.datetime) {
@@ -926,31 +922,6 @@
     nodesSafeSet('meta-recorder', source.recorder || '');
     nodesSafeSet('meta-mic', source.microphone || '');
     nodesSafeSet('meta-accessories', source.accessories || '');
-    nodesSafeSet('meta-xcfileno', source.xcfileno || '');
-    nodesSafeSet('meta-license', source.set_license || '');
-    // Prefill Annotator Xeno-canto ID and Name from settings if not present in metadata
-    let prefillAnnotatorName = source.annname;
-    if (!prefillAnnotatorName || prefillAnnotatorName === '') {
-      try {
-        let settings = null;
-        if (window.getSettings) {
-          settings = window.getSettings();
-        } else if (window.__xcSettings) {
-          settings = window.__xcSettings;
-        } else if (typeof getSettings === 'function') {
-          settings = getSettings();
-        } else {
-          // fallback: read from localStorage directly
-          const raw = localStorage.getItem('xc.settings.v1');
-          if (raw) settings = JSON.parse(raw);
-        }
-        if (settings && settings.annotatorName) prefillAnnotatorName = settings.annotatorName;
-      } catch (e) {}
-    }
-    nodesSafeSet('meta-annname', prefillAnnotatorName || '');
-    nodesSafeSet('meta-project', source.project || '');
-    nodesSafeSet('meta-setname', source.setname || '');
-    nodesSafeSet('meta-setcreator', source.setcreator || '');
     if (Array.isArray(source.contributors)) {
       const wrap = document.getElementById('meta-contrib-wrap');
       try { wrap && wrap.__contribAPI && wrap.__contribAPI.set(source.contributors); } catch (e) {}
@@ -976,26 +947,12 @@
       recorder: existingOverlay.querySelector('#meta-recorder'),
       mic: existingOverlay.querySelector('#meta-mic'),
       accessories: existingOverlay.querySelector('#meta-accessories'),
-      xcfileno: existingOverlay.querySelector('#meta-xcfileno'),
-      license: existingOverlay.querySelector('#meta-license'), // NEW
-      annname: existingOverlay.querySelector('#meta-annname'),
-      project: existingOverlay.querySelector('#meta-project'),
       contributorsWrap: existingOverlay.querySelector('#meta-contrib-wrap'),
       comments: existingOverlay.querySelector('#meta-comments'),
       filenameLabel: existingOverlay.querySelector('#metaFilename')
     };
     if (!n.lat) return;
     const source = Object.assign({}, window.__lastMetadata || {}, init && Object.keys(init).length ? init : {});
-    try {
-      const fi = document.getElementById('file');
-      if (fi && fi.files && fi.files.length > 0) {
-        const match = fi.files[0].name.match(/^XC(\d+)/i);
-        if (match) {
-          if (source.xcfileno === undefined) source.xcfileno = match[1];
-          if (source.setname === undefined) source.setname = 'Annotation set for ' + match[1];
-        }
-      }
-    } catch(e) {}
     try { if (source.latitude !== undefined && source.latitude !== null) n.lat.value = source.latitude; else n.lat.value = ''; } catch (e) { n.lat && (n.lat.value = ''); }
     try { if (source.longitude !== undefined && source.longitude !== null) n.lon.value = source.longitude; else n.lon.value = ''; } catch (e) { n.lon && (n.lon.value = ''); }
     if (source.datetime) {
@@ -1017,10 +974,6 @@
     n.recorder.value = source.recorder || '';
     n.mic.value = source.microphone || '';
     n.accessories.value = source.accessories || '';
-    if (n.license) n.license.value = source.set_license || ''; // NEW
-    if (n.xcfileno) n.xcfileno.value = source.xcfileno || '';
-    if (n.annname) n.annname.value = source.annname || '';
-    if (n.project) n.project.value = source.project || '';
     n.comments.value = source.comments || '';
     if (Array.isArray(source.contributors) && source.contributors.length && n.contributorsWrap) {
       const input = n.contributorsWrap.querySelector('#meta-contrib-input');

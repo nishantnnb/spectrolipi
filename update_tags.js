@@ -8,41 +8,23 @@
   const MODAL_ID = 'updateTagsModal';
 
   const selectedIds = new Set(); 
-  let gridWired = false;
 
   function getGrid() { try { return window.annotationGrid || null; } catch (e) { return null; } }
   
   function getSelectedRowIdsFromGrid() {
     const grid = getGrid();
-    if (!grid || typeof grid.getSelectedData !== 'function' || grid.initialized === false) return [];
-    try { return (grid.getSelectedData() || []).map(r => r && r.id).filter(v => v !== undefined && v !== null); } catch (e) { return []; }
-  }
-
-  function onGridSelectionChanged() {
-    const ids = getSelectedRowIdsFromGrid();
-    selectedIds.clear();
-    ids.forEach(id => selectedIds.add(String(id)));
-    const btn = document.getElementById(BTN_ID);
-    if (btn) {
-      btn.disabled = selectedIds.size === 0;
+    let ids = [];
+    if (grid && typeof grid.getSelectedData === 'function' && grid.initialized !== false) {
+      try { ids = (grid.getSelectedData() || []).map(r => r && r.id).filter(v => v !== undefined && v !== null); } catch (e) {}
     }
+    // Fallback to active edit session if grid selection lags
+    if (ids.length === 0) {
+      try { if (globalThis._editAnnotations && globalThis._editAnnotations.getEditingId()) ids = [globalThis._editAnnotations.getEditingId()]; } catch(e){}
+    }
+    return ids;
   }
 
-  function wireGridSelectionListeners() {
-    const grid = getGrid();
-    if (!grid || gridWired) return;
-    try {
-      const tryHook = (evt) => { try { grid.on(evt, onGridSelectionChanged); } catch (e) {} };
-      tryHook('rowSelected');
-      tryHook('rowDeselected');
-      tryHook('dataLoaded');
-      tryHook('dataChanged');
-      gridWired = true;
-      onGridSelectionChanged();
-    } catch (e) {}
-  }
-
-  function buildModal(groupId) {
+  function buildModal(groupId, prefill) {
     let wrap = document.getElementById(MODAL_ID);
     if (!wrap) {
       wrap = document.createElement('div');
@@ -53,14 +35,14 @@
 
     const card = document.createElement('div');
     card.className = 'card';
-    card.style.cssText = 'background:#111;color:#fff;width:95%;max-width:640px;padding:20px;border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.05);font-family:system-ui,sans-serif;max-height:90vh;overflow-y:auto;';
+    card.style.cssText = 'background:#111;color:#fff;width:95%;max-width:640px;padding:16px;border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.05);font-family:system-ui,sans-serif;max-height:90vh;overflow-y:auto;';
 
     card.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h3 style="margin:0;font-size:18px;font-weight:600;">Update Tags (Group ID: ${groupId})</h3>
-        <button id="ut-close" style="background:transparent;border:0;color:#9ca3af;font-size:24px;cursor:pointer;line-height:1;">&times;</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:16px;font-weight:600;">Update Tags (Group ID: ${groupId})</h3>
+        <button id="ut-close" style="background:transparent;border:0;color:#9ca3af;font-size:22px;cursor:pointer;line-height:1;">&times;</button>
       </div>
-      <div style="margin-bottom:12px;font-size:13px;color:#cbd5e1;">Select tags to apply to the selected rows. Select 'Clear' to clear the tag.</div>
+      <div style="margin-bottom:12px;font-size:12px;color:#cbd5e1;">Select tags to apply to the selected rows. Select 'Clear' to clear the tag.</div>
       <div id="ut-dynamic-content"></div>
     `;
 
@@ -75,26 +57,36 @@
         const LIFESTAGE_OPTIONS = tagGroups.life_stage || [];
         const SOUNDTYPE_OPTIONS = tagGroups.sound_type || [];
 
-        if (SEX_OPTIONS.length) dynamicContentArea.appendChild(createSection('Sex', SEX_OPTIONS, 'sex'));
-        if (LIFESTAGE_OPTIONS.length) dynamicContentArea.appendChild(createSection('Life Stage', LIFESTAGE_OPTIONS, 'lifestage'));
-        if (SOUNDTYPE_OPTIONS.length) dynamicContentArea.appendChild(createSection('Sound Type', SOUNDTYPE_OPTIONS, 'soundtype'));
+        const prefillSex = prefill && prefill.sex ? prefill.sex.split(',').map(s=>s.trim()).filter(Boolean) : [];
+        const prefillLifeStage = prefill && prefill.lifeStage ? prefill.lifeStage.split(',').map(s=>s.trim()).filter(Boolean) : [];
+        const prefillSoundType = prefill && prefill.soundType ? prefill.soundType.split(',').map(s=>s.trim()).filter(Boolean) : [];
+
+        if (SEX_OPTIONS.length) dynamicContentArea.appendChild(createSection('Sex', SEX_OPTIONS, 'sex', prefillSex));
+        if (LIFESTAGE_OPTIONS.length) dynamicContentArea.appendChild(createSection('Life Stage', LIFESTAGE_OPTIONS, 'lifestage', prefillLifeStage));
+        if (SOUNDTYPE_OPTIONS.length) dynamicContentArea.appendChild(createSection('Sound Type', SOUNDTYPE_OPTIONS, 'soundtype', prefillSoundType));
     }
 
-    function createSection(title, options, prefix) {
+    function createSection(title, options, prefix, preselectedArr) {
       const sec = document.createElement('div');
-      sec.style.marginBottom = '16px';
+      sec.style.marginBottom = '12px';
+      sec.style.display = 'flex';
+      sec.style.alignItems = 'flex-start';
+      sec.style.gap = '8px';
+
       const heading = document.createElement('div');
-      heading.textContent = title;
+      heading.textContent = title + ':';
       heading.style.fontWeight = '600';
-      heading.style.marginBottom = '8px';
-      heading.style.color = '#e2e8f0';
-      heading.style.fontSize = '14px';
+      heading.style.color = '#cbd5e1';
+      heading.style.fontSize = '12px';
+      heading.style.width = '75px';
+      heading.style.paddingTop = '6px';
+      heading.style.flexShrink = '0';
       sec.appendChild(heading);
 
       const tagsWrap = document.createElement('div');
       tagsWrap.style.display = 'flex';
       tagsWrap.style.flexWrap = 'wrap';
-      tagsWrap.style.gap = '8px';
+      tagsWrap.style.gap = '4px';
 
       const allOptions = [...options, { isClear: true, val: '', label: 'Clear' }];
 
@@ -109,14 +101,20 @@
         btn.dataset.val = optVal;
         btn.textContent = optLabel;
         
+        const isSelected = (!isClear && preselectedArr && preselectedArr.includes(optVal));
+        
         const defaultBg = isClear ? '#4b2020' : '#374151';
         const defaultColor = isClear ? '#fca5a5' : '#d1d5db';
         const defaultBorder = isClear ? '#7f1d1d' : '#4b5563';
         const activeBg = isClear ? '#ef4444' : '#10b981';
         const activeBorder = isClear ? '#dc2626' : '#059669';
 
-        btn.style.cssText = `background:${defaultBg};color:${defaultColor};border:1px solid ${defaultBorder};padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer;transition:all 0.15s ease;`;
+        btn.style.cssText = `background:${isSelected ? activeBg : defaultBg};color:${isSelected ? '#fff' : defaultColor};border:1px solid ${isSelected ? activeBorder : defaultBorder};padding:4px 10px;border-radius:14px;font-size:11px;cursor:pointer;transition:all 0.15s ease;`;
         
+        if (isSelected) {
+            btn.classList.add('selected-tag');
+        }
+
         btn.onclick = () => {
           const wasSelected = btn.classList.contains('selected-tag');
           
@@ -149,11 +147,11 @@
     actions.style.display = 'flex';
     actions.style.justifyContent = 'flex-end';
     actions.style.gap = '12px';
-    actions.style.marginTop = '24px';
+    actions.style.marginTop = '16px';
     
     actions.innerHTML = `
-      <button id="ut-cancel" class="btn" style="background:transparent;border:1px solid #4b5563;color:#cbd5e1;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:14px;">Cancel</button>
-      <button id="ut-ok" class="btn" style="background:#2196F3;color:#fff;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;">OK</button>
+      <button id="ut-cancel" class="btn" style="background:transparent;border:1px solid #4b5563;color:#cbd5e1;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
+      <button id="ut-ok" class="btn" style="background:#2196F3;color:#fff;border:none;padding:6px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">OK</button>
     `;
     card.appendChild(actions);
 
@@ -191,6 +189,11 @@
       const groupIds = new Set();
       let scientificNameNotFound = false;
 
+      let commonSex = undefined;
+      let commonLifeStage = undefined;
+      let commonSoundType = undefined;
+      let first = true;
+
       for (const ann of selectedAnnotations) {
         const scientificName = ann.scientificName;
         if (!scientificName) {
@@ -208,6 +211,20 @@
           break;
         }
         groupIds.add(String(groupId));
+
+        const sex = ann.sex || '';
+        const ls = ann.lifeStage || '';
+        const st = ann.soundType || '';
+        if (first) {
+            commonSex = sex;
+            commonLifeStage = ls;
+            commonSoundType = st;
+            first = false;
+        } else {
+            if (commonSex !== sex) commonSex = null;
+            if (commonLifeStage !== ls) commonLifeStage = null;
+            if (commonSoundType !== st) commonSoundType = null;
+        }
       }
 
       if (scientificNameNotFound) {
@@ -227,14 +244,13 @@
         return;
       }
 
-      const wrap = buildModal(singleGroupId);
-      wrap.querySelectorAll('button[data-category]').forEach(btn => {
-        btn.classList.remove('selected-tag');
-        const isClear = btn.dataset.val === '';
-        btn.style.background = isClear ? '#4b2020' : '#374151';
-        btn.style.color = isClear ? '#fca5a5' : '#d1d5db';
-        btn.style.borderColor = isClear ? '#7f1d1d' : '#4b5563';
-      });
+      const prefill = {
+          sex: commonSex || '',
+          lifeStage: commonLifeStage || '',
+          soundType: commonSoundType || ''
+      };
+
+      const wrap = buildModal(singleGroupId, prefill);
       wrap.style.display = 'flex';
     } catch (err) {
       console.error("Error opening tags modal:", err);
@@ -287,6 +303,8 @@
       btn.addEventListener('click', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
+        selectedIds.clear();
+        getSelectedRowIdsFromGrid().forEach(id => selectedIds.add(String(id)));
          if (selectedIds.size === 0) {
           alert('No rows selected. Please select one or more rows to update.');
           return;
@@ -294,15 +312,6 @@
         openModal();
       });
     }
-
-    (function waitForGrid(max = 60) {
-      const g = getGrid();
-      if (g) {
-        wireGridSelectionListeners();
-      } else if (max > 0) {
-        setTimeout(() => waitForGrid(max - 1), 100);
-      }
-    })();
   }
 
   if (document.readyState === 'loading') {
