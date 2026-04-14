@@ -478,8 +478,12 @@
 
     const begin = Math.min(pending.startTime, pending.currentTime);
     let end = Math.max(pending.startTime, pending.currentTime);
-    const low = Math.min(pending.startFreq, pending.currentFreq);
-    const high = Math.max(pending.startFreq, pending.currentFreq);
+    let low = Math.min(pending.startFreq, pending.currentFreq);
+    let high = Math.max(pending.startFreq, pending.currentFreq);
+
+    const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+    low = Math.max(0, Math.min(nyq, low));
+    high = Math.max(0, Math.min(nyq, high));
 
     if (!(begin < end && low < high)) {
       pending = null;
@@ -599,9 +603,14 @@
     const yInCanvas = ev.clientY - canvasRect.top;
     const imageHeight = globalThis._spectroImageHeight || (spectrogramCanvas.clientHeight - AXIS_TOP - 44);
     if (yInCanvas < AXIS_TOP || yInCanvas > AXIS_TOP + imageHeight) return;
+    
+    const start = clientToTimeAndFreq_local(ev.clientX, ev.clientY);
+    
+    const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+    if (start.freqHz > nyq) return;
+
     pointerDown = true;
     __lastPointerId = ev.pointerId;
-    const start = clientToTimeAndFreq_local(ev.clientX, ev.clientY);
     pending = {
       startTime: start.timeSec,
       startFreq: start.freqHz,
@@ -677,36 +686,22 @@
   }
 
   function onSpectrogramContextMenu(ev) {
-    // In create mode right-click cancels the current pending drag or deletes the last created annotation.
-    if (currentMode() === 'create') {
-      if (pending) {
-        ev.preventDefault(); ev.stopPropagation(); cancelPending(); return;
-      }
-      // delete last created annotation row if present
-      if (lastCreatedId != null) {
-        ev.preventDefault(); ev.stopPropagation();
-        try {
-          if (window.annotationGrid && typeof window.annotationGrid.deleteRow === 'function') {
-            window.annotationGrid.deleteRow(lastCreatedId);
-          }
-        } catch (e) {}
-        try {
-          const anns = authoritativeGetAll() || [];
-          const filtered = anns.filter(a => String(a.id) !== String(lastCreatedId));
-          // Reindex remaining annotations so ids and Selection are sequential
-          const remaining = filtered.map((a, i) => Object.assign({}, a, { id: i + 1, Selection: String(i + 1) }));
-          replaceAnnotations(remaining);
-          // Also update Tabulator grid if possible
-          if (window.annotationGrid && typeof window.annotationGrid.replaceData === 'function') {
-            try { window.annotationGrid.replaceData(remaining); } catch (e) {}
-          }
-        } catch (e) {}
-        lastCreatedId = null;
-        try { renderAllAnnotations(); } catch (e) {}
-        return;
-      }
+    if (currentMode() !== 'create') return;
+    
+    ev.preventDefault();
+    ev.stopPropagation();
+    
+    if (pending) {
+      cancelPending();
     }
-    // otherwise allow native context menu
+    
+    const wrap = document.getElementById('createEditToggle');
+    if (wrap) {
+      wrap.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'edit' }, bubbles: true }));
+    } else {
+      const editBtnLocal = document.getElementById('toggleEdit') || document.querySelector('button[title="Edit"]') || document.querySelector('#annoEditBtn');
+      if (editBtnLocal) editBtnLocal.click();
+    }
   }
 
   // wire events
@@ -798,14 +793,20 @@
     }
     if (groupId === null || groupId === undefined) groupId = '';
 
+    const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+    let lf = Number(data.lowFreq || 0);
+    let hf = Number(data.highFreq || 0);
+    lf = Math.max(0, Math.min(nyq, lf));
+    hf = Math.max(0, Math.min(nyq, hf));
+
     return {
       ...data,
       id: id,
       Selection: data.Selection !== undefined ? String(data.Selection) : String(id),
       beginTime: Number(round4(data.beginTime || 0)),
       endTime: Number(round4(data.endTime !== undefined ? data.endTime : (data.beginTime || 0))),
-      lowFreq: Number(round4(data.lowFreq || 0)),
-      highFreq: Number(round4(data.highFreq || 0)),
+      lowFreq: Number(round4(lf)),
+      highFreq: Number(round4(hf)),
       species: data.species || '',
       scientificName: data.scientificName || '',
       group_id: groupId,

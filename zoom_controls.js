@@ -130,7 +130,7 @@
 
   async function applyYZoom(newYHz){
     if (!globalThis._spectroSpectra) return;
-    const nyq = Number(globalThis._spectroSampleRate || 0) / 2 || 22050;
+    const nyq = globalThis._spectroOriginalNyquist || (Number(globalThis._spectroSampleRate || 0) / 2 || 22050);
     const clamped = clamp(Number(newYHz)||nyq, 1000, nyq);
     setYmaxInputHz(clamped);
     let rendered = false;

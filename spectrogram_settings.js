@@ -8,7 +8,7 @@
       const raw = localStorage.getItem('spectrolipi.settings.v1');
       if (raw) return JSON.parse(raw);
     } catch(e) {}
-    return { defaultYMax: 'Nyquist', fftSize: 1024 };
+    return { defaultYMax: 'Nyquist', fftSize: 1024, magnifierEnabled: false };
   }
 
   function saveSettings(s) {
@@ -29,7 +29,7 @@
         
         <div style="display:flex;flex-direction:column;gap:16px;">
           <div>
-            <label style="display:block;font-size:13px;color:#ccc;margin-bottom:6px;">Default Y Max</label>
+            <label style="display:block;font-size:13px;color:#ccc;margin-bottom:6px;">Default Y Max <span style="color:#ff4444;">(Actual Y max will be adjusted as per the nyquist frequency of the original sound file.)</span></label>
             <select id="ss-ymax" style="width:100%;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;"></select>
           </div>
           <div>
@@ -41,6 +41,12 @@
               <option value="4096">4096</option>
             </select>
             <div style="font-size:11px;color:#888;margin-top:4px;">Higher FFT size improves frequency resolution but decreases temporal resolution.</div>
+          </div>
+          <div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ccc;cursor:pointer;">
+              <input type="checkbox" id="ss-magnifier" style="cursor:pointer;">
+              Turn On Magnifier
+            </label>
           </div>
         </div>
 
@@ -54,11 +60,13 @@
 
     const yMaxSelect = wrap.querySelector('#ss-ymax');
     const fftSelect = wrap.querySelector('#ss-fft');
+    const magnifierCb = wrap.querySelector('#ss-magnifier');
 
     wrap.querySelector('#ss-cancel').onclick = () => { wrap.style.display = 'none'; };
     wrap.querySelector('#ss-save').onclick = async () => {
-      const s = { defaultYMax: yMaxSelect.value, fftSize: parseInt(fftSelect.value) };
+      const s = { defaultYMax: yMaxSelect.value, fftSize: parseInt(fftSelect.value), magnifierEnabled: magnifierCb.checked };
       saveSettings(s);
+      if (typeof window.setFloatingMagnifier === 'function') window.setFloatingMagnifier(s.magnifierEnabled);
       wrap.style.display = 'none';
       // If a spectrogram was already computed, re-generate to apply changes
       if ((globalThis._spectroAudioBuffer || globalThis._spectroSpectra) && typeof globalThis._generateSpectrogram === 'function') {
@@ -73,9 +81,11 @@
     const wrap = buildModal();
     const yMaxSelect = wrap.querySelector('#ss-ymax');
     const fftSelect = wrap.querySelector('#ss-fft');
+    const magnifierCb = wrap.querySelector('#ss-magnifier');
     const settings = getSettings();
     
     fftSelect.value = String(settings.fftSize || 1024);
+    magnifierCb.checked = !!settings.magnifierEnabled;
     yMaxSelect.innerHTML = '';
     const optNyq = document.createElement('option');
     optNyq.value = 'Nyquist'; optNyq.textContent = 'Nyquist';

@@ -85,7 +85,8 @@
   const right = end * pxPerSec - (scrollArea.scrollLeft || 0);
   const top = imageHeight * (1 - (high / ymaxHz));
   const bottom = imageHeight * (1 - (low / ymaxHz));
-  return { left, right, top, bottom };
+  const topPercent = (1 - (high / ymaxHz)) * 100;
+  return { left, right, top, bottom, topPercent };
   }
 
   function ensureLabelContainer() {
@@ -95,14 +96,15 @@
       container.id = LABEL_CONTAINER_ID;
       container.style.position = 'absolute';
       container.style.left = '0px';
-      container.style.top = '0px';
       container.style.width = '100%';
-      container.style.height = '100%';
       container.style.pointerEvents = 'none';
       container.style.zIndex = '100';
       const parent = document.getElementById('viewportWrapper');
       if (parent) parent.appendChild(container);
     }
+    const map = getMapping();
+    container.style.top = AXIS_TOP + 'px';
+    container.style.height = map.imageHeight + 'px';
     return container;
   }
 
@@ -154,9 +156,12 @@
   // Always subtract scrollArea.scrollLeft from left coordinate
   const axisLeft = getMapping().axisLeft || 70;
   const leftPx = Math.round(axisLeft + (rectPx.left || 0));
-  const topPx = Math.round(AXIS_TOP + (rectPx.top || 0));
   el.style.left = leftPx + 'px';
-  el.style.top = topPx + 'px';
+  if (typeof rectPx.topPercent === 'number') {
+    el.style.top = rectPx.topPercent + '%';
+  } else {
+    el.style.top = Math.round(rectPx.top || 0) + 'px';
+  }
   }
 
   function removeLabelIfExists(aidStr) {

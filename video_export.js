@@ -411,7 +411,15 @@
         
         const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60];
         let step = niceSteps[0];
-        for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+        
+        const pxpf = globalThis._spectroPxPerFrame;
+        if (pxpf === 1) step = 2;
+        else if (pxpf === 2) step = 1;
+        else if (pxpf === 4) step = 0.5;
+        else if (pxpf === 8) step = 0.25;
+        else {
+          for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+        }
         const firstTick = Math.floor(leftTime / step) * step;
         
         stageCtx.strokeStyle = 'rgba(255,255,255,0.06)';
@@ -424,7 +432,8 @@
            const cx = axisW + (t - leftTime) * pxPerSec;
            stageCtx.beginPath(); stageCtx.moveTo(cx, 0); stageCtx.lineTo(cx, 8); stageCtx.stroke();
            stageCtx.beginPath(); stageCtx.moveTo(cx, 12 + imgH); stageCtx.lineTo(cx, 12 + imgH + 8); stageCtx.stroke();
-           let label = t.toFixed(Math.max(0, Math.ceil(-Math.log10(step)))) + 's';
+           let decimals = (step % 1 !== 0) ? step.toString().split('.')[1].length : 0;
+           let label = t.toFixed(decimals) + 's';
            if (t >= 60) label = Math.floor(t/60) + ':' + String(Math.floor(t%60)).padStart(2,'0');
            stageCtx.fillText(label, cx, 12 + imgH + 10);
         }

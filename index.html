@@ -691,6 +691,13 @@
     </div>
   </div>
 
+  <div id="uiSplitter" style="height: 14px; background: #1e222b; cursor: ns-resize; display: flex; align-items: center; justify-content: center; border-top: 1px solid #2a303c; border-bottom: 1px solid #000; margin-bottom: 6px; border-radius: 4px; transition: all 0.2s ease;" title="Drag to resize Spectrogram and Table">
+    <div style="display: flex; flex-direction: column; gap: 2px; pointer-events: none;">
+      <div style="width: 40px; height: 2px; background: #60a5fa; border-radius: 2px; opacity: 0.9;"></div>
+      <div style="width: 40px; height: 2px; background: #60a5fa; border-radius: 2px; opacity: 0.9;"></div>
+    </div>
+  </div>
+
   <!-- Annotation toolbar: segmented toggle authoritative -->
   <div id="annotationControls" role="toolbar" aria-label="Annotation tools">
     
@@ -1606,5 +1613,7 @@
   </script>
   <script src="birdnet_overlay.js"></script>
   <script src="video_export.js"></script>
+  <script src="splitter.js"></script>
+  <script src="magnifier.js"></script>
 </body>
 </html>

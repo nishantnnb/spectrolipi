@@ -113,10 +113,7 @@
   function formatTimeForTick(t, step) {
     if (!isFinite(t) || t < 0) t = 0;
     if (!isFinite(step) || step >= 1) return formatMMSS(t);
-    // determine decimals from step (e.g., step=0.1 -> 1 decimal)
-    let decimals = Math.ceil(-Math.log10(step));
-    if (!isFinite(decimals) || decimals < 1) decimals = 1;
-    decimals = Math.min(3, decimals);
+    let decimals = (step % 1 !== 0) ? step.toString().split('.')[1].length : 0;
     const total = Math.max(0, t);
     const m = Math.floor(total / 60);
     const s = total - m * 60;
@@ -210,7 +207,15 @@
     const secondsVisible = viewWidth / pxPerSec;
     const niceSteps = [0.1,0.2,0.5,1,2,5,10,15,30,60,120];
     let step = niceSteps[0];
-    for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+    
+    const pxpf = globalThis._spectroPxPerFrame;
+    if (pxpf === 1) step = 2;
+    else if (pxpf === 2) step = 1;
+    else if (pxpf === 4) step = 0.5;
+    else if (pxpf === 8) step = 0.25;
+    else {
+      for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+    }
 
     const rightTime = leftTime + secondsVisible;
     const firstTick = Math.floor(leftTime / step) * step;
@@ -255,7 +260,15 @@
     const secondsVisible = W / pxPerSec;
     const niceSteps = [0.1,0.2,0.5,1,2,5,10,15,30,60];
     let step = niceSteps[0];
-    for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+    
+    const pxpf = globalThis._spectroPxPerFrame;
+    if (pxpf === 1) step = 2;
+    else if (pxpf === 2) step = 1;
+    else if (pxpf === 4) step = 0.5;
+    else if (pxpf === 8) step = 0.25;
+    else {
+      for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+    }
     const rightTime = leftTime + secondsVisible;
     const firstTick = Math.floor(leftTime / step) * step;
     fCtx.strokeStyle = 'rgba(255,255,255,0.06)';

@@ -250,8 +250,12 @@
     inside = true;
     // show crosshair immediately at pointer
     resizeOverlay();
-    const pos = clientToOverlayLocal(ev);
-    drawCrosshairAtCanvasCoords(pos.x, pos.y);
+    if (globalThis._isRepeatMode) {
+      clearCrosshair();
+    } else {
+      const pos = clientToOverlayLocal(ev);
+      drawCrosshairAtCanvasCoords(pos.x, pos.y);
+    }
     // ticks handled by playback.js
   }
 
@@ -262,8 +266,12 @@
 
   function onMove(ev) {
     if (!inside) return;
-    const pos = clientToOverlayLocal(ev);
-    drawCrosshairAtCanvasCoords(pos.x, pos.y);
+    if (globalThis._isRepeatMode) {
+      clearCrosshair();
+    } else {
+      const pos = clientToOverlayLocal(ev);
+      drawCrosshairAtCanvasCoords(pos.x, pos.y);
+    }
 
     // Optionally, if you still want to expose textual readout elsewhere, compute values
     const { timeSec, freqHz } = computeAxisValues(ev.clientX, ev.clientY);

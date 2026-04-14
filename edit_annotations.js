@@ -154,6 +154,59 @@
     return (best && best.dist <= EDGE_TOL_PX) ? best : null;
   }
 
+  const TRASH_ICON_SIZE = 22;
+
+  function getTrashIconRect(rectPx) {
+    const w = Math.abs(rectPx.right - rectPx.left);
+    const h = Math.abs(rectPx.bottom - rectPx.top);
+
+    const right = Math.max(rectPx.left, rectPx.right);
+    const bottom = Math.max(rectPx.top, rectPx.bottom);
+    
+    let x, y;
+    if (w < TRASH_ICON_SIZE + 12 || h < TRASH_ICON_SIZE + 12) {
+      // Box is too small: draw it just outside the bottom-right corner
+      x = right + 4;
+      y = bottom + 4;
+    } else {
+      // Box is large enough: draw it inside the bottom-right corner
+      x = right - TRASH_ICON_SIZE - 6;
+      y = bottom - TRASH_ICON_SIZE - 6;
+    }
+
+    return { x, y, w: TRASH_ICON_SIZE, h: TRASH_ICON_SIZE };
+  }
+
+  function drawTrashIcon(ctx, rectPx, isArmed = false) {
+    const tr = getTrashIconRect(rectPx);
+    if (!tr) return;
+    ctx.save();
+    
+    // If armed (clicked once), show it in red to indicate confirmation step
+    ctx.fillStyle = isArmed ? 'rgba(220, 53, 69, 0.9)' : '#ffffff';
+    ctx.strokeStyle = isArmed ? '#ffffff' : '#000000';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') ctx.roundRect(tr.x, tr.y, tr.w, tr.h, 2);
+    else ctx.rect(tr.x, tr.y, tr.w, tr.h);
+    ctx.fill();
+    ctx.stroke();
+
+    // Simple vector trash can icon (much lighter than text/emoji)
+    ctx.strokeStyle = isArmed ? '#ffffff' : '#000000';
+    ctx.beginPath();
+    ctx.moveTo(tr.x + 6, tr.y + 8); ctx.lineTo(tr.x + 7, tr.y + 17); // left body
+    ctx.lineTo(tr.x + 15, tr.y + 17); ctx.lineTo(tr.x + 16, tr.y + 8); // right body
+    ctx.moveTo(tr.x + 4, tr.y + 8); ctx.lineTo(tr.x + 18, tr.y + 8); // lid line
+    ctx.moveTo(tr.x + 9, tr.y + 8); ctx.lineTo(tr.x + 9, tr.y + 5); // handle left
+    ctx.lineTo(tr.x + 13, tr.y + 5); ctx.lineTo(tr.x + 13, tr.y + 8); // handle right
+    ctx.moveTo(tr.x + 9, tr.y + 10); ctx.lineTo(tr.x + 9, tr.y + 15); // inner line left
+    ctx.moveTo(tr.x + 13, tr.y + 10); ctx.lineTo(tr.x + 13, tr.y + 15); // inner line right
+    ctx.stroke();
+    
+    ctx.restore();
+  }
+
   function computeHandles(rectPx) {
     const left = Math.min(rectPx.left, rectPx.right);
     const right = Math.max(rectPx.left, rectPx.right);
@@ -228,6 +281,7 @@
       hCtx.fillStyle = HIGHLIGHT_COLOR;
       hCtx.fillRect(x, y, hh.w, hh.h);
     }
+    drawTrashIcon(hCtx, rect, lastTrashClickId === working.id);
     hCtx.restore();
   }
 
@@ -254,6 +308,9 @@
   let highlightedId = null;
   let editSession = null; // { id, originalSnapshot, working, activeHandle, pointerId, dragging }
   let lastPointerPos = { x: 0, y: 0 };
+
+  let lastTrashClickTime = 0;
+  let lastTrashClickId = null;
 
   // Edit session management
   function startEditSession(id) {
@@ -318,7 +375,7 @@
     if (!editSession) return;
     const w = editSession.working;
     const duration = getDurationSec();
-    const ymax = (typeof globalThis._spectroYMax === 'number') ? globalThis._spectroYMax : (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+    const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
 
     if (Number.isFinite(duration)) {
       w.beginTime = Math.max(0, Math.min(duration, w.beginTime));
@@ -328,8 +385,8 @@
       w.endTime = Math.max(0, w.endTime);
     }
     if (!(w.beginTime < w.endTime)) { cancelAndEndEditSession(); return; }
-    w.lowFreq = Math.max(0, Math.min(ymax, w.lowFreq));
-    w.highFreq = Math.max(0, Math.min(ymax, w.highFreq));
+    w.lowFreq = Math.max(0, Math.min(nyq, w.lowFreq));
+    w.highFreq = Math.max(0, Math.min(nyq, w.highFreq));
     if (!(w.lowFreq < w.highFreq)) { cancelAndEndEditSession(); return; }
 
     persistWorkingToAuthoritative();
@@ -411,6 +468,51 @@
     const localX = ev.clientX - rect.left;
     const localY = ev.clientY - rect.top;
     const isMulti = ev.ctrlKey || ev.metaKey;
+
+    // --- Trash Icon Hit Test ---
+    let trashHitId = null;
+    if (editSession) {
+      const rectPx = annotationToRectPx(editSession.working);
+      const tr = getTrashIconRect(rectPx);
+      if (tr && localX >= tr.x && localX <= tr.x + tr.w && localY >= tr.y && localY <= tr.y + tr.h) {
+        trashHitId = editSession.id;
+      }
+    }
+
+    if (trashHitId != null) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      
+      const now = Date.now();
+      if (lastTrashClickId === trashHitId && (now - lastTrashClickTime) < 500) {
+        // Double-click confirmed: Delete it!
+        doMultiDelete([trashHitId]);
+        lastTrashClickId = null;
+        lastTrashClickTime = 0;
+      } else {
+        // First click: Arm it (turns red)
+        lastTrashClickId = trashHitId;
+        lastTrashClickTime = now;
+        
+        if (editSession && editSession.id === trashHitId) drawWorkingBoxWithHandles(editSession.working);
+        
+        // Auto-disarm after 500ms if no second click happens
+        setTimeout(() => {
+          if (lastTrashClickId === trashHitId && (Date.now() - lastTrashClickTime) >= 490) {
+            lastTrashClickId = null;
+            if (editSession && editSession.id === trashHitId) drawWorkingBoxWithHandles(editSession.working);
+          }
+        }, 500);
+      }
+      return;
+    } else {
+      // Clicked elsewhere (e.g. grabbed the resize handle), disarm trash instantly
+      if (lastTrashClickId != null) {
+        const oldArmedId = lastTrashClickId;
+        lastTrashClickId = null;
+        if (editSession && editSession.id === oldArmedId) drawWorkingBoxWithHandles(editSession.working);
+      }
+    }
 
     // 1. If we have an active edit session, check if we are interacting with IT (resizing/moving)
     if (editSession && !isMulti) {
@@ -593,7 +695,8 @@
       if (tAtX < 0) tAtX = 0;
     }
 
-    const freqAtY = Math.max(0, Math.min(ymaxHz, (1 - (localY / imageHeight)) * ymaxHz));
+    const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+    const freqAtY = Math.max(0, Math.min(nyq, (1 - (localY / imageHeight)) * ymaxHz));
     const w = editSession.working;
 
     // support translating the entire box when activeHandle === 'move'
@@ -635,29 +738,59 @@
         deltaTime = Math.max(-ms.beginTime, deltaTime);
       }
 
-      // During move allow frequencies to go outside current visible ymax to prevent
-      // immediate snapping/clamping when boxes extend beyond the display range.
+      // Clamp freq deltas to keep box inside freq bounds (0 to Nyquist)
+      const minDF = -ms.lowFreq;
+      const maxDF = nyq - ms.highFreq;
+      deltaFreq = Math.max(minDF, Math.min(maxDF, deltaFreq));
+
       w.beginTime = ms.beginTime + deltaTime;
       w.endTime = ms.endTime + deltaTime;
       w.lowFreq = ms.lowFreq + deltaFreq;
       w.highFreq = ms.highFreq + deltaFreq;
 
-      
-
       drawWorkingBoxWithHandles(editSession.working);
       return;
     }
 
-    switch (editSession.activeHandle) {
-      case 'left': w.beginTime = Math.min(w.endTime - 1e-6, tAtX); break;
-      case 'right': w.endTime = Math.max(w.beginTime + 1e-6, tAtX); break;
-      case 'top': w.highFreq = Math.max(w.lowFreq + 1e-6, freqAtY); break;
-      case 'bottom': w.lowFreq = Math.min(w.highFreq - 1e-6, freqAtY); break;
-      case 'topleft': w.beginTime = Math.min(w.endTime - 1e-6, tAtX); w.highFreq = Math.max(w.lowFreq + 1e-6, freqAtY); break;
-      case 'topright': w.endTime = Math.max(w.beginTime + 1e-6, tAtX); w.highFreq = Math.max(w.lowFreq + 1e-6, freqAtY); break;
-      case 'bottomleft': w.beginTime = Math.min(w.endTime - 1e-6, tAtX); w.lowFreq = Math.min(w.highFreq - 1e-6, freqAtY); break;
-      case 'bottomright': w.endTime = Math.max(w.beginTime + 1e-6, tAtX); w.lowFreq = Math.min(w.highFreq - 1e-6, freqAtY); break;
+    // Use a near-zero delta so the box can collapse visually to a line, 
+    // relying on dynamic handle swapping to escape the collapsed state.
+    const minTimeDelta = 1e-6;
+    const minFreqDelta = 1e-6;
+
+    // Dynamic Handle Swapping: If the user drags a handle past the opposite edge, 
+    // swap the active handle so the box smoothly inverts instead of getting stuck.
+    let ah = editSession.activeHandle;
+    
+    if (ah.includes('top') && freqAtY < w.lowFreq) {
+      ah = ah.replace('top', 'bottom');
+      w.highFreq = w.lowFreq; // Anchor old bottom as the new top
+    } else if (ah.includes('bottom') && freqAtY > w.highFreq) {
+      ah = ah.replace('bottom', 'top');
+      w.lowFreq = w.highFreq; // Anchor old top as the new bottom
     }
+
+    if (ah.includes('left') && tAtX > w.endTime) {
+      ah = ah.replace('left', 'right');
+      w.beginTime = w.endTime; // Anchor old right as the new left
+    } else if (ah.includes('right') && tAtX < w.beginTime) {
+      ah = ah.replace('right', 'left');
+      w.endTime = w.beginTime; // Anchor old left as the new right
+    }
+    editSession.activeHandle = ah;
+
+    switch (editSession.activeHandle) {
+      case 'left': w.beginTime = Math.min(w.endTime - minTimeDelta, tAtX); break;
+      case 'right': w.endTime = Math.max(w.beginTime + minTimeDelta, tAtX); break;
+      case 'top': w.highFreq = Math.max(w.lowFreq + minFreqDelta, freqAtY); break;
+      case 'bottom': w.lowFreq = Math.min(w.highFreq - minFreqDelta, freqAtY); break;
+      case 'topleft': w.beginTime = Math.min(w.endTime - minTimeDelta, tAtX); w.highFreq = Math.max(w.lowFreq + minFreqDelta, freqAtY); break;
+      case 'topright': w.endTime = Math.max(w.beginTime + minTimeDelta, tAtX); w.highFreq = Math.max(w.lowFreq + minFreqDelta, freqAtY); break;
+      case 'bottomleft': w.beginTime = Math.min(w.endTime - minTimeDelta, tAtX); w.lowFreq = Math.min(w.highFreq - minFreqDelta, freqAtY); break;
+      case 'bottomright': w.endTime = Math.max(w.beginTime + minTimeDelta, tAtX); w.lowFreq = Math.min(w.highFreq - minFreqDelta, freqAtY); break;
+    }
+
+    w.lowFreq = Math.max(0, Math.min(nyq, w.lowFreq));
+    w.highFreq = Math.max(0, Math.min(nyq, w.highFreq));
 
     drawWorkingBoxWithHandles(editSession.working);
   }
@@ -875,6 +1008,10 @@
 
     // default hover highlighting behavior when not actively editing
     updateHover(ev.clientX, ev.clientY);
+
+    if (!editSession) {
+        pointerLayer.style.cursor = '';
+    }
   }
 
   function onPointerLeaveForHover() {
@@ -892,10 +1029,10 @@
   }
 
   /* Multi-delete logic: use Tabulator grid selection (restored original working logic) */
-  function doMultiDelete() {
+  function doMultiDelete(forceIds) {
     try {
-      let ids = [];
-      if (window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function' && window.annotationGrid.initialized !== false) {
+      let ids = Array.isArray(forceIds) ? forceIds : [];
+      if (!ids.length && window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function' && window.annotationGrid.initialized !== false) {
         const selectedRows = window.annotationGrid.getSelectedRows();
         ids = selectedRows.map(row => row.getData().id);
       }
@@ -976,8 +1113,9 @@
             // Clear any active edit session if it was deleted
             if (editSession && idSet.has(String(editSession.id))) {
               endEditSessionFinal();
-              updateHover(lastPointerPos.x, lastPointerPos.y);
             }
+            // Always refresh hover to clear any highlighted boxes that were just deleted
+            updateHover(lastPointerPos.x, lastPointerPos.y);
           } catch (err) {
             console.error('multi-delete error', err);
             window.alert('Deletion failed; see console');
@@ -1033,10 +1171,18 @@
 
   function onPointerContextMenu(ev) {
     if (!editModeActive) return;
+    ev.preventDefault();
+    ev.stopPropagation();
     if (editSession) {
-      ev.preventDefault();
       commitEditSessionAndEnd();
       updateHover(lastPointerPos.x, lastPointerPos.y);
+    }
+    const toggleWrapLocal = document.getElementById('createEditToggle');
+    if (toggleWrapLocal) {
+      toggleWrapLocal.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'create' }, bubbles: true }));
+    } else {
+      const createBtnLocal = document.getElementById('toggleCreate') || document.querySelector('button[title="Create"]') || document.querySelector('#annoCreateBtn');
+      if (createBtnLocal) createBtnLocal.click();
     }
   }
 

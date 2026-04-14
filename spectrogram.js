@@ -164,7 +164,7 @@
     yZoomSelect.innerHTML = '';
     xZoomSelect.innerHTML = '';
 
-    const nyq = (globalThis._spectroSampleRate || 0) / 2 || 22050;
+    const nyq = globalThis._spectroOriginalNyquist || ((globalThis._spectroSampleRate || 0) / 2 || 22050);
     const minY = 1000;
     for (let i = 0; i < Y_STEPS; i++) {
         const freq = nyq - i * ((nyq - minY) / (Y_STEPS - 1));
@@ -293,7 +293,8 @@
     const cur = (typeof globalThis._spectroYMax === 'number' && isFinite(globalThis._spectroYMax)) ? globalThis._spectroYMax : NaN;
     const lastY = (globalThis._spectroLastGen && isFinite(globalThis._spectroLastGen.ymax)) ? globalThis._spectroLastGen.ymax : NaN;
     const pick = isFinite(cur) ? cur : lastY;
-    return isFinite(pick) ? pick : (globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050);
+    const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050);
+    return Math.min(nyq, isFinite(pick) ? pick : nyq);
   }
 
   function _bumpRenderParams(lutName, gainVal, ymaxHz) {
@@ -479,7 +480,15 @@
     const visibleDuration = Math.max(0, vp / pxPerSec);
     const niceSteps = [0.1,0.2,0.5,1,2,5,10,15,30,60,120];
     let step = niceSteps[0];
-    for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+    
+    if (pxpf === 1) step = 2;
+    else if (pxpf === 2) step = 1;
+    else if (pxpf === 4) step = 0.5;
+    else if (pxpf === 8) step = 0.25;
+    else {
+      for (let v of niceSteps) { if (v * pxPerSec >= 60) { step = v; break; } step = v; }
+    }
+
     const startSec = Math.max(0, visibleStartSec);
     const endSec = startSec + visibleDuration;
     const firstTick = Math.ceil(startSec / step) * step;
@@ -489,7 +498,9 @@
       const xPxFloat = (t - visibleStartSec) * pxPerSec;
       const markerX = axisCanvas.clientWidth - 6;
       axisCtx.beginPath(); axisCtx.moveTo(markerX + 0.5, AXIS_TOP); axisCtx.lineTo(markerX + 0.5, AXIS_TOP + 8); axisCtx.stroke();
-      const label = (t >= 60) ? ((t / 60).toFixed(0) + 'm') : (t.toFixed((step < 1) ? 1 : 0) + 's');
+      let decimals = 0;
+      if (step % 1 !== 0) decimals = step.toString().split('.')[1].length;
+      const label = (t >= 60 && step >= 60) ? ((t / 60).toFixed(0) + 'm') : (t.toFixed(decimals) + 's');
       axisCtx.fillText(label, axisCanvas.clientWidth / 2, AXIS_TOP + imgH + 2);
     }
 
@@ -521,7 +532,7 @@
     axisCtx.fillStyle='#000'; axisCtx.fillRect(0,0,axisCanvas.width, axisCanvas.height);
     axisCtx.fillStyle='#111'; axisCtx.fillRect(0, AXIS_TOP, axisCanvas.width, imgH);
     axisCtx.strokeStyle = '#666'; axisCtx.lineWidth = 1; axisCtx.fillStyle = '#fff'; axisCtx.font = '12px sans-serif';
-    const nyq = sampleRate / 2;
+    const nyq = globalThis._spectroOriginalNyquist || (sampleRate / 2);
     const topFreq = (typeof ymax === 'number' && ymax > 0) ? Math.min(nyq, ymax) : nyq;
     const yTicks = 6;
     axisCtx.textAlign = 'right'; axisCtx.textBaseline = 'middle';
@@ -573,6 +584,57 @@
   async function processFile(file, fftSize, overlapFactor, pxpf, cmap){
     globalThis._spectroTiles = null; globalThis._spectroSpectra = null; globalThis._spectroYMax = null;
     const arrayBuffer = await file.arrayBuffer();
+
+    // --- Determine original sample rate before AudioContext resampling ---
+    try {
+      let origSr = null;
+      const view = new DataView(arrayBuffer);
+      if (view.byteLength > 44 && view.getUint32(0, false) === 0x52494646 && view.getUint32(8, false) === 0x57415645) {
+        // WAV (RIFF/WAVE)
+        let offset = 12;
+        while (offset < view.byteLength - 8) {
+          const chunkId = view.getUint32(offset, false);
+          const chunkSize = view.getUint32(offset + 4, true);
+          if (chunkId === 0x666d7420) { // 'fmt '
+            origSr = view.getUint32(offset + 12, true);
+            break;
+          }
+          offset += 8 + chunkSize;
+        }
+      } else if (view.byteLength > 24 && view.getUint32(0, false) === 0x664C6143) {
+        // FLAC ('fLaC')
+        const b18 = view.getUint8(18), b19 = view.getUint8(19), b20 = view.getUint8(20);
+        origSr = (b18 << 12) | (b19 << 4) | (b20 >> 4);
+      } else {
+        // MP3 (Scan for frame sync, skipping ID3v2 if present)
+        let offset = 0;
+        if (view.byteLength > 10 && view.getUint8(0) === 0x49 && view.getUint8(1) === 0x44 && view.getUint8(2) === 0x33) {
+          offset = 10 + ((view.getUint8(6) << 21) | (view.getUint8(7) << 14) | (view.getUint8(8) << 7) | view.getUint8(9));
+        }
+        for (let i = offset; i < Math.min(view.byteLength - 4, offset + 100000); i++) {
+          if (view.getUint8(i) === 0xFF && (view.getUint8(i+1) & 0xE0) === 0xE0) {
+            const header = view.getUint32(i, false);
+            const version = (header >> 19) & 0x3;
+            const srIndex = (header >> 10) & 0x3;
+            if (srIndex !== 3) {
+              if (version === 3) origSr = srIndex === 0 ? 44100 : srIndex === 1 ? 48000 : 32000;
+              else if (version === 2) origSr = srIndex === 0 ? 22050 : srIndex === 1 ? 24000 : 16000;
+              else if (version === 0) origSr = srIndex === 0 ? 11025 : srIndex === 1 ? 12000 : 8000;
+            }
+            if (origSr) break;
+          }
+        }
+      }
+      if (origSr) {
+        globalThis._spectroOriginalNyquist = origSr / 2;
+      } else {
+        globalThis._spectroOriginalNyquist = null;
+      }
+    } catch(e) {
+      console.warn('[Spectrogram] Error checking original sample rate:', e);
+    }
+    // ----------------------------------------------------------------------
+
     const CtxClass = globalThis.AudioContext || globalThis.webkitAudioContext;
     if (!CtxClass) throw new Error('AudioContext not supported');
     const audioCtx = new CtxClass();
@@ -580,6 +642,8 @@
     try { decoded = await audioCtx.decodeAudioData(arrayBuffer); } finally { if (audioCtx.close) audioCtx.close().catch(()=>{}); }
 
     const sr = decoded.sampleRate;
+    if (!globalThis._spectroOriginalNyquist) globalThis._spectroOriginalNyquist = sr / 2;
+
     const channels = decoded.numberOfChannels;
     const length = decoded.length;
     const mono = new Float32Array(length);
@@ -659,12 +723,13 @@
     // We'll draw tiles; after the first tile(s) that fill visible left region are drawn,
     // dispatch completion and hide overlay immediately so UI can proceed.
     let firstTilePainted = false;
+    const nyqDecoded = sr / 2;
+    const initialYMax = globalThis._spectroOriginalNyquist || nyqDecoded;
 
     for (let tileX = 0, tileIndex = 0; tileX < imageW; tileX += tileW, tileIndex++){
       const w = Math.min(tileW, imageW - tileX);
       const tilePixels = new Uint8ClampedArray(w * imageH * 4);
 
-      const nyqLocal = sr / 2; // initial render uses full Nyquist range
       for (let localX = 0; localX < w; localX++){
         const globalX = tileX + localX;
         const frameIdx = Math.floor(globalX / pxpf);
@@ -672,8 +737,8 @@
         for (let y = 0; y < imageH; y++){
           // Use the same y->frequency mapping as reRenderFromSpectra for consistency
           const ty = y / (imageH - 1);
-          const freq = (1 - ty) * nyqLocal; // 0 Hz at bottom row
-          const fracBin = (freq / nyqLocal) * (bins - 1);
+          const freq = (1 - ty) * initialYMax; // 0 Hz at bottom row
+          const fracBin = (freq / nyqDecoded) * (bins - 1);
           const fIdx = Math.floor(fracBin);
           const fFrac = fracBin - fIdx;
           const a = spectra[baseFrame * bins + Math.max(0, Math.min(bins-1, fIdx))];
@@ -750,7 +815,7 @@
     globalThis._spectroTopDB = top;
     globalThis._spectroBottomDB = bottom;
     globalThis._spectroDenom = denom;
-    globalThis._spectroYMax = sr / 2;
+    globalThis._spectroYMax = globalThis._spectroOriginalNyquist || (sr / 2);
 
     // Debug instrumentation: log core mapping numbers immediately after generation
     try {
@@ -842,8 +907,9 @@
     const imageH = globalThis._spectroImageHeight;
 
     const dpr = window.devicePixelRatio || 1;
-    const nyq = sr / 2;
-    const ymaxClamped = Math.max(1, Math.min(nyq, Number(ymax) || nyq));
+    const nyq = sr / 2; // Decoded nyquist (for bin math mapping)
+    const origNyq = globalThis._spectroOriginalNyquist || nyq;
+    const ymaxClamped = Math.max(1, Math.min(origNyq, Number(ymax) || origNyq));
 
     const lut = buildLUT(cmapSelect.value || 'custom');
     const gain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
@@ -1052,7 +1118,8 @@
     const spectra = globalThis._spectroSpectra; if (!spectra) return;
     const bins = globalThis._spectroBins; const sr = globalThis._spectroSampleRate;
     const nyq = sr / 2; const imageH = globalThis._spectroImageHeight; const pxpf = globalThis._spectroPxPerFrame;
-    const ymaxClamped = Math.max(1, Math.min(nyq, Number(ymaxHz) || nyq));
+    const origNyq = globalThis._spectroOriginalNyquist || nyq;
+    const ymaxClamped = Math.max(1, Math.min(origNyq, Number(ymaxHz) || origNyq));
     const bottom = globalThis._spectroBottomDB; const denom = globalThis._spectroDenom || 1e-12;
     const w = tile.cols; const tileX = tile.startCol;
     const tilePixels = new Uint8ClampedArray(w * imageH * 4);
@@ -1092,7 +1159,8 @@
       const spectra = globalThis._spectroSpectra; if (!spectra) return;
       const bins = globalThis._spectroBins; const sr = globalThis._spectroSampleRate;
       const nyq = sr / 2; const imageH = globalThis._spectroImageHeight; const pxpf = globalThis._spectroPxPerFrame;
-      const ymaxClamped = Math.max(1, Math.min(nyq, Number(ymaxHz) || nyq));
+      const origNyq = globalThis._spectroOriginalNyquist || nyq;
+      const ymaxClamped = Math.max(1, Math.min(origNyq, Number(ymaxHz) || origNyq));
       const bottom = globalThis._spectroBottomDB; const denom = globalThis._spectroDenom || 1e-12;
       const w = tile.cols; const tileX = tile.startCol;
       const tilePixels = new Uint8ClampedArray(w * imageH * 4);
@@ -1334,7 +1402,7 @@
   if (ymaxInput) { ymaxInput.addEventListener('input', ()=>{ debouncedLiveApply(); }); ymaxInput.addEventListener('change', ()=>{ debouncedLiveApply(); }); }
 
   function resolveTargetYMax(userYmaxHz, currentNyquist) {
-    if (isFinite(userYmaxHz) && userYmaxHz > 0) return userYmaxHz;
+    if (isFinite(userYmaxHz) && userYmaxHz > 0) return Math.min(userYmaxHz, currentNyquist);
     let defaultYMaxSetting = 'Nyquist';
     try {
       const s = localStorage.getItem('spectrolipi.settings.v1');
@@ -1390,17 +1458,17 @@
           if (needFullCompute) {
             await processFile(f, fftSize, overlapFactor, pxpf, cmap);
 
-            const generatedDefaultYmax = globalThis._spectroYMax || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : null);
+            const currentNyquist = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050);
+            const generatedDefaultYmax = globalThis._spectroYMax || currentNyquist;
             globalThis._spectroLastGen = { fileId, pxpf, sampleRate: globalThis._spectroSampleRate, numFrames: globalThis._spectroNumFrames, fftSize, ymax: generatedDefaultYmax };
 
             if (ymaxInput && (ymaxInput.value == null || String(ymaxInput.value).trim() === '')) {
               try { ymaxInput.value = (Math.round((generatedDefaultYmax || 0) / 1000 * 100) / 100).toString(); } catch(e){}
-              if (ymaxInput) ymaxInput.max = Math.round((globalThis._spectroSampleRate || 0) / 1000);
+              if (ymaxInput) ymaxInput.max = Math.round(currentNyquist / 1000);
             } else {
-              if (ymaxInput) ymaxInput.max = Math.round((globalThis._spectroSampleRate || 0) / 1000);
+              if (ymaxInput) ymaxInput.max = Math.round(currentNyquist / 1000);
             }
 
-            const currentNyquist = globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050;
             const finalYMax = resolveTargetYMax(userYmaxHz, currentNyquist);
 
             if (isFinite(finalYMax) && Math.abs(finalYMax - (generatedDefaultYmax || 0)) > 1) {
@@ -1426,7 +1494,7 @@
             resetPlaybackState();
           } else {
             const lastY = last.ymax;
-            const currentNyquist = globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050;
+            const currentNyquist = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate/2 : 22050);
             const finalYMax = resolveTargetYMax(userYmaxHz, currentNyquist);
             
             if (isFinite(finalYMax) && Math.abs(finalYMax - (lastY || 0)) > 1) {

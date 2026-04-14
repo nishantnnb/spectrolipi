@@ -5,6 +5,7 @@
 
   let lastAnn = null; // { duration: sec, bandwidth: hz, species: 'common', scientificName: 'scientific' }
   let ghost = null;
+  let guideLine = null;
   let isRepeat = false;
 
   function updateLastAnn() {
@@ -31,6 +32,9 @@
               lastAnn = { 
                 duration: e - b, 
                 bandwidth: h - l,
+                lowFreq: l,
+                highFreq: h,
+                centerFreq: (h + l) / 2,
                 species: sp,
                 scientificName: sc
               };
@@ -46,6 +50,7 @@
 
   function toggleRepeat() {
     isRepeat = !isRepeat;
+    globalThis._isRepeatMode = isRepeat;
     btn.setAttribute('aria-pressed', String(isRepeat));
     if (isRepeat) {
       btn.style.setProperty('background', '#43a047', 'important');
@@ -53,10 +58,18 @@
       if (!lastAnn) {
         alert('Could not find a previous annotation to repeat. Please create one first.');
         toggleRepeat(); // Immediately turn off if no data
+      } else {
+        // Instantly clear the blue crosshair if hovering
+        const crosshair = document.getElementById('spectrogramCrosshairOverlay');
+        if (crosshair) {
+          const ctx = crosshair.getContext('2d');
+          if (ctx) ctx.clearRect(0, 0, crosshair.width, crosshair.height);
+        }
       }
     } else {
       btn.style.removeProperty('background');
       if (ghost) ghost.style.display = 'none';
+      if (guideLine) guideLine.style.display = 'none';
     }
   }
 
@@ -65,22 +78,20 @@
     toggleRepeat();
   });
 
-  // Auto-disable/enable repeat based on mode
-  window.addEventListener('mode-change', (ev) => {
-    const mode = ev.detail && ev.detail.mode;
-    if (mode === 'edit') {
-      if (isRepeat) toggleRepeat();
-      btn.disabled = true;
-    } else if (mode === 'create') {
-      btn.disabled = false;
-    }
+  // Automatically exit Repeat Mode when toggling between Create/Edit modes
+  window.addEventListener('mode-change', () => {
+    if (isRepeat) toggleRepeat();
   });
 
   const scrollArea = document.getElementById('scrollArea');
-  const spectrogramCanvas = document.getElementById('spectrogramCanvas');
-  if (scrollArea && spectrogramCanvas) {
-    spectrogramCanvas.addEventListener('pointermove', (ev) => {
-      if (!isRepeat || !lastAnn) { if (ghost) ghost.style.display = 'none'; return; }
+  const viewportWrapper = document.getElementById('viewportWrapper');
+  if (scrollArea && viewportWrapper) {
+    viewportWrapper.addEventListener('pointermove', (ev) => {
+      if (!isRepeat || !lastAnn) { 
+        if (ghost) ghost.style.display = 'none'; 
+        if (guideLine) guideLine.style.display = 'none';
+        return; 
+      }
       
       if (!ghost) {
         ghost = document.createElement('div');
@@ -91,56 +102,128 @@
         ghost.style.zIndex = '9999';
         scrollArea.appendChild(ghost);
       }
+      
+      if (!guideLine) {
+        guideLine = document.createElement('div');
+        guideLine.style.position = 'absolute';
+        guideLine.style.borderTop = '1px dashed #ff4081'; // Pinkish-red smart guide
+        guideLine.style.pointerEvents = 'none';
+        guideLine.style.zIndex = '9998';
+        guideLine.style.display = 'none';
+        scrollArea.appendChild(guideLine);
+      }
+      
+      const rect = scrollArea.getBoundingClientRect();
+      const y = ev.clientY - rect.top;
+      const imgH = globalThis._spectroImageHeight || 420;
+      const AXIS_TOP = 12;
+      const yMax = globalThis._spectroYMax || 22050;
+
+      if (y < AXIS_TOP || y > AXIS_TOP + imgH) {
+        if (ghost) ghost.style.display = 'none';
+        if (guideLine) guideLine.style.display = 'none';
+        return;
+      }
 
       const map = globalThis._spectroMap;
       if (!map) return;
       
-      const rect = scrollArea.getBoundingClientRect();
       const x = ev.clientX - rect.left + scrollArea.scrollLeft;
-      const y = ev.clientY - rect.top;
       
       const pxPerSec = map.pxPerSec();
-      const yMax = globalThis._spectroYMax || 22050;
-      const imgH = globalThis._spectroImageHeight || 420;
       
       const wPx = lastAnn.duration * pxPerSec;
       const hPx = (lastAnn.bandwidth / yMax) * imgH;
       
+      // Convert current Y to frequency
+      const freqCenterHover = yMax * (1 - (y - AXIS_TOP) / imgH);
+      
+      // Smart Guide Snapping Logic (10px threshold)
+      const snapThresholdPx = 05;
+      const snapThresholdFreq = (snapThresholdPx / imgH) * yMax;
+      
+      let snapped = false;
+      let snappedFreq = freqCenterHover;
+
+      if (Math.abs(freqCenterHover - lastAnn.centerFreq) < snapThresholdFreq) {
+        snapped = true;
+        snappedFreq = lastAnn.centerFreq;
+      }
+
+      // Store state for pointerdown creation
+      ghost._isSnapped = snapped;
+      
+      // Convert frequency back to Y coordinate
+      const snappedY = AXIS_TOP + imgH * (1 - snappedFreq / yMax);
+      
       ghost.style.width = wPx + 'px';
       ghost.style.height = hPx + 'px';
       ghost.style.left = (x - wPx / 2) + 'px';
-      ghost.style.top = (y - hPx / 2) + 'px';
+      ghost.style.top = (snappedY - hPx / 2) + 'px';
+      
+      if (snapped) {
+        ghost.style.borderColor = '#ff4081'; // Match guide line color when snapped
+        ghost.style.boxShadow = '0 0 4px rgba(255,64,129,0.4)';
+        
+        // Align guide line with current view port
+        guideLine.style.left = scrollArea.scrollLeft + 'px';
+        guideLine.style.width = scrollArea.clientWidth + 'px';
+        guideLine.style.top = snappedY + 'px';
+        guideLine.style.display = 'block';
+      } else {
+        ghost.style.borderColor = '#00ff00'; // Default green
+        ghost.style.boxShadow = '0 0 4px rgba(0,255,0,0.4)';
+        guideLine.style.display = 'none';
+      }
+      
       ghost.style.display = 'block';
-    });
+    }, true);
 
-    spectrogramCanvas.addEventListener('pointerleave', () => {
+    viewportWrapper.addEventListener('pointerleave', () => {
       if (ghost) ghost.style.display = 'none';
-    });
+      if (guideLine) guideLine.style.display = 'none';
+    }, true);
 
-    spectrogramCanvas.addEventListener('pointerdown', (ev) => {
+    viewportWrapper.addEventListener('pointerdown', (ev) => {
       if (!isRepeat || !lastAnn || ev.button !== 0) return;
       
+      const rect = scrollArea.getBoundingClientRect();
+      const y = ev.clientY - rect.top;
+      const imgH = globalThis._spectroImageHeight || 420;
+      const AXIS_TOP = 12; // Matches spectrogram.js layout
+      
+      if (y < AXIS_TOP || y > AXIS_TOP + imgH) return;
+
       // Intercept creation
       ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation();
 
       const map = globalThis._spectroMap;
       if (!map) return;
       
-      const rect = scrollArea.getBoundingClientRect();
       const x = ev.clientX - rect.left + scrollArea.scrollLeft;
-      const y = ev.clientY - rect.top;
       
       const tCenter = map.pxToSec(x);
       const yMax = globalThis._spectroYMax || 22050;
-      const imgH = globalThis._spectroImageHeight || 420;
-      const AXIS_TOP = 12; // Matches spectrogram.js layout
       const freqCenter = yMax * (1 - (y - AXIS_TOP) / imgH);
       
       const duration = (typeof globalThis._spectroDuration === 'number' && isFinite(globalThis._spectroDuration)) ? globalThis._spectroDuration : Infinity;
       const t1 = Math.max(0, tCenter - lastAnn.duration / 2);
       const t2 = Math.min(duration, tCenter + lastAnn.duration / 2);
-      const f1 = Math.max(0, freqCenter - lastAnn.bandwidth / 2);
-      const f2 = Math.min(yMax, freqCenter + lastAnn.bandwidth / 2);
+      
+      let f1, f2;
+      if (ghost && ghost._isSnapped) {
+        f1 = lastAnn.lowFreq;
+        f2 = lastAnn.highFreq;
+      } else {
+        f1 = Math.max(0, freqCenter - lastAnn.bandwidth / 2);
+        f2 = Math.min(yMax, freqCenter + lastAnn.bandwidth / 2);
+      }
+      
+      const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+      f1 = Math.max(0, Math.min(nyq, f1));
+      f2 = Math.max(0, Math.min(nyq, f2));
+      
+      if (f1 >= f2) return;
       
       // Use the species info stored from the last annotation
       if (!lastAnn.scientificName) {
