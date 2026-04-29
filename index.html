@@ -339,9 +339,6 @@
             <button id="createXcSetBtn" type="button" class="left-submenu-btn" role="menuitem" title="Combine multiple annotation files into a single Xeno-canto set">
               <span>Create set</span>
             </button>
-            <button id="xcSettingsBtn" type="button" class="left-submenu-btn" role="menuitem" title="Configure Xeno-canto API settings">
-              <span>Xeno-canto Settings</span>
-            </button>
           </div>
         </div>
         <script>
@@ -357,7 +354,6 @@
             const createSetBtn = document.getElementById('createXcSetBtn');
             const uploadBtn = document.getElementById('uploadXenoCantoBtn');
             const exportVideoBtn = document.getElementById('exportVideoBtn');
-            const settingsBtn = document.getElementById('xcSettingsBtn');
             
             const setGroup = document.getElementById('settingsMenuGroup');
             const setParent = document.getElementById('settingsMenuParent');
@@ -446,17 +442,6 @@
               }
             });
           }
-            if (settingsBtn) {
-              settingsBtn.addEventListener('click', function(ev) {
-                ev.preventDefault();
-                ev.stopPropagation();
-                if (typeof window.__openXcSettingsModal === 'function') {
-                  window.__openXcSettingsModal();
-                } else {
-                  alert('Settings modal not available. Ensure upload_xc.js is loaded.');
-                }
-              });
-            }
           });
         })();
         </script>
