@@ -1,1 +1,311 @@
-!function(){const e=document.getElementById("viewportWrapper"),t=document.getElementById("scrollArea"),o=document.getElementById("spectrogramCanvas");if(!e||!t||!o)return;let n=document.getElementById("xAxisOverlay");n||(n=document.createElement("canvas"),n.id="xAxisOverlay",n.style.position="absolute",n.style.zIndex=45,n.style.pointerEvents="auto",e.appendChild(n));const i=window.devicePixelRatio||1;n.getContext("2d",{alpha:!0});let l=document.getElementById("mouseReadout");l?l.style.display="none":(l=document.createElement("div"),l.id="mouseReadout",l.style.display="none",e.appendChild(l));let a=document.getElementById("spectrogramCrosshairOverlay");a||(a=document.createElement("canvas"),a.id="spectrogramCrosshairOverlay",a.style.position="absolute",a.style.left="0",a.style.top="0",a.style.pointerEvents="none",a.style.zIndex=999,e.appendChild(a));const r=a.getContext("2d",{alpha:!0});function s(e,t,o){return Math.max(t,Math.min(o,e))}function c(){const t=o.getBoundingClientRect(),n=e.getBoundingClientRect();a.style.left=t.left-n.left+"px",a.style.top=t.top-n.top+"px";const l=Math.max(1,Math.round(t.width)),s=Math.max(1,Math.round(t.height));a.style.width=l+"px",a.style.height=s+"px";const c=Math.round(l*i),h=Math.round(s*i);a.width===c&&a.height===h||(a.width=c,a.height=h),r.setTransform(i,0,0,i,0,0),d()}function d(){r&&r.clearRect(0,0,a.width/(i||1),a.height/(i||1))}function h(e,t){if(!r)return;d();const o=a.width/i,n=a.height/i;e=s(e,0,o),t=s(t,0,n);const l="rgba(0,136,255,0.95)",c=Math.max(1,1);r.strokeStyle=l,r.fillStyle=l,r.lineWidth=c,r.beginPath(),r.moveTo(Math.round(e)+.5,0),r.lineTo(Math.round(e)+.5,n),r.moveTo(0,Math.round(t)+.5),r.lineTo(o,Math.round(t)+.5),r.stroke(),r.beginPath(),r.arc(Math.round(e),Math.round(t),3,0,2*Math.PI),r.fill()}function p(e){const t=o.getBoundingClientRect(),n=e.clientX-t.left,i=e.clientY-t.top,l=a.getBoundingClientRect().width||t.width,r=a.getBoundingClientRect().height||t.height;return{x:s(n*(l/t.width),0,l),y:s(i*(r/t.height),0,r),specRectLeft:t.left,specRectTop:t.top}}!function(){if(!t||!o)return;function e(e){const n=o.getBoundingClientRect();if(e.clientX<n.left||e.clientX>n.right||e.clientY<n.top||e.clientY>n.bottom)return;const i=document.elementFromPoint(e.clientX,e.clientY);if(i&&i.closest&&i.closest("[data-allow-wheel]"))return;let l=e.deltaY;1===e.deltaMode?l*=16:2===e.deltaMode&&(l*=window.innerHeight);if(document.getElementById("editPointerLayer"))return t.scrollLeft+=3*l,e.preventDefault(),void e.stopPropagation();t.scrollLeft+=3*l,e.preventDefault()}window.addEventListener("wheel",e,{passive:!1,capture:!0}),window.__unifiedWheelHandler={remove:()=>window.removeEventListener("wheel",e,!0)}}(),a.addEventListener("wheel",function(e){let o=e.deltaY;1===e.deltaMode?o*=16:2===e.deltaMode&&(o*=window.innerHeight);t.scrollLeft+=3*o,e.preventDefault()},{passive:!1});let u=!1;function g(e){if(!u)return;if(globalThis._isRepeatMode)d();else{const t=p(e);h(t.x,t.y)}const{timeSec:n,freqHz:i}=function(e,n){const i=globalThis._spectroMap&&"function"==typeof globalThis._spectroMap.pxPerSec?globalThis._spectroMap.pxPerSec():"number"==typeof globalThis._spectroPxPerSec&&globalThis._spectroPxPerSec>0?globalThis._spectroPxPerSec:globalThis._spectroPxPerFrame&&globalThis._spectroFramesPerSec?globalThis._spectroPxPerFrame*globalThis._spectroFramesPerSec:1,l="number"==typeof globalThis._spectroImageHeight&&globalThis._spectroImageHeight>0?globalThis._spectroImageHeight:Math.max(1,(o.clientHeight||0)-12-44),a="number"==typeof globalThis._spectroYMax&&globalThis._spectroYMax>0?globalThis._spectroYMax:globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050,r="number"==typeof globalThis._spectroDuration&&globalThis._spectroDuration>0?globalThis._spectroDuration:1/0,c=e-t.getBoundingClientRect().left,d=Math.round(t.scrollLeft||0)+c,h=s(d/Math.max(1,i),0,r),p=n-o.getBoundingClientRect().top,u=s((p-12)/Math.max(1,l-1),0,1);return{timeSec:h,freqHz:s((1-u)*a,0,a),localX:c,localY:p,globalX:d,pxPerSec:i}}(e.clientX,e.clientY);var a;l.textContent=`X: ${function(e){if(!isFinite(e)||e<0)return"0s";if(e>=3600){const t=Math.floor(e/3600),o=Math.floor(e%3600/60),n=Math.floor(e%60);return`${t}:${String(o).padStart(2,"0")}:${String(n).padStart(2,"0")}`}if(e>=60){const t=Math.floor(e/60),o=Math.floor(e%60);return`${t}:${String(o).padStart(2,"0")}`}return`${e.toFixed(2)}s`}(n)}   Y: ${a=i,!isFinite(a)||a<=0?"0 Hz":a>=1e3?`${(a/1e3).toFixed(2)} kHz`:`${Math.round(a)} Hz`}`}o.addEventListener("mouseenter",function(e){if(u=!0,c(),globalThis._isRepeatMode)d();else{const t=p(e);h(t.x,t.y)}}),o.addEventListener("mouseleave",function(){u=!1,d()}),o.addEventListener("mousemove",g),o.addEventListener("pointermove",g),t.addEventListener("scroll",()=>{u&&c()},{passive:!0}),window.addEventListener("resize",()=>{c()}),setTimeout(()=>{c()},120)}();
+// mouse.js
+// Crosshair overlay + axis-derived X/Y readout (readout text removed; crosshair replaces it).
+// Also converts mouse wheel into horizontal scrolling while pointer is over the spectrogram.
+
+(function () {
+  const viewportWrapper = document.getElementById('viewportWrapper');
+  const scrollArea = document.getElementById('scrollArea');
+  const spectrogramCanvas = document.getElementById('spectrogramCanvas');
+  if (!viewportWrapper || !scrollArea || !spectrogramCanvas) return;
+
+  // Ensure xAxisOverlay exists (playback.js normally creates it; create if missing)
+  let xAxisCanvas = document.getElementById('xAxisOverlay');
+  if (!xAxisCanvas) {
+    xAxisCanvas = document.createElement('canvas');
+    xAxisCanvas.id = 'xAxisOverlay';
+    xAxisCanvas.style.position = 'absolute';
+    xAxisCanvas.style.zIndex = 45;
+    xAxisCanvas.style.pointerEvents = 'auto';
+    viewportWrapper.appendChild(xAxisCanvas);
+  }
+  const dpr = window.devicePixelRatio || 1;
+  const xAxisCtx = xAxisCanvas.getContext('2d', { alpha: true });
+
+  // Remove textual readout and replace with crosshair overlay
+  // (we keep legacy mouseReadout element handling in case other code references it,
+  //  but we hide it and rely on the crosshair for visual feedback)
+  let readout = document.getElementById('mouseReadout');
+  if (!readout) {
+    readout = document.createElement('div');
+    readout.id = 'mouseReadout';
+    readout.style.display = 'none';
+    viewportWrapper.appendChild(readout);
+  } else {
+    readout.style.display = 'none';
+  }
+
+  // Crosshair overlay canvas (draws two intersecting lines)
+  let overlay = document.getElementById('spectrogramCrosshairOverlay');
+  if (!overlay) {
+    overlay = document.createElement('canvas');
+    overlay.id = 'spectrogramCrosshairOverlay';
+    overlay.style.position = 'absolute';
+    overlay.style.left = '0';
+    overlay.style.top = '0';
+    overlay.style.pointerEvents = 'none'; // visual only; events stay on spectrogramCanvas
+    overlay.style.zIndex = 999;
+    // append inside viewportWrapper so overlay coordinates align with spectrogram + axis areas
+    viewportWrapper.appendChild(overlay);
+  }
+  const octx = overlay.getContext('2d', { alpha: true });
+
+  // Layout constants must match spectrogram.js
+  const AXIS_TOP = 12;
+  const AXIS_BOTTOM = 44;
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function formatTimeLabel(sec) {
+    if (!isFinite(sec) || sec < 0) return '0s';
+    if (sec >= 3600) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    if (sec >= 60) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${String(s).padStart(2,'0')}`;
+    }
+    return `${sec.toFixed(2)}s`;
+  }
+
+  function formatFreqLabel(hz) {
+    if (!isFinite(hz) || hz <= 0) return '0 Hz';
+    if (hz >= 1000) return `${(hz / 1000).toFixed(2)} kHz`;
+    return `${Math.round(hz)} Hz`;
+  }
+
+  // Compute axis-derived values
+  function computeAxisValues(clientX, clientY) {
+    // authoritative mapping from spectrogram globals
+    const pxPerSec = (globalThis._spectroMap && typeof globalThis._spectroMap.pxPerSec === 'function')
+      ? globalThis._spectroMap.pxPerSec()
+      : ((typeof globalThis._spectroPxPerSec === 'number' && globalThis._spectroPxPerSec>0) ? globalThis._spectroPxPerSec : ((globalThis._spectroPxPerFrame && globalThis._spectroFramesPerSec) ? globalThis._spectroPxPerFrame * globalThis._spectroFramesPerSec : 1));
+
+    const imageHeight = (typeof globalThis._spectroImageHeight === 'number' && globalThis._spectroImageHeight > 0)
+      ? globalThis._spectroImageHeight
+      : Math.max(1, (spectrogramCanvas.clientHeight || 0) - AXIS_TOP - AXIS_BOTTOM);
+
+    const ymaxHz = (typeof globalThis._spectroYMax === 'number' && globalThis._spectroYMax > 0)
+      ? globalThis._spectroYMax
+      : (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+    const yminHz = (typeof globalThis._spectroYMin === 'number') ? globalThis._spectroYMin : 0;
+
+    const duration = (typeof globalThis._spectroDuration === 'number' && globalThis._spectroDuration > 0)
+      ? globalThis._spectroDuration
+      : Infinity;
+
+    // X: local X relative to the visible scroll viewport (scrollArea), not the canvas bounding rect
+    const scrollRect = scrollArea.getBoundingClientRect();
+    const localX = clientX - scrollRect.left;                 // CSS px inside visible viewport
+    const leftCol = Math.round(scrollArea.scrollLeft || 0);   // CSS px scrolled away left
+    const globalX = leftCol + localX;                        // CSS px into full spectrogram image
+    const timeSec = clamp(globalX / Math.max(1, pxPerSec), 0, duration);
+
+    // Y: map using axis top and image height
+    const vwRect = viewportWrapper.getBoundingClientRect();
+    const localY = clientY - vwRect.top;
+    const yInImage = localY - AXIS_TOP; // top of spectrogram image area
+    const t = clamp(yInImage / Math.max(1, imageHeight - 1), 0, 1); // 0..1 top->bottom
+    const freqHz = clamp(ymaxHz - t * (ymaxHz - yminHz), yminHz, ymaxHz);
+
+    return { timeSec, freqHz, localX, localY, globalX, pxPerSec };
+  }
+
+  // --- Crosshair drawing utilities ---
+  function resizeOverlay() {
+    const axisLeft = (typeof globalThis._spectroAxisLeft === 'number') ? globalThis._spectroAxisLeft : 70;
+    const viewWidth = Math.max(1, scrollArea.clientWidth);
+    const viewHeight = Math.max(1, (globalThis._spectroImageHeight || (spectrogramCanvas.clientHeight - AXIS_TOP - 44)) || 100);
+
+    overlay.style.left = axisLeft + 'px';
+    overlay.style.top = AXIS_TOP + 'px';
+    const cssW = viewWidth;
+    const cssH = viewHeight;
+    overlay.style.width = cssW + 'px';
+    overlay.style.height = cssH + 'px';
+    // backing store (hi-dpi)
+    const bw = Math.round(cssW * dpr);
+    const bh = Math.round(cssH * dpr);
+    if (overlay.width !== bw || overlay.height !== bh) {
+      overlay.width = bw;
+      overlay.height = bh;
+    }
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    clearCrosshair();
+  }
+
+  function clearCrosshair() {
+    if (!octx) return;
+    octx.clearRect(0, 0, overlay.width / (dpr || 1), overlay.height / (dpr || 1));
+  }
+
+  function drawCrosshairAtCanvasCoords(cx, cy) {
+    if (!octx) return;
+    clearCrosshair();
+    const w = overlay.width / dpr;
+    const h = overlay.height / dpr;
+
+    // clamp inside overlay
+    cx = clamp(cx, 0, w);
+    cy = clamp(cy, 0, h);
+
+    // styling
+    const color = 'rgba(0,136,255,0.95)';
+    const thin = Math.max(1, 1);
+
+    octx.strokeStyle = color;
+    octx.fillStyle = color;
+    octx.lineWidth = thin;
+    octx.beginPath();
+    // vertical
+    octx.moveTo(Math.round(cx) + 0.5, 0);
+    octx.lineTo(Math.round(cx) + 0.5, h);
+    // horizontal
+    octx.moveTo(0, Math.round(cy) + 0.5);
+    octx.lineTo(w, Math.round(cy) + 0.5);
+    octx.stroke();
+
+    // small intersection marker for visibility
+    octx.beginPath();
+    octx.arc(Math.round(cx), Math.round(cy), 3, 0, Math.PI * 2);
+    octx.fill();
+  }
+
+  // convert client coords to overlay-local canvas coords (CSS px)
+  function clientToOverlayLocal(evt) {
+    const rect = overlay.getBoundingClientRect();
+    const x = clamp(evt.clientX - rect.left, 0, rect.width);
+    const y = clamp(evt.clientY - rect.top, 0, rect.height);
+    return { x, y };
+  }
+
+  // --- Combined capture-phase wheel handler for Create + Edit modes ---
+  (function installUnifiedWheelHandler() {
+    if (!scrollArea || !spectrogramCanvas) return;
+    const EDIT_LAYER_ID = 'editPointerLayer'; // existing edit overlay id
+    const OVERLAY_OPT_OUT_ATTR = 'data-allow-wheel'; // overlay can set this to opt out
+
+    function onWheelCapture(ev) {
+      // Quick bounding check: only care when pointer is inside spectrogram rectangle
+      const r = spectrogramCanvas.getBoundingClientRect();
+      if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) return;
+
+      // Topmost element under pointer may opt out explicitly
+      const top = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (top && top.closest && top.closest('[' + OVERLAY_OPT_OUT_ATTR + ']')) {
+        return; // let overlay handle wheel normally
+      }
+
+      // Ensure panning only occurs with pure scrolling (no modifier keys)
+      if (ev.ctrlKey || ev.shiftKey || ev.metaKey || ev.altKey) {
+        return;
+      }
+
+      // Normalize delta to pixels
+      let deltaY = ev.deltaY;
+      if (ev.deltaMode === 1) deltaY *= 16;
+      else if (ev.deltaMode === 2) deltaY *= window.innerHeight;
+
+      const SCROLL_FACTOR = 3;
+
+      // If edit overlay exists, forward and swallow to avoid dead zones
+      const editLayer = document.getElementById(EDIT_LAYER_ID);
+      if (editLayer) {
+        scrollArea.scrollLeft += deltaY * SCROLL_FACTOR;
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
+
+      // Create/default: forward but don't stop propagation (preserve other handlers)
+      scrollArea.scrollLeft += deltaY * SCROLL_FACTOR;
+      ev.preventDefault();
+    }
+
+    window.addEventListener('wheel', onWheelCapture, { passive: false, capture: true });
+    window.__unifiedWheelHandler = { remove: () => window.removeEventListener('wheel', onWheelCapture, true) };
+  })();
+
+  // Mirror wheel listener on overlay so future toggles of pointer-events won't break behaviour
+  // (overlay is visual-only; this keeps previous behavior if overlay had pointer-events toggled)
+  overlay.addEventListener('wheel', function (ev) {
+    if (ev.ctrlKey || ev.shiftKey || ev.metaKey || ev.altKey) {
+      return;
+    }
+    let deltaY = ev.deltaY;
+    if (ev.deltaMode === 1) deltaY *= 16;
+    else if (ev.deltaMode === 2) deltaY *= window.innerHeight;
+    const SCROLL_FACTOR = 3;
+    scrollArea.scrollLeft += deltaY * SCROLL_FACTOR;
+    ev.preventDefault();
+  }, { passive: false });
+
+  // --- Pointer events for crosshair ---
+  let inside = false;
+
+  function onEnter(ev) {
+    inside = true;
+    // show crosshair immediately at pointer
+    resizeOverlay();
+    if (globalThis._isRepeatMode) {
+      clearCrosshair();
+    } else {
+      const pos = clientToOverlayLocal(ev);
+      drawCrosshairAtCanvasCoords(pos.x, pos.y);
+    }
+    // ticks handled by playback.js
+  }
+
+  function onLeave() {
+    inside = false;
+    clearCrosshair();
+  }
+
+  function onMove(ev) {
+    if (!inside) return;
+    if (globalThis._isRepeatMode) {
+      clearCrosshair();
+    } else {
+      const pos = clientToOverlayLocal(ev);
+      drawCrosshairAtCanvasCoords(pos.x, pos.y);
+    }
+
+    // Optionally, if you still want to expose textual readout elsewhere, compute values
+    const { timeSec, freqHz } = computeAxisValues(ev.clientX, ev.clientY);
+    // If other code expects mouseReadout's value, we keep it hidden but updated.
+    readout.textContent = `X: ${formatTimeLabel(timeSec)}   Y: ${formatFreqLabel(freqHz)}`;
+  }
+
+  spectrogramCanvas.addEventListener('mouseenter', onEnter);
+  spectrogramCanvas.addEventListener('mouseleave', onLeave);
+  spectrogramCanvas.addEventListener('mousemove', onMove);
+  spectrogramCanvas.addEventListener('pointermove', onMove);
+
+  // Keep overlay synchronized during scroll/resize
+  scrollArea.addEventListener('scroll', () => {
+    if (inside) {
+      // force redraw overlay geometry because scroll may shift visible area
+      resizeOverlay();
+    }
+    // playback.js handles axis redraw on scroll
+  }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    resizeOverlay();
+    // playback.js handles axis redraw on resize
+  });
+
+  // Initial sync: size overlay (do not draw ticks here)
+  setTimeout(() => { resizeOverlay(); }, 120);
+
+  // Export crosshair API for use by other modules (e.g. spectral_stamp.js)
+  globalThis._spectroMouse = {
+    drawCrosshair: drawCrosshairAtCanvasCoords,
+    clearCrosshair: clearCrosshair,
+    clientToOverlayLocal: clientToOverlayLocal
+  };
+
+})();

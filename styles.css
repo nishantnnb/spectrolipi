@@ -1,442 +1,454 @@
-/* Global layout */
-body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin:18px; color:#222; background:#fafafa; }
-#controls { margin-bottom:10px; }
-#viewportWrapper { width:100%; max-width:100%; height:420px; border:1px solid #bbb; background:#000; display:flex; align-items:stretch; overflow:hidden; position:relative; }
-#axisCanvas { width:70px; flex:0 0 70px; background:#000; }
-#scrollArea { height:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; position:relative; }
-canvas.spectrogram { display:block; height:100%; width:auto; background:#000; }
-label, select, input, button { margin-left:8px; }
+/* 
+   Spectrolipi SaaS Dark Theme
+   A highly compact, professional, dark-mode design for fast audio analysis workflows.
+*/
+
+:root {
+  --bg-base: #121212;
+  --bg-surface: #1e1e1e;
+  --bg-surface-elevated: #282828;
+  --bg-toolbar: #18181b;
+  --text-primary: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --accent-primary: #3b82f6; /* Modern Blue */
+  --accent-hover: #2563eb;
+  --accent-pressed: #1d4ed8;
+  --accent-success: #22c55e;
+  --border-color: #3f3f46;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+}
+
+/* Global Layout - 100vh fixed */
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Toolbars */
+#controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px 8px 60px; /* Space for hamburger */
+  background-color: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border-color);
+  gap: 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+#annotationControls {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background-color: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border-color);
+  gap: 16px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+/* Scrollbar for toolbar if it overflows */
+#annotationControls::-webkit-scrollbar { height: 4px; }
+#annotationControls::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+
+/* Grouping containers */
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 4px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border-color);
+  margin: 0 4px;
+}
+
+/* Viewport & Canvas */
+#viewportWrapper {
+  flex: 0 0 auto;
+  height: 420px; /* controlled by splitter.js */
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  background: #000;
+  position: relative;
+  overflow: hidden;
+}
+
+#axisCanvas {
+  width: 70px;
+  flex: 0 0 70px;
+  background: #0a0a0a;
+}
+
+#scrollArea {
+  flex: 1 1 auto;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+}
+
+canvas.spectrogram {
+  display: block;
+  height: 100%;
+  width: auto;
+  background: #000;
+}
+
+/* Custom Scrollbar for Spectrogram */
+#scrollArea::-webkit-scrollbar {
+  height: 10px;
+  background: #111;
+}
+#scrollArea::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 5px;
+}
+#scrollArea::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Splitter */
+#uiSplitter {
+  flex: 0 0 10px;
+  background-color: var(--bg-toolbar);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+#uiSplitter:hover, #uiSplitter:active {
+  background-color: var(--accent-primary);
+}
+#uiSplitter::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 2px;
+  border-top: 1px solid rgba(255,255,255,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
+/* Annotation Grid Area */
+#annotationGrid {
+  flex: 1 1 auto;
+  background: var(--bg-base);
+  width: 100%;
+}
+
+/* General Controls (Inputs, Selects, Labels) */
 label {
-  color: #fff !important;
-  background: #111 !important;
-  border-radius: 3px;
-  padding: 0 4px;
-  height: 28px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 6px;
+  margin-right: 4px;
+}
+.toolbar-group label { margin-left: 8px; }
+
+input[type="text"], input[type="number"], select, input[type="file"] {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input[type="text"]:focus, select:focus {
+  border-color: var(--accent-primary);
+}
+input[type="range"] {
+  accent-color: var(--accent-primary);
+  vertical-align: middle;
+}
+
+/* Modern Icon Buttons (.seg-top-btn, .seg-btn, .seg-compact-btn) */
+.seg-top-btn, .seg-btn, .seg-compact-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 4px;
+  padding: 6px;
+  height: 28px;
+  min-width: 28px;
+  cursor: pointer;
+  font-size: 14px; /* Icon size */
+  transition: all 0.15s ease;
 }
-#info { margin-top:8px; color:#333; }
-input[type=range] { vertical-align: middle; }
 
-/* toolbar layout */
-#annotationControls { margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.seg-top-btn:hover, .seg-btn:hover, .seg-compact-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
 
-/* segmented toggle */
+.seg-top-btn:active, .seg-btn:active, .seg-compact-btn:active {
+  background-color: rgba(255, 255, 255, 0.12);
+  transform: scale(0.96);
+}
+
+.seg-top-btn:disabled, .seg-btn:disabled, .seg-compact-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+/* Highlighted Action Buttons (e.g. Play) */
+.btn-primary {
+  background-color: var(--accent-primary) !important;
+  color: #fff !important;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.btn-primary:hover { background-color: var(--accent-hover) !important; }
+
+/* Active States (Selection mode ON, Magic wand ON, etc.) */
+.selection-on, [aria-pressed="true"] {
+  background-color: var(--accent-success) !important;
+  color: #000 !important;
+}
+
+/* Create / Edit Toggle Group */
 .seg-toggle {
   display: inline-flex;
-  align-items: center;
-  background: #121214;
-  border-radius: 8px;
-  padding: 4px;
-  gap: 4px;
-  border: 1px solid rgba(255,255,255,0.04);
+  background-color: #000;
+  border-radius: 6px;
+  padding: 2px;
+  border: 1px solid var(--border-color);
 }
 .seg-option {
   background: transparent;
-  border: 0;
-  color: #dcdcdc;
-  padding: 6px 12px;
-  border-radius: 6px;
-  min-width: 64px;
-  cursor: pointer;
+  border: none;
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 600;
-  font-size: 13px;
-  transition: background .12s, color .12s, transform .06s;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.seg-option:hover { background: rgba(255,255,255,0.02); }
+.seg-option:hover { color: var(--text-primary); }
 .seg-option[aria-pressed="true"] {
-  background: #0a66ff;
-  color: #fff;
-  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.12);
+  background-color: var(--bg-surface-elevated);
+  color: var(--accent-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
-/* === Explicit toolbar icon button base (only these classes) ===
-   Targets only known toolbar classes so other page buttons remain untouched.
-*/
-.anno-btn,
-.meta-open-btn,
-.multi-delete-btn,
-.save-annotations-btn,
-.save-btn {
-  display: inline-flex;
+/* Left Sidebar Overlay */
+.left-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 0;
+  background-color: rgba(18, 18, 20, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 2147483645;
+  overflow-x: hidden;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: 1px solid transparent;
+}
+.left-overlay.open {
+  width: 280px;
+  border-right: 1px solid var(--border-color);
+  box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+}
+.left-overlay-inner {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.left-overlay-header { height: 60px; }
+.left-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.left-menu-btn:hover { background-color: rgba(255,255,255,0.06); }
+.left-menu-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+#leftHamburgerToggle {
+  position: fixed;
+  left: 12px;
+  top: 6px;
+  z-index: 2147483646;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 1px solid transparent; /* stable baseline but invisible */
-  padding: 0;
-  border-radius: 6px;
-  color: #111;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
-  line-height: 0;
+  font-size: 16px;
+  transition: background 0.2s;
 }
+#leftHamburgerToggle:hover { background: var(--bg-surface-elevated); }
 
-/* Single delete sizing (original) */
-.anno-btn {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-radius: 6px;
-}
-.anno-btn svg { width: 20px; height: 20px; }
-
-/* Compact multi-delete (optional small variant) */
-.multi-delete-btn {
-  width: 28px;
-  height: 28px;
-  padding: 0;
+/* Mouse Position Readouts */
+.toolbar-mouse {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 11px;
+  background: #000;
+  padding: 4px 8px;
   border-radius: 4px;
+  color: var(--accent-primary);
+  border: 1px solid #333;
 }
 
-/* Wide multi-delete (dual-trash) — two full 24x24 bins visible */
-.multi-delete-btn.wide {
-  width: 56px;      /* wide enough for two 24px bins + padding */
-  height: 36px;
-  padding: 6px 8px;
-  border-radius: 6px;
-}
-.multi-delete-btn.wide .multi-trash {
-  width: 48px;
-  height: 20px;
-  display: block;
-}
-
-/* Metadata button sizing preserved */
-.meta-open-btn {
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  margin-left: 6px;
-  border-radius: 4px;
-}
-
-/* Narrow-save reset (targeted) so save buttons behave like toolbar icons */
-button.save-annotations-btn,
-button.save-btn,
-button.save-annotations,
-button[data-role="save"] {
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  padding: 6px !important;
-  color: inherit !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 6px !important;
-}
-
-/* Disabled appearance for the matched toolbar classes only */
-.anno-btn[disabled],
-.meta-open-btn[disabled],
-.multi-delete-btn[disabled],
-.save-annotations-btn[disabled],
-.save-btn[disabled] {
-  opacity: 0.55;
-  filter: grayscale(20%);
-  pointer-events: none;
-  cursor: default;
-}
-
-/* === Unified hover / focus for toolbar buttons (explicit selectors) ===
-   Ensures identical hover/focus affordance for the mapped toolbar controls.
-*/
-.anno-btn:hover:not([disabled]),
-.meta-open-btn:hover:not([disabled]),
-.multi-delete-btn:hover:not([disabled]),
-.save-annotations-btn:hover:not([disabled]),
-.save-btn:hover:not([disabled]),
-.anno-btn:focus:not([disabled]),
-.meta-open-btn:focus:not([disabled]),
-.multi-delete-btn:focus:not([disabled]),
-.save-annotations-btn:focus:not([disabled]),
-.save-btn:focus:not([disabled]) {
-  background: rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.08);
-  color: #111;
-  outline: none;
-}
-
-/* Keyboard focus ring (consistent) */
-.anno-btn:focus,
-.meta-open-btn:focus,
-.multi-delete-btn:focus,
-.save-annotations-btn:focus,
-.save-btn:focus,
-.seg-option:focus {
-  box-shadow: 0 0 0 3px rgba(11,102,255,0.12), 0 0 0 1px rgba(11,102,255,0.18);
-  outline: none;
-}
-
-/* species control styles (kept unchanged, responsive behavior preserved) */
-.species-search { display:inline-flex; align-items:center; gap:8px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin-left:6px; position:relative; min-width:320px; max-width:720px; }
-.species-search .label {
-  font-size: 13px;
-  color: #fff !important;
-  background: #111 !important;
-  margin-right: 6px;
-  white-space: nowrap;
-  border-radius: 3px;
-  padding: 0 4px;
-  height: 28px;
-  display: inline-flex;
+/* Species Search */
+.species-search {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  position: relative;
 }
-.species-search .input-wrap { position:relative; min-width:200px; max-width:520px; }
-.species-search input[type="text"] { width:320px; box-sizing:border-box; padding:6px 8px; border-radius:4px; border:1px solid #bbb; }
+.mode-btn {
+  background: var(--bg-base);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.mode-badge.m-Sci { color: #f97316; font-weight: 600; }
+.mode-badge.m-Common { color: #3b82f6; font-weight: 600; }
+.mode-badge.m-eBird { color: #14b8a6; font-weight: 600; }
+.mode-badge.m-None { color: #8a8a93; font-weight: 600; }
+
+.species-result-wrap {
+  display: flex;
+  align-items: center;
+  background: #000;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  min-width: 150px;
+}
+.species-result { font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+/* Suggestions Dropdown */
 .species-suggestions {
   position: absolute;
+  top: calc(100% + 4px);
   left: 0;
-  right: 0;
-  top: calc(100% + 6px);
-  background: #111;
-  border: 1px solid #2196F3;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
-  max-height: 220px;
-  overflow: auto;
-  z-index: 99999;
+  width: 300px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 999999;
   display: none;
-  border-radius: 4px;
 }
 .species-suggestions .item {
-  padding: 8px 10px;
+  padding: 6px 10px;
   cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
   display: flex;
-  gap: 8px;
-  align-items: center;
-  background: transparent;
-  color: #fff;
-  font-size: 0.95em;
-  transition: background 0.15s, color 0.15s;
+  justify-content: space-between;
 }
-.species-suggestions .item.active {
-  background: #2196F3;
-  color: #fff;
-}
-.species-suggestions .item:not(.active):hover {
-  background: #1565c0;
-  color: #fff;
-}
-.species-suggestions .common {
-  color: #fff;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Make species-result-wrap flexible so it can grow in the toolbar and show longer result */
-.species-result-wrap {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex: 1 1 100px;
-  min-width:160px;
-  max-width:420px;
-  overflow:hidden;
-  padding:4px 6px;
-  border-radius:6px;
-  transition: border-color 160ms, background 160ms;
-}
-.species-result-wrap.empty { border:2px dashed #e74c3c; background: #fff6f6; min-width:120px; }
-
-/* Increase visible width of species text; keep ellipsis if overflow */
-.species-result {
+.species-suggestions .item .title {
+  font-size: 12px;
   font-weight: 600;
-  color: #fff;
-  background: #111;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-  padding-right: 6px;
-  max-width: 320px;
-  border-radius: 3px;
-  padding: 0 4px;
-  height: 28px;
-  align-items: center;
+  color: var(--text-primary);
+}
+.species-suggestions .item .muted {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.species-suggestions .item:hover { background: rgba(255,255,255,0.08); }
+.species-suggestions .item.selected { background: var(--accent-primary); color: #fff; }
+.species-suggestions .item.selected .title { color: #fff; }
+.species-suggestions .item.selected .muted { color: #cbd5e1; }
+
+
+/* Tabulator Dark Theme Overrides */
+.tabulator {
+  background-color: var(--bg-base) !important;
+  border: none !important;
+}
+.tabulator-header {
+  background-color: var(--bg-toolbar) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tabulator-col { background-color: transparent !important; border-right: 1px solid var(--border-color) !important; }
+.tabulator-row {
+  background-color: var(--bg-base) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-size: 12px;
+}
+.tabulator-row.tabulator-row-even { background-color: #161616 !important; }
+.tabulator-row:hover { background-color: var(--bg-surface) !important; }
+.tabulator-row.tabulator-selected {
+  background-color: #1d4ed8 !important; /* Deep blue for high contrast against white text */
+  box-shadow: inset 0 0 0 1px var(--accent-primary) !important;
+  color: #ffffff !important;
 }
 
-/* Clear button */
-.clear-indicator { background:transparent; border:0; padding:4px 6px; cursor:pointer; color:#888; font-size:14px; display:inline-flex; align-items:center; justify-content:center; border-radius:4px; flex:0 0 auto; margin-left:2px; }
-.clear-indicator:hover { color:#222; background:#f2f2f2; }
-
-/* Responsive adjustments */
-@media (max-width:880px) {
-  #annotationControls { flex-wrap:wrap; gap:8px; }
-  .species-search input[type="text"] { width:220px; }
-  .species-result { max-width:220px; }
-  .species-result-wrap { max-width:320px; }
-}
-
-@media (max-width:520px) {
-  .species-search { min-width:160px; max-width:260px; }
-  .species-search input[type="text"] { width:160px; }
-  .species-result { display:none; } /* compact mobile behavior */
-}
-
-/* wait overlay styles */
-#waitOverlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(4,6,12,0.55);
-  /* Must be above the SCC modal which uses ~2.1474836e9 */
-  z-index: 2147483646;
-  -webkit-backdrop-filter: blur(4px);
+/* Modals & Overlays */
+#waitOverlay, #exportModal, #manageSpeciesBackdrop, #landing-overlay {
+  background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(4px);
+  font-family: inherit;
   color: #fff;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
 }
-#waitOverlay .panel {
-  display: flex;
-  gap: 22px;
-  align-items: center;
-  padding: 18px 26px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.55);
-  min-width: 420px;
-  min-height: 140px;
-  max-width: 90%;
-}
-#waitOverlay .panel img {
-  width: 100px;
-  height: auto;
-  flex: 0 0 80px;
-  display: block;
-  margin: 0;
-  pointer-events: none;
-  object-fit: contain;
+.panel, .landing-content {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6) !important;
 }
 
-/* logo inside the SCC scan overlay box */
-.scc-scan-logo {
-  width: 100px;
-  height: auto;
-  display: block;
-  margin: 0 auto 0px auto;
-  pointer-events: none;
-}
-#waitOverlay .spinner {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  border: 6px solid rgba(255,255,255,0.12);
-  border-top-color: #1ea7ff;
-  animation: waitspin 1s linear infinite;
-  flex: 0 0 96px;
-}
-@keyframes waitspin { to { transform: rotate(360deg); } }
-#waitOverlay .text { display: flex; flex-direction: column; gap: 6px; }
-#waitOverlay .title { font-weight: 600; font-size: 15px; color: #e7f6ff; }
-#waitOverlay .msg { font-size: 13px; color: #cfeeff; opacity: 0.95; }
-#waitOverlay .meta { font-size: 12px; color: #9fc8e6; opacity: 0.9; }
-
-
-#landing-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(10, 20, 30, 0.85);
-    backdrop-filter: blur(8px);
-    z-index: 2147483647;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-.landing-content {
-    background: #ffffff;
-    color: #333;
-    padding: 1.5rem 2.5rem;
-    border-radius: 12px;
-    max-width: 680px;
-    width: 90%;
-    text-align: left;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.landing-content img {
-    max-width: 100px;
-    margin-bottom: 1rem;
-    display: block;
-    margin: 0 auto 1rem auto;
-}
-
-.landing-content p {
-    font-size: 1rem;
-    line-height: 1.4;
-    color: #555;
-    margin-bottom: 1rem;
-}
-
-.landing-content h2 {
-    font-size: 1.1rem;
-    font-weight: normal;
-    color: #111;
-    margin-top: 1rem;
-    margin-bottom: 0.8rem;
-    border-bottom: 1px solid #2196F3;
-    padding-bottom: 0.4rem;
-    display: inline-block;
-}
-
-.landing-content ul {
-    text-align: left;
-    margin: 0 auto 1.5rem auto;
-    padding-left: 20px;
-    display: block;
-}
-
-.landing-content li {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    color: #444;
-    margin-bottom: 0.3rem;
-}
-
-.landing-content a {
-    color: #2196F3;
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s;
-}
-
-.landing-content a:hover {
-    color: #1565c0;
-    text-decoration: underline;
-}
-
-.landing-footer {
-    text-align: center;
-}
-
-#close-overlay {
-    background: #2196F3;
-    color: #fff;
-    border: none;
-    padding: 0.7rem 1.8rem;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-    transition: background-color 0.2s, transform 0.2s;
-    margin-top: 0.5rem;
-    display: inline-block;
-}
-
-#close-overlay:hover {
-    background: #1976D2;
-    transform: translateY(-2px);
-}
-
+/* Utility */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }

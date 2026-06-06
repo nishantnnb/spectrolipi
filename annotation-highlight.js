@@ -1,1 +1,64 @@
-!function(){const e="33,150,243";var n;n=()=>{try{const t=document.getElementById("scrollArea");if(!t)return;try{if(!document.querySelector('style[data-generated="annotation-highlight"]')){const o=`.tabulator-row.tabulator-selected { background-color: rgba(${e},0.10) !important; } .tabulator-row.tabulator-selected .tabulator-cell { outline: 2px solid rgba(${e},0.18) !important; }`,i=document.createElement("style");i.dataset.generated="annotation-highlight",i.appendChild(document.createTextNode(o)),document.head.appendChild(i)}}catch(a){}function n(){try{"function"==typeof window.renderAllAnnotations&&window.renderAllAnnotations()}catch(e){}try{"function"==typeof window.renderSelectionOverlay&&window.renderSelectionOverlay()}catch(e){}}window.addEventListener("edit-selection-changed",function(e){try{const t=e&&e.detail&&e.detail.editingId;t&&"function"==typeof window.renderSelectionOverlay&&window.renderSelectionOverlay([t]),n()}catch(e){}},{passive:!0}),t.addEventListener("scroll",function(){n()},{passive:!0}),window.addEventListener("resize",function(){n()},{passive:!0}),window.addEventListener("annotations-changed",function(){n()},{passive:!0}),window.addEventListener("spectrogram-generated",function(){setTimeout(n,30)},{passive:!0}),function(e=6e3){const t=Date.now();!function o(){if(window.annotationGrid)return function(){try{const e=window.annotationGrid;if(!e||!e.on)return;if(e.__annoHLHooked)return;e.on("rowSelectionChanged",n),e.on("dataChanged",n),e.on("dataLoaded",n),e.on("rowUpdated",n),e.on("rowDeleted",n),e.__annoHLHooked=!0}catch(e){}}(),void n();Date.now()-t>e||setTimeout(o,120)}()}(),window.__annotationHighlighter={redraw:n}}catch(d){console.error("annotation-highlight simplified init failed",d)}},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",n):setTimeout(n,0)}();
+(function(){
+  // Simplified bidirectional highlight coordinator
+  // Ensures annotation overlay redraws on selection/scroll events and syncs edit-mode
+  const THEME_BLUE = '33,150,243';
+
+  function whenReady(cb){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', cb); else setTimeout(cb,0); }
+
+  whenReady(()=>{
+    try {
+      const scrollArea = document.getElementById('scrollArea');
+      if (!scrollArea) return;
+
+      // Style for selected Tabulator rows (non-destructive)
+      try {
+        if(!document.querySelector('style[data-generated="annotation-highlight"]')){
+          const css = `.tabulator-row.tabulator-selected { background-color: #1d4ed8 !important; } .tabulator-row.tabulator-selected .tabulator-cell { outline: 2px solid rgba(${THEME_BLUE},0.3) !important; }`;
+          const st = document.createElement('style'); st.dataset.generated='annotation-highlight'; st.appendChild(document.createTextNode(css)); document.head.appendChild(st);
+        }
+      } catch(e){}
+
+      function redraw(){
+        try { if (typeof window.renderAllAnnotations === 'function') window.renderAllAnnotations(); } catch(e){}
+        try { if (typeof window.renderSelectionOverlay === 'function') window.renderSelectionOverlay(); } catch(e){}
+      }
+
+      function hookGrid(){
+        try {
+          const g = window.annotationGrid; if(!g || !g.on) return;
+          if(g.__annoHLHooked) return;
+          g.on('rowSelectionChanged', redraw);
+          g.on('dataChanged', redraw);
+          g.on('dataLoaded', redraw);
+          g.on('rowUpdated', redraw);
+          g.on('rowDeleted', redraw);
+          g.__annoHLHooked = true;
+        } catch(e){}
+      }
+
+      // Spectrogram -> grid sync already handled in edit_annotations.js; still listen for event to force redraw
+      window.addEventListener('edit-selection-changed', function(ev){
+        try {
+          const id = ev && ev.detail && ev.detail.editingId;
+          if (id && typeof window.renderSelectionOverlay === 'function') window.renderSelectionOverlay([id]);
+          redraw();
+        } catch(e){}
+      }, { passive: true });
+
+      // Generic events updating overlays
+      scrollArea.addEventListener('scroll', function(){ redraw(); }, { passive:true });
+      window.addEventListener('resize', function(){ redraw(); }, { passive:true });
+      window.addEventListener('annotations-changed', function(){ redraw(); }, { passive:true });
+      window.addEventListener('spectrogram-generated', function(){ setTimeout(redraw, 30); }, { passive:true });
+
+      // Poll until grid ready to hook events
+      (function waitGrid(max=6000){
+        const start=Date.now();
+        (function loop(){ if(window.annotationGrid){ hookGrid(); redraw(); return; } if(Date.now()-start>max) return; setTimeout(loop,120); })();
+      })();
+
+      // Expose manual redraw for diagnostics
+      window.__annotationHighlighter = { redraw };
+    } catch(err){ console.error('annotation-highlight simplified init failed', err); }
+  });
+})();

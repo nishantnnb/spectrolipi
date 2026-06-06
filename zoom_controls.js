@@ -1,1 +1,228 @@
-!function(){function e(e){return document.getElementById(e)}function t(){try{if("number"==typeof globalThis._spectroPxPerSec&&isFinite(globalThis._spectroPxPerSec)&&globalThis._spectroPxPerSec>0)return globalThis._spectroPxPerSec;if("number"==typeof globalThis._spectroFramesPerSec&&"number"==typeof globalThis._spectroPxPerFrame)return Math.max(1,globalThis._spectroFramesPerSec*globalThis._spectroPxPerFrame)}catch(e){}return 1}function a(e,t,a){return Math.max(t,Math.min(a,e))}async function o(t){const a=Number(globalThis._spectroNumFrames||0),o=Number(globalThis._spectroFramesPerSec||0),r=Number(globalThis._spectroSampleRate||0),n=Number(globalThis._spectroImageHeight||0)||300;if(!a||!o||!r)return!1;const s=Math.max(1,Math.round(a*t)),c=Math.min(8192,s),l=[];for(let e=0;e<s;e+=c){const n=Math.min(c,s-e),i=Math.floor(e/t),m=Math.max(0,i/o),h=Math.min((a-1)/o,(e+n-1)/t/o);l.push({bitmap:null,cols:n,startCol:e,startTime:m,endTime:h,colorVersion:0|globalThis._spectroColorVersion,lutName:globalThis._spectroRenderParams&&globalThis._spectroRenderParams.lutName||"custom",gain:globalThis._spectroRenderParams&&globalThis._spectroRenderParams.gain||1,ymax:Number(globalThis._spectroYMax||r/2)}),3&l.length||await new Promise(e=>setTimeout(e,0))}globalThis._spectroTiles=l,globalThis._spectroPxPerFrame=t;const i=Number(globalThis._spectroDuration||a/o);"function"==typeof globalThis._spectroApplyDisplayScaleFromIntrinsic?globalThis._spectroApplyDisplayScaleFromIntrinsic(s):(globalThis._spectroImageWidth=s,globalThis._spectroImageIntrinsicWidth=s,globalThis._spectroDisplayScaleX=1,globalThis._spectroPxPerSec=isFinite(i)&&i>0?s/i:o*t);try{globalThis._scheduleAnnotationOverlaySync&&globalThis._scheduleAnnotationOverlaySync("zoom-buildTiles")}catch(e){}return function(t,a){try{const o=e("scrollArea");if(!o)return;let r=document.getElementById("spectroSpacer");r||(r=document.createElement("div"),r.id="spectroSpacer",o.appendChild(r)),r.style.display="block",r.style.width=Math.max(1,t)+"px";const n=12,s=44;r.style.height=n+Math.max(1,a)+s+"px",r.style.pointerEvents="none",o.style.position||(o.style.position="relative")}catch(e){}}(s,n),!0}async function r(r){if("entire"===r){const t=Number(globalThis._spectroNumFrames||0),a=e("scrollArea");r=t>0&&a&&a.clientWidth>0?a.clientWidth/t:1}if(r=a(r,.01,16),!globalThis._spectroSpectra)return;const n=Number(globalThis._spectroPxPerFrame||0)||2;if(Math.abs(r-n)<.01)return;const s=function(){try{const a=e("scrollArea");return a?Math.max(0,Math.round(a.scrollLeft||0))/Math.max(1,t()):0}catch(e){return 0}}();if(!await o(r))return;const c=function(){try{const t=e("ymax");if(!t)return"number"==typeof globalThis._spectroYMax?globalThis._spectroYMax:NaN;const a=null==t.value?"":String(t.value).trim();if(!a)return"number"==typeof globalThis._spectroYMax?globalThis._spectroYMax:NaN;const o=Number(a);return!isFinite(o)||o<=0?"number"==typeof globalThis._spectroYMax?globalThis._spectroYMax:NaN:1e3*o}catch(e){return"number"==typeof globalThis._spectroYMax?globalThis._spectroYMax:NaN}}();try{"function"==typeof globalThis._spectrogram_reRenderFromSpectra&&await globalThis._spectrogram_reRenderFromSpectra(c)}catch(e){}!function(a){try{const o=e("scrollArea");if(!o)return;const r=Number(globalThis._spectroImageWidth||0)||0,n=Math.max(1,o.clientWidth||0),s=Math.round(a*Math.max(1,t())),c=Math.max(0,Math.min(Math.max(0,r-n),s));o.scrollLeft=c}catch(e){}}(s);try{window.dispatchEvent(new CustomEvent("spectrogram-generated",{detail:{meta:{reason:"x-zoom",pxpf:r}}}))}catch(e){}m()}async function n(t){if(!globalThis._spectroSpectra)return;const o=globalThis._spectroOriginalNyquist||Number(globalThis._spectroSampleRate||0)/2||22050,r=a(Number(t)||o,1e3,o);!function(t){try{const a=e("ymax");if(!a)return;const o=t/1e3;a.value=String(Math.round(100*o)/100)}catch(e){}}(r);let n=!1;try{"function"==typeof globalThis._spectrogram_reRenderFromSpectra&&(await globalThis._spectrogram_reRenderFromSpectra(r),n=!0)}catch(e){n=!1}globalThis._spectroYMax=r;try{globalThis._spectroLastGen&&(globalThis._spectroLastGen.ymax=r)}catch(e){}try{window.dispatchEvent(new CustomEvent("spectrogram-yzoom",{detail:{ymax:r}}))}catch(e){}m();try{window.dispatchEvent(new CustomEvent("spectrogram-generated",{detail:{meta:{reason:"y-zoom",ymax:r}}}))}catch(e){}}function s(e){const t=document.getElementById("annotationOverlay"),a=document.getElementById("editHighlightOverlay"),o=document.getElementById("annotationLabelContainer_v1");t&&(t.style.opacity=e),a&&(a.style.opacity=e),o&&(o.style.opacity=e)}function c(){const t=e("yZoomSelect"),a=e("xZoomSelect"),o=!globalThis._spectroSpectra;t&&(t.disabled=o),a&&(a.disabled=o)}function l(){c()}var i;function m(){try{const e=document.getElementById("scrollArea");e&&e.dispatchEvent(new Event("scroll")),window.dispatchEvent(new Event("resize"))}catch(e){}}i=()=>{try{!function(){try{const t=document.getElementById("zoomToolbar");if(t&&t.__zoomWired)return;const a=e("yZoomSelect"),o=e("xZoomSelect");a&&a.addEventListener("change",async e=>{s(0),await n(parseFloat(e.target.value)),s(1)}),o&&o.addEventListener("change",async e=>{s(0),await r("entire"===e.target.value?"entire":parseFloat(e.target.value)),s(1)}),t&&(t.__zoomWired=!0)}catch(e){}}(),c(),window.addEventListener("spectrogram-generated",l,{passive:!0})}catch(e){}},"loading"===document.readyState?document.addEventListener("DOMContentLoaded",i):setTimeout(i,0)}();
+// zoom_controls.js
+(function(){
+  function whenReady(cb){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', cb); else setTimeout(cb,0); }
+
+  function $(id){ return document.getElementById(id); }
+
+  function pxPerSec(){
+    try {
+      if (typeof globalThis._spectroPxPerSec === 'number' && isFinite(globalThis._spectroPxPerSec) && globalThis._spectroPxPerSec > 0)
+        return globalThis._spectroPxPerSec;
+      if (typeof globalThis._spectroFramesPerSec === 'number' && typeof globalThis._spectroPxPerFrame === 'number')
+        return Math.max(1, globalThis._spectroFramesPerSec * globalThis._spectroPxPerFrame);
+    } catch(e){}
+    return 1;
+  }
+
+  function clamp(val, lo, hi){ return Math.max(lo, Math.min(hi, val)); }
+
+  function readYmaxInputHz(){
+    try {
+      const el = $('ymax');
+      if (!el) return (typeof globalThis._spectroYMax === 'number') ? globalThis._spectroYMax : NaN;
+      const raw = (el.value == null) ? '' : String(el.value).trim();
+      if (!raw) return (typeof globalThis._spectroYMax === 'number') ? globalThis._spectroYMax : NaN;
+      const kHz = Number(raw);
+      if (!isFinite(kHz) || kHz <= 0) return (typeof globalThis._spectroYMax === 'number') ? globalThis._spectroYMax : NaN;
+      return kHz * 1000;
+    } catch(e){ return (typeof globalThis._spectroYMax === 'number') ? globalThis._spectroYMax : NaN; }
+  }
+
+  function setYmaxInputHz(hz){
+    try { const el = $('ymax'); if (!el) return; const k = (hz/1000); el.value = String(Math.round(k * 100) / 100); } catch(e){}
+  }
+
+  function ensureSpacerWidth(imageW, imageH){
+    try {
+      const scrollArea = $('scrollArea'); if (!scrollArea) return;
+      let spacer = document.getElementById('spectroSpacer');
+      if (!spacer) { spacer = document.createElement('div'); spacer.id = 'spectroSpacer'; scrollArea.appendChild(spacer); }
+      spacer.style.display = 'block';
+      spacer.style.width = Math.max(1, imageW) + 'px';
+      const AXIS_TOP = 12, AXIS_BOTTOM = 44;
+      spacer.style.height = (AXIS_TOP + Math.max(1, imageH) + AXIS_BOTTOM) + 'px';
+      spacer.style.pointerEvents = 'none';
+      if (!scrollArea.style.position) scrollArea.style.position = 'relative';
+    } catch(e){}
+  }
+
+  function captureLeftTime(){
+    try {
+      const sa = $('scrollArea'); if (!sa) return 0;
+      const curPx = Math.max(0, Math.round(sa.scrollLeft || 0));
+      return curPx / Math.max(1, pxPerSec());
+    } catch(e){ return 0; }
+  }
+
+  function setLeftTime(sec){
+    try {
+      const sa = $('scrollArea'); if (!sa) return;
+      const imageW = Number(globalThis._spectroImageWidth || 0) || 0;
+      const vp = Math.max(1, sa.clientWidth || 0);
+      const desired = Math.round(sec * Math.max(1, pxPerSec()));
+      const clamped = Math.max(0, Math.min(Math.max(0, imageW - vp), desired));
+      sa.scrollLeft = clamped;
+    } catch(e){}
+  }
+
+  async function buildTilesFromSpectra(pxpf){
+    const numFrames = Number(globalThis._spectroNumFrames || 0);
+    const framesPerSec = Number(globalThis._spectroFramesPerSec || 0);
+    const sr = Number(globalThis._spectroSampleRate || 0);
+    const imageH = Number(globalThis._spectroImageHeight || 0) || 300;
+    if (!numFrames || !framesPerSec || !sr) return false;
+
+    const imageW = Math.max(1, Math.round(numFrames * pxpf));
+    const tileW = Math.min(8192, imageW);
+    const tiles = [];
+    for (let tileX = 0; tileX < imageW; tileX += tileW) {
+      const w = Math.min(tileW, imageW - tileX);
+      const leftFrameIdx = Math.floor(tileX / pxpf);
+      const startTime = Math.max(0, leftFrameIdx / framesPerSec);
+      const endTime = Math.min((numFrames - 1) / framesPerSec, ((tileX + w - 1) / pxpf) / framesPerSec);
+      tiles.push({ bitmap: null, cols: w, startCol: tileX, startTime, endTime, colorVersion: (globalThis._spectroColorVersion|0), lutName: (globalThis._spectroRenderParams && globalThis._spectroRenderParams.lutName) || 'custom', gain: (globalThis._spectroRenderParams && globalThis._spectroRenderParams.gain) || 1, ymax: Number(globalThis._spectroYMax || sr/2) });
+      if ((tiles.length & 3) === 0) await new Promise(r=>setTimeout(r,0));
+    }
+
+    globalThis._spectroTiles = tiles;
+    globalThis._spectroPxPerFrame = pxpf;
+    const duration = Number(globalThis._spectroDuration || (numFrames/framesPerSec));
+    if (typeof globalThis._spectroApplyDisplayScaleFromIntrinsic === 'function') {
+      globalThis._spectroApplyDisplayScaleFromIntrinsic(imageW);
+    } else {
+      globalThis._spectroImageWidth = imageW;
+      globalThis._spectroImageIntrinsicWidth = imageW;
+      globalThis._spectroDisplayScaleX = 1;
+      globalThis._spectroPxPerSec = isFinite(duration) && duration > 0 ? (imageW / duration) : (framesPerSec * pxpf);
+    }
+    try { globalThis._scheduleAnnotationOverlaySync && globalThis._scheduleAnnotationOverlaySync('zoom-buildTiles'); } catch (e) {}
+
+    ensureSpacerWidth(imageW, imageH);
+    return true;
+  }
+
+  function currentPxpf(){ return Number(globalThis._spectroPxPerFrame || 0) || 2; }
+  const MAX_PXPF = 16; 
+
+  async function applyXZoom(newPxpf){
+    if (newPxpf === 'entire') {
+        const numFrames = Number(globalThis._spectroNumFrames || 0);
+        const scrollArea = $('scrollArea');
+        if (numFrames > 0 && scrollArea && scrollArea.clientWidth > 0) {
+            newPxpf = scrollArea.clientWidth / numFrames;
+        } else {
+            newPxpf = 1; // Fallback
+        }
+    }
+    newPxpf = clamp(newPxpf, 0.01, MAX_PXPF);
+    if (!globalThis._spectroSpectra) return;
+    const oldPxpf = currentPxpf();
+    if (Math.abs(newPxpf - oldPxpf) < 0.01) return;
+    const capturedLeftSec = captureLeftTime();
+    const ok = await buildTilesFromSpectra(newPxpf);
+    if (!ok) return;
+    const useY = readYmaxInputHz();
+    try { if (typeof globalThis._spectrogram_reRenderFromSpectra === 'function') await globalThis._spectrogram_reRenderFromSpectra(useY); } catch(e){}
+    setLeftTime(capturedLeftSec);
+    try { window.dispatchEvent(new CustomEvent('spectrogram-generated', { detail: { meta: { reason: 'x-zoom', pxpf: newPxpf } } })); } catch(e){}
+    forceAxisRefresh();
+  }
+
+  async function applyYZoom(newYHz){
+    if (!globalThis._spectroSpectra) return;
+    const nyq = globalThis._spectroOriginalNyquist || (Number(globalThis._spectroSampleRate || 0) / 2 || 22050);
+    const clamped = clamp(Number(newYHz)||nyq, 1000, nyq);
+    setYmaxInputHz(clamped);
+    let rendered = false;
+    try {
+      if (typeof globalThis._spectrogram_reRenderFromSpectra === 'function') {
+        globalThis._spectroYMin = 0;
+        await globalThis._spectrogram_reRenderFromSpectra(clamped);
+        rendered = true;
+      }
+    } catch(e){ rendered = false; }
+    
+    globalThis._spectroYMax = clamped;
+    try { if (globalThis._spectroLastGen) globalThis._spectroLastGen.ymax = clamped; } catch(e){}
+    try { window.dispatchEvent(new CustomEvent('spectrogram-yzoom', { detail: { ymax: clamped } })); } catch(e){}
+    forceAxisRefresh();
+    try { window.dispatchEvent(new CustomEvent('spectrogram-generated', { detail: { meta: { reason: 'y-zoom', ymax: clamped } } })); } catch(e){}
+  }
+
+  function setOverlaysOpacity(opacity) {
+      const annotationOverlay = document.getElementById('annotationOverlay');
+      const editHighlightOverlay = document.getElementById('editHighlightOverlay');
+      const annotationLabelContainer = document.getElementById('annotationLabelContainer_v1');
+      if(annotationOverlay) annotationOverlay.style.opacity = opacity;
+      if(editHighlightOverlay) editHighlightOverlay.style.opacity = opacity;
+      if(annotationLabelContainer) annotationLabelContainer.style.opacity = opacity;
+  }
+
+  function updateZoomControlsDisabledState() {
+      const yZoomSelect = $('yZoomSelect');
+      const xZoomSelect = $('xZoomSelect');
+      const disabled = !globalThis._spectroSpectra;
+      if(yZoomSelect) yZoomSelect.disabled = disabled;
+      if(xZoomSelect) xZoomSelect.disabled = disabled;
+  }
+
+  function wireToolbar(){
+    try {
+      const bar = document.getElementById('zoomToolbar');
+      if (bar && bar.__zoomWired) return;
+
+      const yZoomSelect = $('yZoomSelect');
+      const xZoomSelect = $('xZoomSelect');
+
+      if (yZoomSelect) {
+          yZoomSelect.addEventListener('change', async (e) => {
+              setOverlaysOpacity(0);
+              await applyYZoom(parseFloat(e.target.value));
+              setOverlaysOpacity(1);
+              try {
+                  yZoomSelect.blur();
+                  const playPauseBtn = document.getElementById('playPause');
+                  if (playPauseBtn) playPauseBtn.focus();
+              } catch(err){}
+          });
+      }
+
+      if (xZoomSelect) {
+          xZoomSelect.addEventListener('change', async (e) => {
+              setOverlaysOpacity(0);
+              await applyXZoom(e.target.value === 'entire' ? 'entire' : parseFloat(e.target.value));
+              setOverlaysOpacity(1);
+              try {
+                  xZoomSelect.blur();
+                  const playPauseBtn = document.getElementById('playPause');
+                  if (playPauseBtn) playPauseBtn.focus();
+              } catch(err){}
+          });
+      }
+
+      if (bar) bar.__zoomWired = true;
+    } catch(e){}
+  }
+
+  function onSpectroReady(){
+    updateZoomControlsDisabledState();
+  }
+
+  whenReady(()=>{
+    try { 
+        wireToolbar();
+        updateZoomControlsDisabledState();
+        window.addEventListener('spectrogram-generated', onSpectroReady, { passive: true });
+    } catch(e){}
+  });
+
+  function forceAxisRefresh(){
+    try {
+      const sa = document.getElementById('scrollArea');
+      if (sa) {
+        sa.dispatchEvent(new Event('scroll'));
+      }
+      window.dispatchEvent(new Event('resize'));
+    } catch(e){}
+  }
+})();

@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <title>Spectrolipi</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="002LogoWOname_small.png" type="image/png">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
@@ -16,204 +20,6 @@
       }, { capture: true, passive: false });
     })();
   </script>
-  <style>
-    /* Defensive: ensure species suggestions sit above overlays */
-    .species-suggestions {
-      z-index: 999999 !important;
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: calc(100% + 6px);
-      pointer-events: auto;
-    }
-    /* Toolbar cell background */
-    #annotationControls {
-      position: relative;
-      background: #111;
-      padding: 6px 0 6px 0;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-start;
-    }
-    /* Compact button style */
-    .seg-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1px;
-      background: #2196F3 !important;
-      color: #fff;
-      border: none;
-      border-radius: 5px;
-      padding: 2px 0;
-      font-size: 0.6rem;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-      width: 54px;
-      min-width: 54px;
-      max-width: 54px;
-      height: 30px;
-      text-align: center;
-      white-space: normal;
-      word-break: break-word;
-      line-height: 1.1;
-      overflow-wrap: break-word;
-      flex-direction: row;
-      margin: 0 1px;
-      transition: background 0.2s, color 0.2s;
-    }
-    .seg-btn span {
-      display: inline-block;
-      vertical-align: middle;
-      max-width: 38px;
-      overflow-wrap: break-word;
-      word-break: break-word;
-      white-space: normal;
-      font-size: 0.6rem;
-    }
-    .seg-btn svg {
-      margin-right: 1px;
-      vertical-align: middle;
-      height: 12px;
-      width: 12px;
-      fill: #fff;
-    }
-    .seg-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      background: #2196F3 !important;
-    }
-    .seg-btn:hover, .seg-btn:focus {
-      background: #1565c0 !important;
-      color: #fff;
-      outline: none;
-    }
-    /* Make the combined boundary of the Create/Edit toggle more visible */
-    .seg-toggle {
-      border: 1px solid rgba(255, 255, 255, 0.4) !important;
-      border-radius: 5px;
-      overflow: hidden;
-    }
-  </style>
-  <style>
-    /* Compact icon-only toolbar buttons (keeps seg-top-btn state classes) */
-    .seg-compact-btn {
-      position:relative; display:inline-flex; align-items:center; justify-content:center;
-      width:32px; height:32px; padding:4px 0; margin-left:6px; overflow:visible;
-      background: #000000 !important; /* dark background for contrast */
-      color:#fff; border: none; border-radius:6px;
-      cursor:pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-    }
-    /* Position SVGs absolutely so they can be larger than the button while the button keeps a narrow width */
-    .seg-compact-btn svg {
-      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-      width:40px; height:auto; display:block; pointer-events:none;
-    }
-    .seg-compact-btn:disabled { opacity:0.5; cursor:not-allowed; }
-    .seg-compact-btn:hover, .seg-compact-btn:focus { background:#222 !important; }
-    .sr-only { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
-  </style>
-    <!-- Only keep .seg-top-btn for Re-Generate and Play buttons -->
-    <style>
-      .seg-top-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: #2196F3 !important;
-        color: #fff;
-        border: none;
-        border-radius: 5px;
-        padding: 2px 0;
-        font-size: 0.70rem;
-        font-weight: 500;
-        cursor: pointer;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.07);
-        width: 68px;
-        min-width: 68px;
-        max-width: 68px;
-        height: 32px;
-        text-align: center;
-        white-space: normal;
-        word-break: break-word;
-        line-height: 1.1;
-        overflow-wrap: break-word;
-        margin: 0 2px;
-        transition: background 0.2s, color 0.2s;
-      }
-      .seg-top-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: #2196F3 !important;
-      }
-      .seg-top-btn:hover, .seg-top-btn:focus {
-        background: #1565c0 !important;
-        color: #fff;
-        outline: none;
-      }
-      /* Select button visual states (do not change disabled appearance) */
-      .seg-top-btn.selection-on { background: #43a047 !important; /* green when selection mode ON */ }
-      .seg-top-btn.selection-off { background: #1976d2 !important; /* slightly darker blue for explicit OFF state */ }
-      /* Move top controls right so fixed left hamburger toggle does not overlap the file chooser */
-      #controls { margin-left: 56px; }
-    </style>
-    <style>
-      /* New Species Search Styles (Dark Theme) */
-      .mode-btn { display:inline-flex; align-items:center; justify-content:center; padding:0 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.15); background:#222; cursor:pointer; margin-right:6px; height:26px; transition:background 0.2s; }
-      .mode-btn:hover { background:#333; }
-      .mode-badge { font-size:10px; color:#fff; padding:2px 5px; border-radius:3px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; }
-      .m-eBird { background:#00897b; } .m-Common { background:#3949ab; } .m-Sci { background:#e65100; }
-      
-      /* Suggestion box overrides for rich results */
-      #speciesSuggest .item { padding:4px 8px; display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid #2a2a2a; color:#ddd; cursor:pointer; }
-      #speciesSuggest .item:last-child { border-bottom:0; }
-      #speciesSuggest .item:hover, #speciesSuggest .item.selected { background:#333; }
-      #speciesSuggest .title { font-weight:600; font-size:13px; color:#fff; }
-      #speciesSuggest .muted { color:#888; font-size:12px; }
-      #speciesSuggest .badge { font-size:10px; padding:2px 4px; border-radius:4px; background:#333; color:#aaa; border:1px solid #444; }
-      #speciesSuggest mark { background:rgba(255,215,0,0.25); color:#ffeb3b; padding:0 1px; border-radius:2px; }
-      #speciesSuggest .small { font-size:11px; color:#666; }
-      
-      /* Fixed width label for selected species */
-      #speciesResult {
-        width: 160px;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        line-height: 1.15;
-        font-size: 11px;
-        white-space: normal;
-      }
-    </style>
-    <style>
-      /* Specific override: when a button has both seg-top-btn and seg-compact-btn,
-         make sure compact variant stays black. This overrides the earlier
-         .seg-top-btn rules (same specificity but placed later), and is more
-         explicit so the compact toolbar shows black backgrounds as requested. */
-      .seg-top-btn.seg-compact-btn { background: #000000 !important; color: #fff !important; width:32px !important; min-width:32px !important; max-width:32px !important; padding:4px 0 !important; }
-      .seg-top-btn.seg-compact-btn:hover, .seg-top-btn.seg-compact-btn:focus { background: #222 !important; }
-      .seg-top-btn.seg-compact-btn:disabled { background: #000000 !important; opacity: 0.5; }
-      /* When selection mode is ON, show a chartreuse background for the compact select button */
-      .seg-top-btn.selection-on.seg-compact-btn { background: #7FFF00 !important; color: #000 !important; }
-      .seg-top-btn.selection-on.seg-compact-btn svg * { /* keep icon contrast if needed */ fill: inherit; stroke: inherit; }
-    </style>
-<style>
-      .zoom-dropdown {
-        height: 32px;
-        background: #2196F3;
-        border: 0;
-        color: #fff;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        border-radius: 6px;
-        padding: 0 4px;
-      }
-    </style>
 </head>
 <body>
   <!-- Left-side collapsible overlay (structure only). Does not move existing toolbar buttons. -->
@@ -226,13 +32,26 @@
         <!-- auto-close behavior enabled; close button removed to simplify UI -->
       </div>
       <nav class="left-overlay-nav" role="navigation" aria-label="Left overlay actions">
-        <a href="https://www.youtube.com/playlist?list=PLHuD0VZtBy-ihoGvtPoRxmOunOKb1wlYI" target="_blank" class="left-menu-btn" style="text-decoration: none;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polygon points="10 8 16 12 10 16 10 8"></polygon>
-          </svg>
-          <span>User guide</span>
-        </a>
+        <div class="left-menu-group" id="helpMenuGroup">
+          <button id="helpMenuParent" type="button" class="left-menu-btn left-menu-parent" aria-expanded="false" aria-controls="helpSubMenu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="10 8 16 12 10 16 10 8"></polygon>
+            </svg>
+            <span>Help</span>
+            <svg class="left-menu-caret" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M8 10l4 4 4-4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div id="helpSubMenu" class="left-submenu" role="menu" aria-label="Help actions">
+            <a href="toolbar_tools_guide.html" target="_blank" class="left-submenu-btn" role="menuitem" style="text-decoration: none; color: inherit; display: block;">
+              <span>Spectrolipi help documentation</span>
+            </a>
+            <a href="https://www.youtube.com/playlist?list=PLHuD0VZtBy-ihoGvtPoRxmOunOKb1wlYI" target="_blank" class="left-submenu-btn" role="menuitem" style="text-decoration: none; color: inherit; display: block;">
+              <span>Help videos on Youtube</span>
+            </a>
+          </div>
+        </div>
 
         <!-- Only these four duplicate buttons are present inside the overlay (do NOT move toolbar buttons) -->
         <button id="metaOpenBtn" type="button" class="left-menu-btn">
@@ -261,7 +80,7 @@
           <span>Save Annotations</span>
         </button>
         <!-- Manage species list opens modal containing upload/toggle UI -->
-  <button id="manageSpeciesBtn" type="button" class="left-menu-btn" title="Manage species list">
+  <button id="manageSpeciesBtn" type="button" class="left-menu-btn">
           <!-- User's owl SVG normalized to match other menu icons (20x20) and inherit color -->
           <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="20" height="20" aria-hidden="true" focusable="false" style="vertical-align:middle;margin-right:8px;fill:currentColor;stroke:currentColor;">
             <title>OWL</title>
@@ -277,7 +96,7 @@
           </svg>
           <span>Manage species list</span>
         </button>
-        <button id="exportBtn" type="button" class="left-menu-btn" title="Export audio">
+        <button id="exportBtn" type="button" class="left-menu-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 3v12" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M8.5 10.5L12 14l3.5-3.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -285,44 +104,34 @@
           </svg>
           <span>Export Audio</span>
         </button>
-        <button id="exportVideoBtn" type="button" class="left-menu-btn" title="Export video (1 min max)">
+        <button id="exportVideoBtn" type="button" class="left-menu-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M23 7l-7 5 7 5V7z" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             <rect x="1" y="5" width="15" height="14" rx="2" ry="2" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <span>Export Video</span>
         </button>
-        <button id="generateClipsBtn" type="button" class="left-menu-btn" title="Generate clips from annotations">
+        <button id="generateClipsBtn" type="button" class="left-menu-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M6 9c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 0l5 5m-5 5l5-5m2-2l5-5m-5 5l5 5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
             <path d="M16 6h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
           </svg>
           <span>Generate clips</span>
         </button>
-        <button id="runBirdnetBtn" type="button" class="left-menu-btn" title="Run BirdNET analysis">
+        <button id="runBirdnetBtn" type="button" class="left-menu-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2L8 6v2H6v4h2v2h4v-2h2V8h-2V6z"/><path d="M8 16v-2H6v-2H2v6h4v-2h2z"/><path d="M16 16v-2h2v-2h4v6h-4v-2h-2z"/>
           </svg>
           <span>Run BirdNET</span>
         </button>
-        <div class="left-menu-group" id="settingsMenuGroup">
-          <button id="settingsMenuParent" type="button" class="left-menu-btn left-menu-parent" aria-expanded="false" aria-controls="settingsSubMenu" title="Spectrolipi Settings">
-            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" fill="#fff"/>
-            </svg>
-            <span>Spectrolipi Settings</span>
-            <svg class="left-menu-caret" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M8 10l4 4 4-4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <div id="settingsSubMenu" class="left-submenu" role="menu" aria-label="Spectrolipi Settings">
-            <button id="spectrogramSettingsBtn" type="button" class="left-submenu-btn" role="menuitem" title="Configure Spectrogram settings">
-              <span>Spectrogram Settings</span>
-            </button>
-          </div>
-        </div>
+        <button id="settingsMenuBtn" type="button" class="left-menu-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" fill="#fff"/>
+          </svg>
+          <span>Spectrolipi Settings</span>
+        </button>
         <div class="left-menu-group" id="xcMenuGroup">
-          <button id="xcMenuParent" type="button" class="left-menu-btn left-menu-parent" aria-expanded="false" aria-controls="xcSubMenu" title="Xeno-canto integration actions">
+          <button id="xcMenuParent" type="button" class="left-menu-btn left-menu-parent" aria-expanded="false" aria-controls="xcSubMenu">
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8z" fill="#fff"/>
               <path d="M11 7h2v6h-2zm0 8h2v2h-2z" fill="#fff"/>
@@ -333,10 +142,10 @@
             </svg>
           </button>
           <div id="xcSubMenu" class="left-submenu" role="menu" aria-label="Xeno-canto actions">
-            <button id="uploadXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem" title="Upload annotations to Xeno-canto via API">
+            <button id="uploadXenoCantoBtn" type="button" class="left-submenu-btn" role="menuitem">
               <span>Upload to Xeno-canto</span>
             </button>
-            <button id="createXcSetBtn" type="button" class="left-submenu-btn" role="menuitem" title="Combine multiple annotation files into a single Xeno-canto set">
+            <button id="createXcSetBtn" type="button" class="left-submenu-btn" role="menuitem">
               <span>Create set</span>
             </button>
           </div>
@@ -352,41 +161,45 @@
             const parent = document.getElementById('xcMenuParent');
             const submenu = document.getElementById('xcSubMenu');
             const createSetBtn = document.getElementById('createXcSetBtn');
+            const importExtAnnoBtn = document.getElementById('importExtAnnoBtn');
             const uploadBtn = document.getElementById('uploadXenoCantoBtn');
             const exportVideoBtn = document.getElementById('exportVideoBtn');
             
-            const setGroup = document.getElementById('settingsMenuGroup');
-            const setParent = document.getElementById('settingsMenuParent');
-            const specSetBtn = document.getElementById('spectrogramSettingsBtn');
-            if (setGroup && setParent) {
+            const settingsBtn = document.getElementById('settingsMenuBtn');
+            if (settingsBtn) {
+              settingsBtn.addEventListener('click', function(ev) {
+                ev.preventDefault(); ev.stopPropagation();
+                if (typeof window.__openSpectrolipiSettingsModal === 'function') {
+                  window.__openSpectrolipiSettingsModal();
+                }
+              });
+            }
+            const helpGroup = document.getElementById('helpMenuGroup');
+            const helpParent = document.getElementById('helpMenuParent');
+            const helpSubmenu = document.getElementById('helpSubMenu');
+            if (helpGroup && helpParent && helpSubmenu) {
               const openClass = 'left-menu-group-open';
               const setOpen = (isOpen) => {
                 if (isOpen) {
-                  setGroup.classList.add(openClass);
-                  setParent.setAttribute('aria-expanded','true');
+                  helpGroup.classList.add(openClass);
+                  helpParent.setAttribute('aria-expanded','true');
                 } else {
-                  setGroup.classList.remove(openClass);
-                  setParent.setAttribute('aria-expanded','false');
+                  helpGroup.classList.remove(openClass);
+                  helpParent.setAttribute('aria-expanded','false');
                 }
               };
-              setParent.addEventListener('click', (ev) => {
-                ev.preventDefault(); ev.stopPropagation();
-                setOpen(!setGroup.classList.contains(openClass));
+              helpParent.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                setOpen(!helpGroup.classList.contains(openClass));
               });
-              setGroup.addEventListener('mouseenter', () => setOpen(true));
-              setGroup.addEventListener('mouseleave', () => setOpen(false));
-              setParent.addEventListener('blur', () => setTimeout(() => {
-                if (!setGroup.contains(document.activeElement)) setOpen(false);
+              helpGroup.addEventListener('mouseenter', () => setOpen(true));
+              helpGroup.addEventListener('mouseleave', () => setOpen(false));
+              helpParent.addEventListener('blur', () => setTimeout(() => {
+                if (!helpGroup.contains(document.activeElement)) setOpen(false);
               }, 50));
             }
-            if (specSetBtn) {
-              specSetBtn.addEventListener('click', function(ev) {
-                ev.preventDefault(); ev.stopPropagation();
-                if (typeof window.__openSpectrogramSettingsModal === 'function') {
-                  window.__openSpectrogramSettingsModal();
-                }
-              });
-            }
+
             if (group && parent && submenu) {
               const openClass = 'left-menu-group-open';
               const setOpen = (isOpen) => {
@@ -429,6 +242,13 @@
                 } else {
                   alert('Upload form not found. Ensure upload_xc.js is loaded.');
                 }
+              });
+            }
+            if (importExtAnnoBtn) {
+              importExtAnnoBtn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                window.open('xc_import.html', '_blank');
               });
             }
           if (exportVideoBtn) {
@@ -481,135 +301,137 @@
     .left-submenu { display: none; flex-direction: column; gap: 6px; padding: 6px 0 0 22px; }
     .left-menu-group-open .left-submenu { display: flex; }
     .left-submenu-btn { display: flex; width: 100%; text-align: left; padding: 6px 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; color: #fff; cursor: pointer; font-size: 13px; }
-    .left-submenu-btn:hover, .left-submenu-btn:focus { background: rgba(21,101,192,0.7); border-color: rgba(21,101,192,0.85); outline: none; }
+    .left-submenu-btn:hover:not([disabled]), .left-submenu-btn:focus:not([disabled]) { background: rgba(21,101,192,0.7); border-color: rgba(21,101,192,0.85); outline: none; }
+    .left-submenu-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .tabulator-tooltip { background: #18181b !important; color: #ffffff !important; border: 1px solid #52525b !important; border-radius: 4px !important; padding: 6px 10px !important; font-size: 12px !important; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5) !important; pointer-events: none !important; z-index: 2147483647 !important; }
   </style>
   <div id="controls">
-    <input id="file" type="file" accept="audio/*" />
+    <!-- Group 1: File & Setup -->
+    <div class="toolbar-group">
+      <label for="file" title="Load Audio"><i class="fa-solid fa-folder-open"></i></label>
+      <input id="file" type="file" accept="audio/*" style="max-width: 180px;" />
 
-    <!-- Confirmation interceptor for file chooser -->
-    <script>
-    (function () {
-      const file = document.getElementById('file');
-      if (!file) return;
-      const CONFIRM_MSG = 'Unsaved Metadata and Annotations will be lost. Continue?';
-      let programmaticOpen = false;
-      let lastFileKey = null;
-      function getFileKey(f) {
-        return f ? `${f.name}|${f.size}|${f.lastModified}` : null;
-      }
-      function openFilePicker() {
-        programmaticOpen = true;
-        try { file.click(); }
-        finally { setTimeout(() => { programmaticOpen = false; }, 300); }
-      }
-      file.addEventListener('click', function (ev) {
-        if (programmaticOpen) return;
-        ev.preventDefault();
-        const ok = window.confirm(CONFIRM_MSG);
-        if (ok) openFilePicker();
-      }, true);
-      file.addEventListener('keydown', function (ev) {
-        if (programmaticOpen) return;
-        const k = ev.key;
-        if (k === 'Enter' || k === ' ' || k === 'Spacebar') {
+      <!-- Confirmation interceptor for file chooser -->
+      <script>
+      (function () {
+        const file = document.getElementById('file');
+        if (!file) return;
+        const CONFIRM_MSG = 'Unsaved Metadata and Annotations will be lost. Continue?';
+        let programmaticOpen = false;
+        let lastFileKey = null;
+        function getFileKey(f) {
+          return f ? `${f.name}|${f.size}|${f.lastModified}` : null;
+        }
+        function openFilePicker() {
+          programmaticOpen = true;
+          try { file.click(); }
+          finally { setTimeout(() => { programmaticOpen = false; }, 300); }
+        }
+        file.addEventListener('click', function (ev) {
+          if (programmaticOpen) return;
           ev.preventDefault();
           const ok = window.confirm(CONFIRM_MSG);
           if (ok) openFilePicker();
-        }
-      }, true);
-      file.addEventListener('change', function () {
-        try { window.__lastMetadata = null; } catch (e) {}
-        const ov = document.getElementById('metaOverlay');
-        if (ov) ov.remove();
-
-        // Only clear annotations if a new file is selected
-        const f = file.files && file.files[0];
-        const newFileKey = getFileKey(f);
-        if (newFileKey && newFileKey !== lastFileKey) {
-          if (typeof window.__clearAllAnnotations === 'function') {
-            window.__clearAllAnnotations();
+        }, true);
+        file.addEventListener('keydown', function (ev) {
+          if (programmaticOpen) return;
+          const k = ev.key;
+          if (k === 'Enter' || k === ' ' || k === 'Spacebar') {
+            ev.preventDefault();
+            const ok = window.confirm(CONFIRM_MSG);
+            if (ok) openFilePicker();
           }
+        }, true);
+        file.addEventListener('change', function () {
+          try { window.__lastMetadata = null; } catch (e) {}
+          const ov = document.getElementById('metaOverlay');
+          if (ov) ov.remove();
+
+          // Only clear annotations if a new file is selected
+          const f = file.files && file.files[0];
+          const newFileKey = getFileKey(f);
+          if (newFileKey && newFileKey !== lastFileKey) {
+            if (typeof window.__clearAllAnnotations === 'function') {
+              window.__clearAllAnnotations();
+            }
+          }
+          lastFileKey = newFileKey;
+          // Disable Repeat mode on new file load
+          try {
+            const rcb = document.getElementById('repeatBoxCheckbox');
+            if (rcb && rcb.checked) { rcb.checked = false; rcb.dispatchEvent(new Event('change')); }
+          } catch(e){}
+          // Hide the controls overlay strip as soon as a file is selected
+          const ctrlOverlay = document.getElementById('annotationControlsOverlay');
+          if (ctrlOverlay) ctrlOverlay.style.display = 'none';
+          // Move focus to Play/Pause button for immediate playback control and blur the file input
+          try {
+            const play = document.getElementById('playPause');
+            if (play && typeof play.focus === 'function') play.focus();
+            if (file && typeof file.blur === 'function') file.blur();
+          } catch (e) {}
+        }, true);
+      })();
+      </script>
+
+      <script>
+      // Listen for spectrogram-generated event and redraw annotation overlay
+      window.addEventListener('spectrogram-generated', function() {
+        if (window.renderAllAnnotations) {
+          try { window.renderAllAnnotations(); } catch (e) {}
+        } else if (window.create_annotations && typeof window.create_annotations.renderAllAnnotations === 'function') {
+          try { window.create_annotations.renderAllAnnotations(); } catch (e) {}
         }
-        lastFileKey = newFileKey;
-        // Disable Repeat mode on new file load
-        try {
-          const rcb = document.getElementById('repeatBoxCheckbox');
-          if (rcb && rcb.checked) { rcb.checked = false; rcb.dispatchEvent(new Event('change')); }
-        } catch(e){}
-        // Hide the controls overlay strip as soon as a file is selected
-        const ctrlOverlay = document.getElementById('annotationControlsOverlay');
-        if (ctrlOverlay) ctrlOverlay.style.display = 'none';
-        // Move focus to Play/Pause button for immediate playback control and blur the file input
-        try {
-          const play = document.getElementById('playPause');
-          if (play && typeof play.focus === 'function') play.focus();
-          if (file && typeof file.blur === 'function') file.blur();
-        } catch (e) {}
-      }, true);
-    })();
-    </script>
+      });
+      </script>
+      
+      <label for="cmap" title="Select spectrogram color theme"><i class="fa-solid fa-palette"></i></label>
+      <select id="cmap" style="width: 110px;" title="Select spectrogram color theme">
+        <option value="custom">Custom</option>
+        <option value="viridis">Viridis</option>
+        <option value="magma">Magma</option>
+        <option value="grayscale">Grayscale</option>
+        <option value="jet">Jet</option>
+        <option value="SpectroFlare" selected>SpectroFlare</option>
+      </select>
 
-    <!-- Removed legacy zoom controls (X zoom, Y max, Re-Generate button) now replaced by zoom_controls.js toolbar -->
-    <!--
-    <label for="xzoom">X zoom</label>
-    <select id="xzoom">...</select>
-    <label for="ymax">Y max (kHz)</label>
-    <input id="ymax" type="number" ... />
-    <button id="go" class="seg-top-btn">Re-Generate</button>
-    -->
-    <script>
-    // Listen for spectrogram-generated event and redraw annotation overlay
-    window.addEventListener('spectrogram-generated', function() {
-      if (window.renderAllAnnotations) {
-        try { window.renderAllAnnotations(); } catch (e) {}
-      } else if (window.create_annotations && typeof window.create_annotations.renderAllAnnotations === 'function') {
-        try { window.create_annotations.renderAllAnnotations(); } catch (e) {}
-      }
-    });
-    </script>
-    
-    <label for="cmap">Colormap</label>
-    <select id="cmap">
-      <option value="custom">Custom</option>
-      <option value="viridis">Viridis</option>
-      <option value="magma">Magma</option>
-      <option value="grayscale">Grayscale</option>
-      <option value="jet">Jet</option>
-      <option value="SpectroFlare" selected>SpectroFlare</option>
-    </select>
+      <div class="toolbar-divider"></div>
 
-    <label for="gain">Gain</label>
-    <input id="gain" type="range" min="0.1" max="10" step="0.1" value="5" />
-    <span id="gainVal">5.0×</span>
+      <label for="gain" title="Adjust spectrogram brightness / contrast gain"><i class="fa-solid fa-sliders"></i></label>
+      <input id="gain" type="range" min="0.1" max="10" step="0.1" value="5" style="width: 80px;" title="Adjust spectrogram brightness / contrast gain" />
+      <span id="gainVal" style="font-size: 12px; font-weight: 600; min-width: 32px; color: var(--text-primary); margin-right: 4px;" title="Adjust spectrogram brightness / contrast gain">5.0×</span>
+    </div>
 
-    <!-- Play/Pause button moved here, immediately after Gain control -->
-  <button id="playPause" class="seg-top-btn" style="margin-left:8px" title="Press Space for Play/Pause">Play</button>
-  <!-- Mouse position readout (time & frequency) -->
-  <div id="mousePosToolbar" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px">
-    <div id="toolbarMouseTime" class="toolbar-mouse" title="Mouse position X axis (Time)" style="background:rgba(0,0,0,0.6);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;min-width:40px;text-align:left;font-variant-numeric:tabular-nums">T: -</div>
-    <div id="toolbarMouseFreq" class="toolbar-mouse" title="Mouse position Y axis (Frequency)" style="background:rgba(0,0,0,0.6);color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;min-width:60px;text-align:left;font-variant-numeric:tabular-nums">F: -</div>
-  </div>
-    <!-- Declarative zoom controls (Y then X). JS will attach handlers to these elements if present. -->
-    <div id="zoomToolbarPlaceholder" class="zoom-toolbar" role="toolbar" aria-label="Zoom controls" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px">
-      <div id="zoomToolbar" style="display:inline-flex;align-items:center;gap:16px;">
-        <!-- Y spinner -->
-  <div class="zoom-spinner" data-which="y" style="display:flex;align-items:center;gap:2px;">
-          <div class="z-label" style="color:Black;font-size:16px;width:5px">Y</div>
-          <select id="yZoomSelect" class="zoom-dropdown"></select>
+    <!-- Group 2: Playback -->
+    <div class="toolbar-group">
+      <button id="playPause" class="btn-primary" title="Play or pause audio playback (Spacebar)"><i class="fa-solid fa-play"></i> Play</button>
+    </div>
+
+    <!-- Group 3: Viewport & Zoom -->
+    <div id="zoomToolbarPlaceholder" class="zoom-toolbar toolbar-group" role="toolbar" aria-label="Zoom controls">
+      <div id="zoomToolbar" style="display:inline-flex;align-items:center;gap:4px;" title="Zoom settings for spectrogram viewport">
+        <div class="zoom-spinner" data-which="y" style="display:flex;align-items:center;" title="Zoom vertically (Frequency axis)">
+          <div class="z-label" style="font-size:12px; font-weight: 600; margin: 0 4px;">Y</div>
+          <select id="yZoomSelect" class="zoom-dropdown" style="width: 60px; height: 24px; padding: 0 2px;" title="Zoom vertically (Frequency axis)"></select>
         </div>
-  <div></div>
-        <!-- X spinner -->
-  <div class="zoom-spinner" data-which="x" style="display:flex;align-items:center;gap:2px;">
-          <div class="z-label" style="color:Black;font-size:16px;width:5px">X</div>
-          <select id="xZoomSelect" class="zoom-dropdown"></select>
+        <div class="zoom-spinner" data-which="x" style="display:flex;align-items:center;" title="Zoom horizontally (Time axis)">
+          <div class="z-label" style="font-size:12px; font-weight: 600; margin: 0 4px;">X</div>
+          <select id="xZoomSelect" class="zoom-dropdown" style="width: 60px; height: 24px; padding: 0 2px;" title="Zoom horizontally (Time axis)"></select>
         </div>
       </div>
-	  <div style="display:flex;align-items:center;gap:2px;margin-left:8px;">
-        <input type="checkbox" id="toggleNameCheckbox" style="cursor:pointer;">
-        <label for="toggleNameCheckbox" id="toggleNameLabel" style="color:Black;font-size:14px;cursor:pointer;user-select:none;">Common name</label>
+      <div class="toolbar-divider"></div>
+      <div style="display:flex;align-items:center;gap:4px; padding-right: 6px;">
+        <button id="toggleNameBtn" class="mode-btn" type="button" title="Cycle label mode: Common Name / Scientific Name / No Label" data-mode="common">
+          Label: <span id="toggleNameBadge" class="mode-badge m-Common">Common</span>
+        </button>
       </div>
     </div>
 
+    <!-- Group 4: Info -->
+    <div id="mousePosToolbar" class="toolbar-group" style="margin-left: auto;">
+      <div id="toolbarMouseTime" class="toolbar-mouse" title="Mouse position X axis (Time)">T: -</div>
+      <div id="toolbarMouseFreq" class="toolbar-mouse" title="Mouse position Y axis (Frequency)">F: -</div>
+    </div>
   </div>
 
   <!-- wait overlay (keep minimal markup in index.html). Inline style ensures it sits above all modals. -->
@@ -683,134 +505,103 @@
     </div>
   </div>
 
-  <!-- Annotation toolbar: segmented toggle authoritative -->
+  <!-- Annotation toolbar -->
   <div id="annotationControls" role="toolbar" aria-label="Annotation tools">
     
-    <!-- Species search with label (in-toolbar) -->
-    <div class="species-search" aria-label="Species search">
+    <!-- Group 2: Species search -->
+    <div class="species-search toolbar-group" aria-label="Species search" style="border:none; padding:0; background:transparent;">
       <!-- Mode Button -->
-      <button id="speciesModeBtn" class="mode-btn" type="button" title="Cycle search mode: Scientific / Common / eBird Code">
+      <button id="speciesModeBtn" class="mode-btn" type="button" title="Cycle search mode: Scientific / Common">
         <span id="speciesModeBadge" class="mode-badge m-Sci">Sci</span>
       </button>
-      <div class="input-wrap">
-        <input id="speciesKwInput" type="text" placeholder="Type key (2+ chars) to search species…" aria-label="Species key search" autocomplete="off" />
-        <div id="speciesSuggest" class="species-suggestions" role="listbox" aria-label="Species suggestions" style="display:none"></div>
+      <div class="input-wrap" style="position:relative;">
+        <input id="speciesKwInput" type="text" placeholder="Type key (2+ chars) to search species…" aria-label="Species key search" autocomplete="off" style="width: 220px;" />
+        <div id="speciesSuggest" class="species-suggestions" role="listbox" aria-label="Species suggestions"></div>
       </div>
       <div class="species-result-wrap empty" title="Selected species">
         <div id="speciesResult" class="species-result" aria-live="polite"></div>
-        <button id="speciesClearBtn" class="clear-indicator" aria-label="Clear selection" title="Clear selection" style="display:none;">✕</button>
+        <button id="speciesClearBtn" class="clear-indicator" aria-label="Clear selection" title="Clear selection" style="display:none;"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <input type="hidden" id="selectedSpeciesKey" value="" />
     </div>
-	
-    <!-- Initial overlay strip to prevent annotation before file load -->
-    <div id="annotationControlsOverlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 500; pointer-events: auto; border-radius: 8px; backdrop-filter: blur(1px);">
-      Please load an audio file to enable annotation tools
-    </div>
 
+    <div class="toolbar-divider"></div>
+
+    <!-- Group 1: Mode Toggle -->
     <div id="createEditToggle" class="seg-toggle" role="group" aria-label="Annotation mode" data-mode="create">
       <button type="button" id="toggleCreate" class="seg-option" data-mode="create" aria-pressed="true">Create</button>
       <button type="button" id="toggleEdit" class="seg-option" data-mode="edit" aria-pressed="false">Edit</button>
     </div>
+	
+    <div class="toolbar-divider"></div>
 
-  <!-- Unified Delete Button -->
-  <button id="multiDeleteBtn" type="button" title="Delete" aria-label="Delete selected rows" class="seg-btn">
-    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M3 6h18" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <span>Delete</span>
-  </button>
+    <!-- Initial overlay strip to prevent annotation before file load -->
+    <div id="annotationControlsOverlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 500; pointer-events: auto; border-radius: 8px; backdrop-filter: blur(2px);">
+      Please load an audio file to enable annotation tools
+    </div>
 
-  <!-- Repeat Annotation Button -->
-  <button id="repeatBtn" type="button" class="seg-btn" title="Repeat last annotation dimensions" aria-pressed="false">
-    <span>Repeat</span>
-  </button>
-
-  <!-- Bulk Update Tags button -->
-  <button id="updateTagsBtn" type="button" class="seg-btn" title="Update Tags in the selected row(s)." aria-label="Update tags in selected rows" disabled style="margin-right:2px;">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-    <span>Update<br>Tags</span>
-  </button>
-
-  <!-- Bulk Update Species button -->
-  <button id="bulkUpdateSpeciesBtn" type="button" class="seg-btn" title="Update Species in the selected row(s)." aria-label="Update species in selected rows" disabled style="margin-right:2px;">
-    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2v6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M6 10h12" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
-    <span>Update<br>Species</span>
-  </button>
-
-  <!-- Run SCC (Spectrogram Cross-Correlation) -->
-  <button id="runSccBtn" type="button" title="Run SCC on selected templates" aria-label="Run SCC" class="seg-btn">
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M3 12h18" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
-      <path d="M12 3v18" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
-      <circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="1.2" fill="none"/>
-    </svg>
-    <span>Run<br>SCC</span>
-  </button>
-
-    <!-- Compact action buttons moved here from the top toolbar (Select / Cut / Silence / Filter / Normalize / Undo) -->
-    <div id="compactActionButtons" style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;">
-      <button id="selectBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Select a time span on the spectrogram" aria-label="Select a time span on the spectrogram">
-        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <rect x="8" y="8" width="24" height="16" fill="#0AA" fill-opacity="0.2" stroke="#0AA" stroke-width="2"/>
-          <path d="M6,6 L12,14 L9,14 L9,20 L7,20 L7,14 L4,14 Z" fill="#E53935"/>
-        </svg>
-        <span class="sr-only">Select</span>
+    <!-- Group 4: Actions -->
+    <div class="toolbar-group">
+      <!-- Unified Delete Button -->
+      <button id="multiDeleteBtn" type="button" title="Delete selected rows" aria-label="Delete selected rows" class="seg-btn">
+        <i class="fa-solid fa-trash"></i>
       </button>
 
-      <button id="cutBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Cut the selection." aria-label="Cut the selection">
-        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <circle cx="10" cy="10" r="5" fill="none" stroke="#0AA" stroke-width="2"/>
-          <circle cx="10" cy="22" r="5" fill="none" stroke="#0AA" stroke-width="2"/>
-          <line x1="14" y1="10" x2="18" y2="14" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
-          <line x1="14" y1="22" x2="18" y2="18" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
-          <circle cx="19" cy="16" r="2" fill="#0AA"/>
-          <path d="M19 16 L34 8" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
-          <path d="M19 16 L34 24" stroke="#0AA" stroke-width="2" stroke-linecap="round"/>
-          <line x1="36" y1="8" x2="36" y2="24" stroke="#999" stroke-width="2" stroke-dasharray="3 2"/>
-        </svg>
-        <span class="sr-only">Cut</span>
+      <!-- Magic Wand -->
+      <button id="magicBtn" type="button" class="seg-btn" title="Magic Wand (Auto-detect bounds)" aria-pressed="false">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
       </button>
 
-      <button id="silenceBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Silence the selection or specific duration." aria-label="Silence the selection or specific duration">
-        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <polygon points="6,12 12,12 18,6 18,26 12,20 6,20" fill="#0AA"/>
-          <line x1="22" y1="10" x2="34" y2="22" stroke="#E53935" stroke-width="3"/>
-          <line x1="34" y1="10" x2="22" y2="22" stroke="#E53935" stroke-width="3"/>
-        </svg>
-        <span class="sr-only">Silence</span>
+
+
+      <!-- Repeat Annotation Button -->
+      <button id="repeatBtn" type="button" class="seg-btn" title="Repeat last annotation dimensions" aria-pressed="false">
+        <i class="fa-solid fa-repeat"></i>
       </button>
 
-      <button id="filtersBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="High pass / Low pass filters" aria-label="High pass or Low pass filters">
-        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <path d="M6 6 H34 L22 18 V26 H18 V18 Z" fill="#0AA" stroke="#0AA" stroke-width="2"/>
-        </svg>
-        <span class="sr-only">Filter</span>
+      <!-- Bulk Update Tags button -->
+      <button id="updateTagsBtn" type="button" class="seg-btn" title="Update Tags in the selected row(s)." aria-label="Update tags in selected rows" disabled>
+        <i class="fa-solid fa-tags"></i>
       </button>
 
-      <button id="normalizeBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Normalize selection or whole audio to a target peak level" aria-label="Normalize selection or whole audio to a target peak level">
-        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <line x1="2" y1="10" x2="38" y2="10" stroke="#6C63FF" stroke-width="2" stroke-dasharray="4 3"/>
-          <path d="M2,20 C6,6 9,26 13,8 C17,22 20,6 24,20 C28,12 31,24 35,12 C36,8 38,26 38,14" fill="none" stroke="#999" stroke-width="2"/>
-          <path d="M10,22 L10,28 M8,26 L10,22 L12,26" stroke="#0AA" stroke-width="2" fill="none"/>
-          <path d="M30,6 L30,0 M28,2 L30,6 L32,2" stroke="#0AA" stroke-width="2" fill="none"/>
-        </svg>
-        <span class="sr-only">Normalize</span>
+      <!-- Bulk Update Species button -->
+      <button id="bulkUpdateSpeciesBtn" type="button" class="seg-btn" title="Update Species in the selected row(s)." aria-label="Update species in selected rows" disabled>
+        <i class="fa-solid fa-list"></i>
       </button>
 
-      <button id="undoCutBtn" disabled type="button" class="seg-top-btn seg-compact-btn" title="Undo last one edit." aria-label="Undo last edit">
-        <svg viewBox="0 0 40 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-          <path d="M18 8 L8 16 L18 24 V18 H26 C30 18 34 22 34 26" fill="none" stroke="#0AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="30" cy="10" r="6" fill="#E53935"/>
-          <text x="30" y="13" text-anchor="middle" font-size="8" fill="#fff" font-family="Arial">1</text>
-        </svg>
-        <span class="sr-only">Undo</span>
+      <!-- Run SCC (Spectrogram Cross-Correlation) -->
+      <button id="runSccBtn" type="button" title="Run SCC on selected templates" aria-label="Run SCC" class="seg-btn">
+        <i class="fa-solid fa-chart-line"></i>
       </button>
     </div>
 
+    <div class="toolbar-divider"></div>
 
+    <!-- Group 3: Edit Tools (Compact icon buttons) -->
+    <div id="compactActionButtons" class="toolbar-group">
+      <button id="selectBtn" disabled type="button" class="seg-compact-btn" title="Select a time span on the spectrogram" aria-label="Select a time span on the spectrogram">
+        <i class="fa-solid fa-arrow-pointer"></i>
+      </button>
+      <button id="cutBtn" disabled type="button" class="seg-compact-btn" title="Cut the selection." aria-label="Cut the selection">
+        <i class="fa-solid fa-scissors"></i>
+      </button>
+      <button id="silenceBtn" disabled type="button" class="seg-compact-btn" title="Silence the selection or specific duration." aria-label="Silence the selection or specific duration">
+        <i class="fa-solid fa-volume-xmark"></i>
+      </button>
+      <button id="filtersBtn" disabled type="button" class="seg-compact-btn" title="High pass / Low pass filters" aria-label="High pass or Low pass filters">
+        <i class="fa-solid fa-filter"></i>
+      </button>
+      <button id="normalizeBtn" disabled type="button" class="seg-compact-btn" title="Normalize selection or whole audio to a target peak level" aria-label="Normalize selection or whole audio to a target peak level">
+        <i class="fa-solid fa-bars-staggered"></i>
+      </button>
+      <button id="spectralCopyBtn" disabled type="button" class="seg-compact-btn" title="Spectral Stamp (Copy/Paste spectral area)" aria-label="Spectral Stamp">
+        <i class="fa-solid fa-stamp"></i>
+      </button>
+      <button id="undoCutBtn" disabled type="button" class="seg-compact-btn" title="Undo last edit." aria-label="Undo last edit">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+    </div>
+  </div>
   </div>
 
 
@@ -866,30 +657,14 @@
   </script>
   <script src="species-data.js"></script>
   <script src="tag-groups.js"></script>
-
+	<script src="spectral_stamp.js"></script>
     <!-- Tabulator grid setup -->
     <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
     <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
-    <style>
-      .tabulator-col-title {
-        white-space: pre-wrap !important;
-        line-height: 1.2 !important;
-      }
-
-      /* Enhanced Visibility for Selected Rows */
-      .tabulator-row.tabulator-selected {
-        background-color: #e3f2fd !important; /* Crisp light blue background */
-        box-shadow: inset 0 0 0 2px #1976d2 !important; /* Bold primary blue inner border */
-        z-index: 1; /* Ensures the highlight sits cleanly above unselected rows */
-      }
-      .tabulator-row.tabulator-selected:hover {
-        background-color: #bbdefb !important; /* Slightly darker distinct blue on hover */
-      }
-    </style>
     <script>
       // Create Tabulator grid with specified columns
       const gridColumns = [
-        {title: "", field: "_select", formatter: "rowSelection", titleFormatter: "rowSelection", titleFormatterParams: {rowRange: "active"}, headerSort: false, frozen: true, width: 40, resizable: false},
+        {title: "", field: "_select", formatter: "rowSelection", titleFormatter: "rowSelection", titleFormatterParams: {rowRange: "active"}, headerSort: false, frozen: true, width: 60, resizable: false},
         {title: "ID", field: "id", headerSort: true, frozen: true, resizable: true},
         {title: "Selection", field: "Selection", headerSort: true, resizable: true},
         {title: "Begin\nTime (s)", field: "beginTime", headerSort: true, formatter: function(cell){ return Number(cell.getValue()).toFixed(4); }, resizable: true},
@@ -917,6 +692,76 @@
     // Slow down live filtering to reduce rapid re-renders while typing
     headerFilterLiveFilter: true,
     headerFilterLiveFilterDelay: 250
+      });
+
+      window.annotationGrid.on("tableBuilt", function() {
+        const col = window.annotationGrid.getColumn("_select");
+        if (col) {
+          const headerEl = col.getElement();
+          headerEl.style.position = 'relative';
+          const menuWrap = document.createElement("div");
+          menuWrap.style.cssText = "position:absolute; right:4px; top:50%; transform:translateY(-50%); z-index:10;";
+          menuWrap.innerHTML = `
+            <button id="gridHeaderMenuBtn" style="background:transparent;border:none;color:#fff;cursor:pointer;padding:2px 4px;font-size:12px;line-height:1;opacity:0.8;">
+              <i class="fa-solid fa-bars"></i>
+            </button>
+            <div id="gridHeaderMenu" style="display:none;position:fixed;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.5);padding:4px;width:120px;z-index:2147483647;">
+              <button id="gridHeaderUploadBtn" style="display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:6px 8px;background:transparent;border:none;color:#fff;cursor:pointer;border-radius:3px;font-size:13px;">
+                <i class="fa-solid fa-upload" style="width:14px;"></i> Upload
+              </button>
+              <button id="gridHeaderSaveBtn" style="display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:6px 8px;background:transparent;border:none;color:#fff;cursor:pointer;border-radius:3px;font-size:13px;">
+                <i class="fa-solid fa-download" style="width:14px;"></i> Save
+              </button>
+            </div>
+          `;
+          headerEl.appendChild(menuWrap);
+
+          const btn = menuWrap.querySelector('#gridHeaderMenuBtn');
+          const menu = menuWrap.querySelector('#gridHeaderMenu');
+          
+          document.body.appendChild(menu);
+          
+          btn.addEventListener('mouseenter', () => btn.style.opacity = '1');
+          btn.addEventListener('mouseleave', () => btn.style.opacity = '0.8');
+
+          btn.addEventListener('click', function(e) {
+             e.preventDefault();
+             e.stopPropagation();
+             if (menu.style.display === 'none') {
+                 menu.style.display = 'block';
+                 const rect = btn.getBoundingClientRect();
+                 menu.style.top = (rect.bottom + 4) + 'px';
+                 menu.style.left = rect.left + 'px';
+             } else {
+                 menu.style.display = 'none';
+             }
+          });
+          document.addEventListener('click', function(e) {
+             if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+                 menu.style.display = 'none';
+             }
+          });
+          
+          menu.querySelector('#gridHeaderUploadBtn').addEventListener('click', function(e) {
+             e.preventDefault();
+             e.stopPropagation();
+             menu.style.display = 'none';
+             const mainBtn = document.getElementById('uploadAnnoBtn');
+             if (mainBtn) mainBtn.click();
+          });
+          menu.querySelector('#gridHeaderUploadBtn').addEventListener('mouseenter', function() { this.style.background = '#1565c0'; });
+          menu.querySelector('#gridHeaderUploadBtn').addEventListener('mouseleave', function() { this.style.background = 'transparent'; });
+
+          menu.querySelector('#gridHeaderSaveBtn').addEventListener('click', function(e) {
+             e.preventDefault();
+             e.stopPropagation();
+             menu.style.display = 'none';
+             const mainBtn = document.getElementById('saveAnnoBtn');
+             if (mainBtn) mainBtn.click();
+          });
+          menu.querySelector('#gridHeaderSaveBtn').addEventListener('mouseenter', function() { this.style.background = '#1565c0'; });
+          menu.querySelector('#gridHeaderSaveBtn').addEventListener('mouseleave', function() { this.style.background = 'transparent'; });
+        }
       });
 
       // Deselect all rows after any filtering completes
@@ -1170,7 +1015,14 @@
 
       /* Mode State */
       const MODES = ['Scientific','Common'];
-      let modeIndex = 0;
+      let modeIndex = 1;
+      try {
+        const raw = localStorage.getItem('spectrolipi.settings.v1');
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (s.defaultSpeciesFormat === 'scientific') modeIndex = 0;
+        }
+      } catch(e) {}
       function applyModeUI(){
         const m = MODES[modeIndex];
         if (elModeBadge) {
@@ -1417,13 +1269,19 @@
     const META_BTN_ID = 'metaOpenBtn';
     const SAVE_ANNO_BTN_ID = 'saveAnnoBtn';
     const UPLOAD_ANNO_BTN_ID = 'uploadAnnoBtn';
+    const UPLOAD_XENO_CANTO_BTN_ID = 'uploadXenoCantoBtn';
+    const EXPORT_VIDEO_BTN_ID = 'exportVideoBtn';
+    const RUN_BIRDNET_BTN_ID = 'runBirdnetBtn';
     const EXPORT_BTN_ID = 'exportBtn';
 
     function findFile() { return document.getElementById(FILE_ID); }
     function findMetaBtn() { return document.getElementById(META_BTN_ID); }
     function findSaveAnnoBtn() { return document.getElementById(SAVE_ANNO_BTN_ID); }
+    function findUploadXenoCantoBtn() { return document.getElementById(UPLOAD_XENO_CANTO_BTN_ID); }
     function findUploadAnnoBtn() { return document.getElementById(UPLOAD_ANNO_BTN_ID); }
+    function findExportVideoBtn() { return document.getElementById(EXPORT_VIDEO_BTN_ID); }
     function findExportBtn() { return document.getElementById(EXPORT_BTN_ID); }
+    function findRunBirdnetBtn() { return document.getElementById(RUN_BIRDNET_BTN_ID); }
 
     function updateToolbarStates() {
       const file = findFile();
@@ -1435,8 +1293,17 @@
       const upBtn = findUploadAnnoBtn();
       if (upBtn) upBtn.disabled = !hasFile;
 
+      const uploadXenoCantoBtn = findUploadXenoCantoBtn();
+      if (uploadXenoCantoBtn) uploadXenoCantoBtn.disabled = !hasFile;
+
       const exportBtn = findExportBtn();
       if (exportBtn) exportBtn.disabled = !hasFile;
+
+      const exportVideoBtn = findExportVideoBtn();
+      if (exportVideoBtn) exportVideoBtn.disabled = !hasFile;
+      
+      const runBirdnetBtn = findRunBirdnetBtn();
+      if (runBirdnetBtn) runBirdnetBtn.disabled = !hasFile;
 
       const saveAnnoBtn = findSaveAnnoBtn();
       if (saveAnnoBtn) {
@@ -1600,5 +1467,102 @@
   <script src="video_export.js"></script>
   <script src="splitter.js"></script>
   <script src="magnifier.js"></script>
+  <script src="magic_wand.js"></script>
+  <script src="recent_species.js"></script>
+</body>
+</html>
+
+  <!-- Global Custom Tooltip Manager -->
+  <script>
+  (function() {
+    const tooltip = document.createElement('div');
+    tooltip.id = 'custom-tooltip';
+    tooltip.style.position = 'fixed';
+    tooltip.style.display = 'none';
+    tooltip.style.background = '#18181b'; // Dark charcoal background
+    tooltip.style.color = '#ffffff';      // Pure white text for absolute contrast
+    tooltip.style.border = '1px solid #52525b'; // Solid gray border
+    tooltip.style.borderRadius = '4px';
+    tooltip.style.padding = '6px 10px';
+    tooltip.style.fontSize = '12px';
+    tooltip.style.fontFamily = 'Inter, system-ui, sans-serif';
+    tooltip.style.zIndex = '2147483647'; // Ensure it floats above modals & sidebars
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.whiteSpace = 'pre-line';
+    tooltip.style.boxShadow = '0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)';
+    tooltip.style.maxWidth = '280px';
+    tooltip.style.lineHeight = '1.4';
+    document.body.appendChild(tooltip);
+
+    let activeElement = null;
+    let showTimeout = null;
+
+    document.addEventListener('mouseover', (e) => {
+      // Find closest element with title or cached custom tooltip
+      const target = e.target.closest('[title], [data-custom-tooltip]');
+      if (!target) return;
+
+      // Extract and cache the title, removing it to prevent default browser tooltips
+      const text = target.getAttribute('title');
+      if (text && text.trim() !== '') {
+        target.dataset.customTooltip = text;
+        target.removeAttribute('title');
+      }
+
+      const tooltipText = target.dataset.customTooltip;
+      if (!tooltipText || tooltipText.trim() === '') return;
+
+      activeElement = target;
+      clearTimeout(showTimeout);
+
+      // Reduced delay (120ms) for high-speed responsiveness
+      showTimeout = setTimeout(() => {
+        tooltip.textContent = tooltipText;
+        tooltip.style.display = 'block';
+        positionTooltip(target);
+      }, 120);
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      // If we are leaving the active element or moving to a child of it, ignore if it is still within
+      if (activeElement && (!e.relatedTarget || !activeElement.contains(e.relatedTarget))) {
+        clearTimeout(showTimeout);
+        tooltip.style.display = 'none';
+        activeElement = null;
+      }
+    });
+
+    // Also handle dynamic cases where user moves cursor directly on elements
+    document.addEventListener('mousemove', (e) => {
+      if (activeElement && tooltip.style.display === 'block') {
+        // Option: keep it static relative to target element or follow.
+        // Static relative to element is cleaner for buttons and grid cells.
+      }
+    });
+
+    function positionTooltip(element) {
+      const rect = element.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      
+      // Position below the element by default, centered horizontally
+      let left = rect.left + (rect.width - tooltipRect.width) / 2;
+      let top = rect.bottom + 6;
+
+      // Keep within viewport bounds
+      if (left < 8) left = 8;
+      if (left + tooltipRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - tooltipRect.width - 8;
+      }
+
+      if (top + tooltipRect.height > window.innerHeight - 8) {
+        // Place above the element if it overflows the bottom
+        top = rect.top - tooltipRect.height - 6;
+      }
+
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+    }
+  })();
+  </script>
 </body>
 </html>

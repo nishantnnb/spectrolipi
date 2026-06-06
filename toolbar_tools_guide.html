@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Spectrolipi Help & Reference Guide</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #151f32;
+      --card-hover-bg: #1e2d4a;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-color: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --border-color: rgba(255, 255, 255, 0.06);
+      --badge-bg: rgba(56, 189, 248, 0.08);
+      --badge-text: #38bdf8;
+      --shortcut-bg: rgba(244, 63, 94, 0.1);
+      --shortcut-text: #fb7185;
+      --kbd-bg: #2d3748;
+      --kbd-border: #4a5568;
+      --success-color: #34d399;
+      --warning-color: #fbbf24;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Layout structure */
+    .sidebar {
+      width: 280px;
+      background-color: #0d1321;
+      border-right: 1px solid var(--border-color);
+      padding: 2rem 1.5rem;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      overflow-y: auto;
+      z-index: 100;
+    }
+
+    .main-content {
+      margin-left: 280px;
+      flex-grow: 1;
+      padding: 3rem 4rem;
+      max-width: 1200px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2.5rem;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .brand img {
+      height: 36px;
+      object-fit: contain;
+    }
+
+    .brand-text {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(to right, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Sidebar Navigation */
+    .nav-group {
+      margin-bottom: 2rem;
+    }
+
+    .nav-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .nav-links {
+      list-style: none;
+    }
+
+    .nav-links li {
+      margin-bottom: 0.35rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+      color: var(--text-main);
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    /* Header styling */
+    header {
+      margin-bottom: 3.5rem;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      margin-bottom: 2rem;
+      max-width: 800px;
+    }
+
+    /* Search Bar styling */
+    .search-container {
+      position: relative;
+      max-width: 600px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.9rem 1.2rem 0.9rem 3.2rem;
+      font-size: 1.05rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background-color: var(--card-bg);
+      color: var(--text-main);
+      outline: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1.2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    /* Content sections */
+    section {
+      margin-bottom: 4.5rem;
+      scroll-margin-top: 2rem;
+      padding-top: 3rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    
+    section:first-of-type {
+      border-top: none;
+      padding-top: 0;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-size: 1.05rem;
+    }
+
+    /* Callout styling */
+    .callout {
+      background-color: rgba(255, 255, 255, 0.02);
+      border-left: 4px solid var(--border-color);
+      padding: 1.25rem 1.5rem;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 2rem;
+    }
+
+    .callout.info {
+      border-left-color: var(--accent-color);
+      background-color: rgba(56, 189, 248, 0.02);
+    }
+
+    .callout.warning {
+      border-left-color: var(--warning-color);
+      background-color: rgba(251, 191, 36, 0.02);
+    }
+
+    .callout h4 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Grids & Cards */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      background-color: var(--card-hover-bg);
+      border-color: rgba(56, 189, 248, 0.3);
+      box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .icon-wrapper {
+      width: 46px;
+      height: 46px;
+      border-radius: 8px;
+      background-color: rgba(56, 189, 248, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-color);
+      font-size: 1.35rem;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .card:hover .icon-wrapper {
+      background-color: var(--accent-color);
+      color: #0b0f19;
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .card-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.25rem;
+      flex-grow: 1;
+    }
+
+    .card-meta {
+      background-color: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.85rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .card-meta strong {
+      color: var(--text-main);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      background-color: var(--badge-bg);
+      color: var(--badge-text);
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(56, 189, 248, 0.15);
+      align-self: flex-start;
+    }
+
+    .badge.warning {
+      background-color: rgba(251, 191, 36, 0.08);
+      color: var(--warning-color);
+      border-color: rgba(251, 191, 36, 0.15);
+    }
+
+    /* Keyboard Shortcuts Table */
+    .table-container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      background-color: rgba(0, 0, 0, 0.15);
+      font-weight: 600;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.01);
+    }
+
+    .shortcut-tag {
+      background-color: var(--shortcut-bg);
+      color: var(--shortcut-text);
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid rgba(244, 63, 94, 0.15);
+      white-space: nowrap;
+    }
+
+    /* Key styling */
+    .kbd {
+      background-color: var(--kbd-bg);
+      color: var(--text-main);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      border: 1px solid var(--kbd-border);
+      border-bottom: 2px solid var(--kbd-border);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    .no-results {
+      text-align: center;
+      padding: 4rem;
+      color: var(--text-muted);
+      font-size: 1.15rem;
+      display: none;
+    }
+
+    .mode-box-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .mode-box {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2rem;
+    }
+
+    .mode-box.create {
+      border-left: 4px solid var(--accent-color);
+    }
+
+    .mode-box.edit {
+      border-left: 4px solid var(--success-color);
+    }
+
+    .mode-box h3 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .mode-box ul {
+      margin-left: 1.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .mode-box li {
+      margin-bottom: 0.5rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+      body {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        position: relative;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1.5rem;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 2rem 1.5rem;
+      }
+      .mode-box-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- Left Navigation Sidebar -->
+  <aside class="sidebar">
+    <a href="#" class="brand">
+      <img src="002LogoWOname_small.png" alt="Spectrolipi Logo">
+      <span class="brand-text">Spectrolipi Help</span>
+    </a>
+
+    <div class="nav-group">
+      <div class="nav-title">Navigation</div>
+      <ul class="nav-links">
+        <li><a href="#toolbar-setup" class="nav-link active"><i class="fa-solid fa-sliders"></i> Basic navigation</a></li>
+        <li><a href="#modes-section" class="nav-link"><i class="fa-solid fa-toggle-on"></i> Create vs Edit Modes</a></li>
+        <li><a href="#species-selector" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> Species Selector</a></li>
+        <li><a href="#hamburger-menu" class="nav-link"><i class="fa-solid fa-bars"></i> Hamburger Menu</a></li>
+        <li><a href="#action-tools" class="nav-link"><i class="fa-solid fa-wand-magic-sparkles"></i> Annotation Tools</a></li>
+        <li><a href="#edit-tools" class="nav-link"><i class="fa-solid fa-scissors"></i> Sound Editing Tools</a></li>
+        <li><a href="#annotation-grid" class="nav-link"><i class="fa-solid fa-table"></i> Annotation Grid</a></li>
+        <li><a href="#shortcuts-section" class="nav-link"><i class="fa-solid fa-keyboard"></i> Keyboard Shortcuts</a></li>
+        <li><a href="#qa-section" class="nav-link"><i class="fa-solid fa-circle-question"></i> Q & A</a></li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- Main Documentation Content -->
+  <main class="main-content">
+    <header>
+      <div class="search-container">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search by tool name, keyboard shortcut, or feature keyword...">
+      </div>
+    </header>
+
+    <div id="noResults" class="no-results">
+      <i class="fa-solid fa-face-frown fa-2x" style="margin-bottom: 1rem; display: block; color: var(--accent-color);"></i>
+      No matching help sections, tools, or shortcuts found.
+    </div>
+
+    <!-- Section 1: Basic navigation -->
+    <section id="toolbar-setup" class="doc-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-sliders" style="color: var(--accent-color);"></i> Basic navigation
+      </h2>
+      <p class="section-desc">Manage files, audio parameters, playback controls, and visual rendering variables in the primary workspace.</p>
+      
+      <div class="grid">
+        <!-- Load Audio -->
+        <div class="card" data-keywords="load audio open file browser wav mp3 local files controls file-setup">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-folder-open"></i></div>
+            <div class="card-title">Load Audio</div>
+          </div>
+          <div class="card-desc">Opens a local file dialog browser to select and load audio files (WAV, MP3, etc.) directly.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Click the folder icon, choose a supported file, and confirm if unsaved data alert appears.</span>
+          </div>
+        </div>
+
+        <!-- Load from XC -->
+        <div class="card" data-keywords="load from xc xeno-canto database network remote id fetch download files controls file-setup">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+            <div class="card-title">Load from XC</div>
+          </div>
+          <div class="card-desc">Downloads audio and metadata directly from the public Xeno-canto bird sound database.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Input a valid Xeno-canto catalog ID (e.g. 123456) to retrieve and load the file.</span>
+          </div>
+        </div>
+
+        <!-- Color Scheme -->
+        <div class="card" data-keywords="spectrogram color scheme theme palette viridis magma inferno grayscale jet spectroflare controls view-setup">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-palette"></i></div>
+            <div class="card-title">Color Scheme</div>
+          </div>
+          <div class="card-desc">Switches the active visual color mapping palette used to render the spectrogram.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Choose from SpectroFlare (default), Viridis, Magma, Grayscale, or Jet from the dropdown.</span>
+          </div>
+        </div>
+
+        <!-- Gain Control -->
+        <div class="card" data-keywords="gain control visual brightness contrast intensity slider controls view-setup">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-sliders"></i></div>
+            <div class="card-title">Gain Control</div>
+          </div>
+          <div class="card-desc">Adjusts the spectrogram's visual brightness and contrast scale without altering underlying audio samples.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Slide left/right to adjust rendering strength. Shows multipliers from 0.1x to 10.0x.</span>
+          </div>
+        </div>
+
+        <!-- Y Zoom -->
+        <div class="card" data-keywords="y zoom frequency vertical axis scale multiplier controls view-setup">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-arrows-up-down"></i></div>
+            <div class="card-title">Y Zoom (Frequency)</div>
+          </div>
+          <div class="card-desc">Magnifies the vertical frequency axis to inspect targeted frequency bands.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Use the "Y" dropdown spinner on the toolbar to select magnifying factors.</span>
+          </div>
+        </div>
+
+
+
+        <!-- X Zoom -->
+        <div class="card" data-keywords="x zoom time horizontal axis scale multiplier stretch controls view-setup">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-arrows-left-right"></i></div>
+            <div class="card-title">X Zoom (Time)</div>
+          </div>
+          <div class="card-desc">Stretches or compresses the horizontal timeline axis to focus on specific audio windows.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Use the "X" dropdown spinner on the toolbar to choose the multiplier.</span>
+          </div>
+        </div>
+
+        <!-- Label Toggle -->
+        <div class="card" data-keywords="label toggle cycle annotation labels badges common scientific name controls view-setup">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-tag"></i></div>
+            <div class="card-title">Label Toggle</div>
+          </div>
+          <div class="card-desc">Cycles the display format for species tags overlayed directly on the spectrogram boxes.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Click to toggle label styling: Common Name, Scientific Name, or hidden.</span>
+          </div>
+        </div>
+
+        <!-- Play / Pause -->
+        <div class="card" data-keywords="play pause audio space spacebar playhead toggle controls playback">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-play"></i></div>
+            <div class="card-title">Play / Pause</div>
+          </div>
+          <div class="card-desc">Starts or pauses real-time audio playback, showing a synchronized red playhead indicator.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Click the button, press <kbd class="kbd">Spacebar</kbd>, or click the timeline axis to seek and play.</span>
+          </div>
+        </div>
+
+        <!-- Magnifier -->
+        <div class="card" data-keywords="magnifier zoom hover settings toggle lens">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+            <div class="card-title">Magnifier</div>
+          </div>
+          <div class="card-desc">Toggles a magnifying window overlay that follows your mouse to inspect details closely. Enabled from Spectrogram settings.</div>
+        </div>
+
+        <!-- Y-Axis Interactive Zoom & Pan -->
+        <div class="card" style="grid-column: 1 / -1;" data-keywords="y axis zoom pan drag frequency scale vertical scroll wheel right click reset">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-up-down-left-right"></i></div>
+            <div class="card-title">Y-Axis Interactive Zoom & Pan</div>
+          </div>
+          <div class="card-desc">Interact directly with the vertical frequency scale on the left side of the spectrogram.</div>
+          <div class="card-meta" style="background: transparent; border: none; padding: 0; margin-top: 0.75rem;">
+            <ul style="margin-left: 1.5rem; margin-top: 0.5rem; line-height: 1.5;">
+              <li style="margin-bottom: 0.25rem;"><strong>Scroll Wheel:</strong> Hover over the Y-axis numbers and scroll up or down to zoom in/out smoothly. The zoom centers exactly where your pointer is hovering.</li>
+              <li style="margin-bottom: 0.25rem;"><strong>Drag to Pan:</strong> Click and drag up or down on the Y-axis to pan the viewable frequency range.</li>
+              <li><strong>Right-Click:</strong> Instantly resets the vertical zoom to show the full frequency range (0 to Nyquist limit).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Create Mode vs Edit Mode -->
+    <section id="modes-section" class="doc-section" data-keywords="create mode edit mode annotation toggle boxes drag canvas">
+      <h2 class="section-title">
+        <i class="fa-solid fa-toggle-on" style="color: var(--accent-color);"></i> Create vs Edit Modes
+      </h2>
+      <p class="section-desc">Manage annotation workflow states to draw new boxes or modify existing bounds.</p>
+
+      <div class="mode-box-container">
+        <!-- Create Mode -->
+        <div class="mode-box create" data-keywords="create mode draw boxes click drag metadata selection alert">
+          <h3><i class="fa-solid fa-pencil" style="color: var(--accent-color);"></i> Create Mode</h3>
+          <p>Used to construct new annotation bounding boxes on the time-frequency spectrogram grid.</p>
+          <ul>
+            <li><strong>Drawing:</strong> Left-click and drag across the spectrogram canvas to select a duration and frequency range.</li>
+            <li><strong>Auto-Commit:</strong> Releasing the click (<kbd class="kbd">PointerUp</kbd>) commits the annotation to the grid database.</li>
+            <li><strong>Species Check:</strong> You <u>must</u> choose a species in the search selector first. If none is selected, creation is blocked with an alert.</li>
+            <li><strong>Abort creation:</strong> Press Escape button or Right click on the spectrogram canvas to discard the active box and switch directly to Edit Mode.</li>
+          </ul>
+        </div>
+
+        <!-- Edit Mode -->
+        <div class="mode-box edit" data-keywords="edit mode resize select controls handles translate cursor ctrl click">
+          <h3><i class="fa-solid fa-crop-simple" style="color: var(--success-color);"></i> Edit Mode</h3>
+          <p>Used to select, translate, resize, and delete existing annotations.</p>
+          <ul>
+            <li><strong>Selection:</strong> Click on an annotation box directly or check its row in the grid. Hold <kbd class="kbd">Ctrl</kbd> to select multiple boxes.</li>
+            <li><strong>Resizing:</strong> Click on a box to highlight it and reveal handles on its edges and corners. Drag these handles to adjust bounds.</li>
+            <li><strong>Moving:</strong> Click inside a highlighted box and drag to translate it in time or frequency.</li>
+            <li><strong>Navigation:</strong> Use <kbd class="kbd">Tab</kbd> / <kbd class="kbd">Shift+Tab</kbd> to cycle and edit sequentially.</li>
+          </ul>
+        </div>
+      </div>
+
+
+    </section>
+
+    <!-- Section 3: Species Selector -->
+    <section id="species-selector" class="doc-section" data-keywords="species selector search input dropdown common scientific prioritization bulk">
+      <h2 class="section-title">
+        <i class="fa-solid fa-magnifying-glass" style="color: var(--accent-color);"></i> Species Selector
+      </h2>
+      <p class="section-desc">Search, prioritize, and assign species taxonomy metadata to annotations.</p>
+
+      <div class="grid">
+        <div class="card" style="grid-column: 1 / -1;" data-keywords="species selector taxonomy inputs database priority keys search">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <div class="card-title">Species Search & Customization</div>
+          </div>
+          <div class="card-desc">
+            The species selector controls which identity is attached to new annotations. It supports fuzzy-matching autocomplete suggestions against the active database.
+          </div>
+          <div class="card-meta" style="background: transparent; border: none; padding: 0;">
+            <p style="margin-bottom: 0.5rem;"><strong>Fuzzy Autocomplete:</strong> Type keywords (minimum 2 characters) in the search field to open suggestions. Use <kbd class="kbd">ArrowDown</kbd> / <kbd class="kbd">ArrowUp</kbd> to navigate, and <kbd class="kbd">Enter</kbd> to select.</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Priority Toggle (Sci/Common):</strong> Click the mode badge toggle next to the search input to cycle the primary database search keys between Scientific Names and Common Names.</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Clearing Selection:</strong> Mouse over the selected species field and click the <i class="fa-solid fa-xmark"></i> close indicator to clear selection.</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Bulk Updates:</strong> Highlight multiple annotations in the table, select a new species in the selector, and click the <strong>"Update Species"</strong> button to update them all at once.</p>
+            <p><strong>Recent Species List:</strong> Shows a draggable dashboard of lately used taxonomy options for quick access. This can be enabled from Spectrolipi Settings.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Hamburger Menu -->
+    <section id="hamburger-menu" class="doc-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-bars" style="color: var(--accent-color);"></i> Hamburger Menu
+      </h2>
+      <p class="section-desc">Manage system imports, exports, database states, and application parameters from the left collapsible menu overlay.</p>
+
+      <div class="grid">
+        <!-- User Guide -->
+        <div class="card" data-keywords="user guide youtube video link instructions hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-circle-info"></i></div>
+            <div class="card-title">User Guide</div>
+          </div>
+          <div class="card-desc">Redirects you to a dedicated YouTube training playlist for visual and audio annotations.</div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="card" data-keywords="metadata csv overlay inspect hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-tags"></i></div>
+            <div class="card-title">Metadata</div>
+          </div>
+          <div class="card-desc">Opens the file metadata inspector panel to manage general tags (location, date, recorder, etc.).</div>
+        </div>
+
+        <!-- Upload Annotations -->
+        <div class="card" data-keywords="upload annotations import csv file hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-upload"></i></div>
+            <div class="card-title">Upload Annotations</div>
+          </div>
+          <div class="card-desc">Loads an external annotation database CSV file directly into the current spectrogram grid.</div>
+        </div>
+
+        <!-- Save Annotations -->
+        <div class="card" data-keywords="save annotations download browser memory csv hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-download"></i></div>
+            <div class="card-title">Save Annotations</div>
+          </div>
+          <div class="card-desc">Saves and downloads all annotation rows into a structured CSV file on your disk.</div>
+        </div>
+
+        <!-- Manage Species List -->
+        <div class="card" data-keywords="manage species list csv database update replace merge export js file hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-kiwi-bird"></i></div>
+            <div class="card-title">Manage Species List</div>
+          </div>
+          <div class="card-desc">Opens the taxonomy database manager panel to merge, replace, download, or export species lists.</div>
+          <div class="badge"><i class="fa-solid fa-cog"></i> Settings Available</div>
+          <div class="card-meta" style="margin-top: 0.5rem;">
+            <span><strong>Upload Custom CSV:</strong> Choose a file and select either <em>Merge</em> or <em>Replace</em> bulk modes.</span>
+            <span><strong>Export files:</strong> Export list as CSV, or save as JS code matching `species-data.js` conventions.</span>
+          </div>
+        </div>
+
+        <!-- Export Audio -->
+        <div class="card" data-keywords="export audio wav sampling rate bit depth download hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-file-audio"></i></div>
+            <div class="card-title">Export Audio</div>
+          </div>
+          <div class="card-desc">Launches the WAV exporter. Configure output sample rate, PCM bit depth, and save the audio.</div>
+        </div>
+
+        <!-- Export Video -->
+        <div class="card" data-keywords="export video mp4 spectrogram render download hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-video"></i></div>
+            <div class="card-title">Export Video</div>
+          </div>
+          <div class="card-desc">Generates a high-quality video clip of the scrolling spectrogram (limited to 1 minute).</div>
+        </div>
+
+        <!-- Generate Clips -->
+        <div class="card" data-keywords="generate clips slice slice audio wav export annotations hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-scissors"></i></div>
+            <div class="card-title">Generate Clips</div>
+          </div>
+          <div class="card-desc">Slices the audio file into separate WAV clips, creating one file for each drawn annotation box.</div>
+        </div>
+
+        <!-- Run BirdNET -->
+        <div class="card" data-keywords="run birdnet classifier detection machine learning model hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-robot"></i></div>
+            <div class="card-title">Run BirdNET</div>
+          </div>
+          <div class="card-desc">Triggers artificial intelligence classification on the loaded audio file or active selections.</div>
+        </div>
+
+        <!-- Spectrolipi Settings -->
+        <div class="card" data-keywords="spectrolipi settings magnifier checkbox options recent species format default hamburger">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-gear"></i></div>
+            <div class="card-title">Spectrolipi Settings</div>
+          </div>
+          <div class="card-desc">Configure application-wide display features, overlay parameters, and toggle options.</div>
+          <div class="badge"><i class="fa-solid fa-cog"></i> Settings Available</div>
+          <div class="card-meta" style="margin-top: 0.5rem;">
+            <span><strong>Turn on Recent Species List:</strong> Shows draggable dashboard of lately used taxonomy options.</span>
+            <span><strong>Turn on Magnifier:</strong> Toggles magnifying window overlay that follows your mouse.</span>
+            <span><strong>Default Species Format:</strong> Sets default display format to Scientific or Common name.</span>
+          </div>
+        </div>
+
+        <!-- Xeno-canto Integration -->
+        <div class="card" style="grid-column: 1 / -1;" data-keywords="xeno-canto integration api upload create set database hamburger export json api key fields">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-share-nodes"></i></div>
+            <div class="card-title">Xeno-canto Integration</div>
+          </div>
+          <div class="card-desc">Sub-menu to upload annotations directly to Xeno-canto via API or create combined datasets.</div>
+          <div class="card-meta" style="background: transparent; border: none; padding: 0; margin-top: 0.75rem;">
+            <p><strong>Upload to Xeno-Canto Form Fields:</strong></p>
+            <ul style="margin-left: 1.5rem; margin-top: 0.5rem; line-height: 1.5;">
+              <li style="margin-bottom: 0.25rem;"><strong>Metadata Fields:</strong> Xeno-canto file no (Mandatory), Annotation set name, Set creator, Set owner, Set source, Set URL, Project, Project URL, Funding, Taxon coverage, Completeness.</li>
+              <li style="margin-bottom: 0.25rem;"><strong>API Configuration & Defaults (Saved locally):</strong> API key (To be copied from Xeno-canto website > Your account page), Annotator display name, Default Annotation license, API endpoint.</li>
+              <li><strong>Upload Options:</strong> <strong>Export JSON</strong> (Saves the annotation set as a local JSON file) and <strong>Direct Upload with API</strong> (Posts the data directly to Xeno-canto servers).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Action Tools -->
+    <section id="action-tools" class="doc-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-color);"></i> Annotation Tools
+      </h2>
+      <p class="section-desc">Tools for automating, bulk updating, and processing annotations.</p>
+      
+      <div class="grid">
+        <!-- Delete -->
+        <div class="card" data-keywords="delete remove trash selected rows annotations">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-trash"></i></div>
+            <div class="card-title">Delete Selected</div>
+          </div>
+          <div class="card-desc">Deletes all currently selected annotations from the grid and spectrogram canvas.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Select one or more rows in the Annotation Grid using the checkboxes, then click this button.</span>
+          </div>
+        </div>
+
+        <!-- Magic Wand -->
+        <div class="card" data-keywords="magic wand auto detect bounds select spark">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+            <div class="card-title">Magic Wand</div>
+          </div>
+          <div class="card-desc">Auto-detects boundaries of an acoustic event based on energy levels when clicked.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Click the tool to activate. Drag a loose rectangle around the target sound. Spectrolipi will automatically snap the box to the exact frequency and time bounds.</span>
+          </div>
+        </div>
+
+        <!-- Repeat -->
+        <div class="card" data-keywords="repeat copy dimensions next previous clone">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-repeat"></i></div>
+            <div class="card-title">Repeat Annotation</div>
+          </div>
+          <div class="card-desc">When armed, copies the exact dimensions of the last drawn annotation to the next click location.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Click a previously created box to select it. Then activate Repeat Mode. Hover over a new area in the spectrogram and click to stamp an identically-sized box.</span>
+          </div>
+        </div>
+
+        <!-- Bulk Update Tags -->
+        <div class="card" data-keywords="update tags bulk multiple edit fields sex life stage sound type">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-tags"></i></div>
+            <div class="card-title">Update Tags</div>
+          </div>
+          <div class="card-desc">Applies selected metadata tags (Sex, Life Stage, Sound Type) to all currently selected rows.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Select one or more rows in the Annotation Grid using the checkboxes, then click 'Update tags' to open the tag editor dialog for the selected rows.</span>
+          </div>
+        </div>
+
+        <!-- Bulk Update Species -->
+        <div class="card" data-keywords="update species bulk list taxonomy assign apply">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-list"></i></div>
+            <div class="card-title">Update Species</div>
+          </div>
+          <div class="card-desc">Applies the current species selected in the Species Selector to all currently selected annotation rows.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Select one or more rows in the Annotation Grid, then choose a new species from the Species Selector dashboard, and click this button to apply it to all selected rows.</span>
+          </div>
+        </div>
+
+        <!-- Run SCC -->
+        <div class="card" data-keywords="scc spectrogram cross correlation pattern matching template">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="card-title">Run SCC</div>
+          </div>
+          <div class="card-desc">Runs Spectrogram Cross-Correlation to automatically find similar acoustic patterns using selected templates.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Highlight one or more existing annotations as templates. Click this button to run cross-correlation across the audio track to find and automatically label similar sounds.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: Edit Tools -->
+    <section id="edit-tools" class="doc-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-scissors" style="color: var(--accent-color);"></i> Sound Editing Tools
+      </h2>
+      <p class="section-desc">Destructive editing tools for modifying the underlying audio and spectrogram data.</p>
+      
+      <div class="grid">
+        <!-- Select Span -->
+        <div class="card" data-keywords="select time span pointer cursor highlight area">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-arrow-pointer"></i></div>
+            <div class="card-title">Select Time Span</div>
+          </div>
+          <div class="card-desc">Activates timeline selection mode. Drag on the timeline to highlight a time span for audio editing.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Click the tool to activate. Click and drag horizontally across the spectrogram canvas to define a specific time block.</span>
+          </div>
+        </div>
+
+        <!-- Cut -->
+        <div class="card" data-keywords="cut remove slice trim delete audio selection">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-scissors"></i></div>
+            <div class="card-title">Cut Audio</div>
+          </div>
+          <div class="card-desc">Removes the currently highlighted time span selection entirely from the audio track.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Create a time span selection first, then click this button to completely remove the highlighted audio section. The remaining audio will collapse together.</span>
+          </div>
+        </div>
+
+        <!-- Silence -->
+        <div class="card" data-keywords="silence mute volume zero selection time span">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-volume-xmark"></i></div>
+            <div class="card-title">Silence Audio</div>
+          </div>
+          <div class="card-desc">Opens a dialog to either <strong>Replace</strong> the selected time span with silence (keeping total length intact), or <strong>Insert</strong> a custom duration of silence at the selection, expanding the audio track length.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Create a time span selection and click this button. Choose your preferred mode and duration in the dialog, then click Apply.</span>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card" data-keywords="filters high pass low eq frequency cutoff block">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-filter"></i></div>
+            <div class="card-title">Apply Filters</div>
+          </div>
+          <div class="card-desc">Opens the filter dialog to apply High Pass or Low Pass effects to the active selection or the whole track.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> (Optional) Create a time selection. Click this button to open the filter dialog, enter a High Pass or Low Pass cutoff frequency, and apply it to the selection or the whole file.</span>
+          </div>
+        </div>
+
+        <!-- Normalize -->
+        <div class="card" data-keywords="normalize peak volume gain amplitude balance boost">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-bars-staggered"></i></div>
+            <div class="card-title">Normalize</div>
+          </div>
+          <div class="card-desc">Adjusts the audio amplitude of the selected area or whole file to reach a target peak level (e.g., -3dB).</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> (Optional) Create a time selection. Click this button, set your target peak decibel level (e.g., -3dB), and apply it to balance the audio amplitude.</span>
+          </div>
+        </div>
+
+        <!-- Spectral Stamp -->
+        <div class="card" data-keywords="spectral stamp copy paste clone area frequency clone">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-stamp"></i></div>
+            <div class="card-title">Spectral Stamp</div>
+          </div>
+          <div class="card-desc">Copies a specific frequency-time rectangular area to paste and replace into another area.</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Press the Spectral stamp button. Create a box around the area to be replaced (Noisy area). Move the box to the area where clean background is present. The Noisy area gets replaced with clean background.</span>
+          </div>
+        </div>
+
+        <!-- Undo Cut/Edit -->
+        <div class="card" data-keywords="undo revert edit cut silence normalize return back">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-rotate-left"></i></div>
+            <div class="card-title">Undo Edit</div>
+          </div>
+          <div class="card-desc">Reverts the most recent destructive audio edit (Cut, Silence, Filter, Normalize).</div>
+          <div class="card-meta">
+            <span><strong>How to use:</strong> Click this button to revert the most recent audio modification. If you made a mistake cutting or silencing, this restores the audio state.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7: Annotation Grid -->
+    <section id="annotation-grid" class="doc-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-table" style="color: var(--accent-color);"></i> Annotation Grid
+      </h2>
+      <p class="section-desc">The interactive table below the spectrogram that displays all current annotations.</p>
+      
+      <div class="grid">
+        <div class="card" style="grid-column: 1 / -1;" data-keywords="annotation grid table tabulator sort columns adjust width select rows hamburger menu upload save">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-table-list"></i></div>
+            <div class="card-title">Grid Features & Navigation</div>
+          </div>
+          <div class="card-desc">
+            The Annotation Grid provides a tabular view of all your bounding boxes, synchronized in real-time with the canvas.
+          </div>
+          <div class="card-meta" style="background: transparent; border: none; padding: 0;">
+            <p style="margin-bottom: 0.5rem;"><strong>Row Selection:</strong> Click the checkbox in the first column to select a row. Click the master checkbox in the header to <strong>Select All</strong> or deselect all rows.</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Sorting Columns:</strong> Click on any column header (e.g., Begin Time, Species) to sort the grid in ascending or descending order based on that field.</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Adjusting Width:</strong> Hover over the border between two column headers and drag horizontally to resize column widths.</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Movable Columns:</strong> Click and drag a column header to reorder columns according to your preference.</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Grid Hamburger Menu:</strong> Accessible directly from the grid interface, this local menu provides quick access to <strong>Upload Annotations</strong> and <strong>Save Annotations</strong> directly to and from the table.</p>
+            <p><strong>Inline Editing:</strong> Double-click on specific cells (like Notes) to edit their content directly within the grid.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 8: Keyboard Shortcuts -->
+    <section id="shortcuts-section" class="doc-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-keyboard" style="color: var(--accent-color);"></i> Keyboard Shortcuts
+      </h2>
+      <p class="section-desc">A centralized reference for all keyboard inputs, event listeners, and navigation mappings in Spectrolipi.</p>
+
+      <!-- Playback Shortcuts -->
+      <h3 style="font-size: 1.25rem; margin-bottom: 0.75rem; color: var(--accent-color);">Playback & Timeline Navigation</h3>
+      <div class="table-container" data-keywords="space bar play pause left right arrow seek jump keyboard shortcuts">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%;">Shortcut Key</th>
+              <th style="width: 40%;">Description</th>
+              <th style="width: 35%;">Action Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-keywords="space spacebar play pause">
+              <td><kbd class="kbd">Spacebar</kbd></td>
+              <td>Toggles audio playback (Play / Pause).</td>
+              <td>Global playback state</td>
+            </tr>
+            <tr data-keywords="arrowleft arrowright seek step">
+              <td><kbd class="kbd">←</kbd> / <kbd class="kbd">→</kbd></td>
+              <td>Seeks the playhead backward or forward. Step size depends on zoom factors.</td>
+              <td>Global audio player</td>
+            </tr>
+            <tr data-keywords="shift arrowleft arrowright seek double speed">
+              <td><kbd class="kbd">Shift</kbd> + <kbd class="kbd">←</kbd> / <kbd class="kbd">→</kbd></td>
+              <td>Seeks backward or forward at double the normal step speed.</td>
+              <td>Global audio player</td>
+            </tr>
+            <tr data-keywords="ctrl cmd arrowleft arrowright home end jump start">
+              <td><kbd class="kbd">Ctrl / Cmd</kbd> + <kbd class="kbd">←</kbd> / <kbd class="kbd">→</kbd></td>
+              <td>Instantly jumps the playhead to the start or end of the audio track.</td>
+              <td>Global audio player</td>
+            </tr>
+            <tr data-keywords="scroll wheel zoom y axis frequency">
+              <td><kbd class="kbd">Scroll Wheel</kbd> <span class="shortcut-tag">Hover Y-Axis</span></td>
+              <td>Zooms in/out on the vertical frequency axis relative to pointer.</td>
+              <td>Y-Axis Scaling</td>
+            </tr>
+            <tr data-keywords="drag left click pan y axis frequency">
+              <td><kbd class="kbd">Click & Drag</kbd> <span class="shortcut-tag">Hover Y-Axis</span></td>
+              <td>Pans the viewable frequency range up or down.</td>
+              <td>Y-Axis Scaling</td>
+            </tr>
+            <tr data-keywords="right click reset y axis frequency full spectrum">
+              <td><kbd class="kbd">Right-Click</kbd> <span class="shortcut-tag">Hover Y-Axis</span></td>
+              <td>Instantly resets the vertical zoom to show the full frequency range.</td>
+              <td>Y-Axis Scaling</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Annotation & Edit Shortcuts -->
+      <h3 style="font-size: 1.25rem; margin-bottom: 0.75rem; color: var(--accent-color);">Annotation Creation & Edit Modes</h3>
+      <div class="table-container" data-keywords="escape delete ctrl tab shift tab edit mode cancel shortcuts">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%;">Shortcut Key</th>
+              <th style="width: 40%;">Description</th>
+              <th style="width: 35%;">Action Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-keywords="escape cancel deselect clear selection">
+              <td><kbd class="kbd">Escape</kbd></td>
+              <td>Deselects all annotations, cancels active editing fields, and clears box highlights.</td>
+              <td>Edit Mode / Table View</td>
+            </tr>
+            <tr data-keywords="delete d delete selected rows trash">
+              <td><kbd class="kbd">Delete</kbd> or <kbd class="kbd">D</kbd> / <kbd class="kbd">d</kbd></td>
+              <td>Deletes all currently selected annotations from grid and spectrogram canvas.</td>
+              <td>Edit Mode / Table View</td>
+            </tr>
+            <tr data-keywords="tab cycle next box annotation scroll">
+              <td><kbd class="kbd">Tab</kbd></td>
+              <td>Saves the active edit box and jumps focus to the next box (chronological order).</td>
+              <td>Edit Mode navigation</td>
+            </tr>
+            <tr data-keywords="shift tab cycle previous box annotation scroll">
+              <td><kbd class="kbd">Shift</kbd> + <kbd class="kbd">Tab</kbd></td>
+              <td>Saves the active edit box and jumps focus to the previous box.</td>
+              <td>Edit Mode navigation</td>
+            </tr>
+            <tr data-keywords="right click contextmenu cancel create edit">
+              <td><kbd class="kbd">Right-Click</kbd></td>
+              <td>Toggles between Create mode & Edit mode.</td>
+              <td>Spectrogram Canvas</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Advanced Tool Shortcuts -->
+      <h3 style="font-size: 1.25rem; margin-bottom: 0.75rem; color: var(--accent-color);">Advanced Tools (Magic Wand, Stamp, Audio Cut)</h3>
+      <div class="table-container" data-keywords="shift scroll wheel magic wand escape stamp shortcuts">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%;">Shortcut Key</th>
+              <th style="width: 40%;">Description</th>
+              <th style="width: 35%;">Action Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-keywords="shift scroll adjust sensitivity magic wand bfs">
+              <td><kbd class="kbd">Shift</kbd> + <kbd class="kbd">Scroll Wheel</kbd></td>
+              <td>Adjusts algorithm sensitivity (1% to 99%) in real-time during Magic Wand sessions.</td>
+              <td>Magic Wand auto-detection</td>
+            </tr>
+            <tr data-keywords="escape cancel magic wand repeat stamp active">
+              <td><kbd class="kbd">Escape</kbd> <span class="shortcut-tag">Tool armed</span></td>
+              <td>Exits Magic Wand mode, Repeat Mode, or Spectral Stamp Mode safely.</td>
+              <td>Active Tool Session</td>
+            </tr>
+            <tr data-keywords="escape cancel selection cut mode viewport">
+              <td><kbd class="kbd">Escape</kbd> <span class="shortcut-tag">Selection active</span></td>
+              <td>Disarms the timeline slice selection (Cut) overlay.</td>
+              <td>Cut & Selection Overlay</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 9: Q & A -->
+    <section id="qa-section" class="doc-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-circle-question" style="color: var(--accent-color);"></i> Q & A
+      </h2>
+      <p class="section-desc">Detailed answers and workflows for common questions and advanced features.</p>
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">File Management & Setup</h3>
+      
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="load audio open file local computer wav mp3">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to load an audio file from my local computer?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click the "Load Audio" button (Folder icon) on the main toolbar. This will open a standard file browser window. Select your supported audio file (.wav, .mp3) and click Open. If you have unsaved annotations, a warning will appear before replacing the current workspace.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="load from xc xeno canto download">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to load an audio file directly from the Xeno-canto database?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click the "Load from XC" button (Cloud download icon) on the toolbar. Enter a valid 6-digit Xeno-canto catalog ID number into the prompt, and Spectrolipi will automatically download and render the audio file without needing to visit the website.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="import csv upload annotations database">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to import an existing CSV annotation file into the current workspace?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Upload Annotations", or use the local hamburger menu inside the Annotation Grid itself. Select your CSV file. Ensure the CSV matches the expected header format so Spectrolipi can correctly draw the boxes.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="save annotations download csv export">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to save and download my current annotations to a CSV file?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Save Annotations", or use the local hamburger menu inside the Annotation Grid. This will immediately compile all your current rows and download a `.csv` file to your computer's default downloads folder.</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Basic Navigation & Playback</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="play pause audio spacebar">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to play or pause the audio track?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: You can click the Play/Pause button on the main toolbar, or simply press the <kbd class="kbd">Spacebar</kbd> on your keyboard. You can also click directly on the red playhead timeline bar to start playback from a specific timestamp.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="jump beginning end timeline audio">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to quickly jump to the beginning or end of the audio track?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Press <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">←</kbd> to instantly jump to the start of the audio file. Press <kbd class="kbd">Ctrl</kbd> + <kbd class="kbd">→</kbd> to jump to the very end.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="seek forward backward timeline fast step">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to seek forward or backward through the timeline?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Use the <kbd class="kbd">←</kbd> and <kbd class="kbd">→</kbd> arrow keys to step backward or forward through the audio timeline. Holding <kbd class="kbd">Shift</kbd> while pressing the arrows will seek at double the speed.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="zoom x axis timeline compress">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to zoom in or out on the timeline (X-Axis)?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Use the "X" dropdown spinner on the main toolbar. Increasing the multiplier stretches the horizontal axis so you can see shorter windows of time in higher detail.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="zoom y axis frequency scale pan drag right click">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to zoom in or out on the vertical frequency scale (Y-Axis)?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: You can use the "Y" dropdown spinner on the toolbar for gross adjustments, or simply hover your mouse over the vertical frequency axis numbers on the left and use your scroll wheel to smoothly zoom in or out. You can also click and drag the numbers up or down to pan the frequency view. Right-click the axis to instantly reset the zoom to show the full spectrum.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="magnifier inspect details lens">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to turn on the Magnifier to inspect small details?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and select "Spectrolipi Settings" (the gear icon). Check the box for "Turn On Magnifier". A floating magnifying glass overlay will now follow your cursor across the spectrogram.</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Visuals & Display Setup</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="color scheme theme palette viridis grayscale">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to change the color scheme/palette of the spectrogram?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Use the "Color Scheme" dropdown on the main toolbar. Spectrolipi defaults to SpectroFlare, but you can choose from alternatives like Viridis, Magma, Grayscale, or Jet.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="gain contrast brightness slider visual">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to adjust the brightness and contrast (Gain) of the spectrogram visuals?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Use the "Gain Control" slider on the main toolbar. Sliding it to the right increases the visual intensity of faint sounds. Note that this is purely a visual rendering change and does not affect the actual amplitude of the audio file itself.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="settings spectrolipi config parameters annotation mode">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: Which settings are available in Spectrolipi settings?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Spectrolipi Settings". A configuration dialog will appear featuring:<br>
+        • <strong>Annotation Mode:</strong> Toggle between "Time-Frequency (Boxes)" or "Temporal (Intervals)".<br>
+        • <strong>Magic box pad (px):</strong> Padding for creating annotation box around the detecttion of acoustic energy.<br>
+        • <strong>Repeat last sensitivity:</strong> Checkbox dictating whether the Magic Wand remembers sensitivity of last commnited box.<br>
+        • <strong>Default species format:</strong> Select whether species selection toggle button and labels display "Common name" or "Scientific name" by default.<br>
+        • <strong>Maximum Frequency (Y-Max):</strong> To set default Y axix zoom.<br>
+        • <strong>FFT Size:</strong> To set default underlying resolution of the spectrogram bins.<br>
+        • <strong>Turn on Recent species list:</strong> Toggles a draggable list of your recently selected species.<br>
+        • <strong>Turn On Magnifier:</strong> Toggles the cursor tracking magnifying lens.</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Annotation Creation & Modification</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="switch create edit mode right click">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to switch between Create Mode and Edit Mode?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Right-click anywhere on the spectrogram canvas to instantly toggle between Create Mode (drawing new boxes) and Edit Mode (selecting and moving existing boxes).</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="create standard rectangular annotation box">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to create a standard rectangular annotation box?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Ensure you are in Create Mode. Click and drag your mouse across the spectrogram to draw a bounding box around the acoustic event, then release.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="cancel creating box halfway escape right click">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to cancel creating a box if I change my mind halfway?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: While dragging to draw a new box, simply press <kbd class="kbd">Right-Click</kbd> or the <kbd class="kbd">Escape</kbd> key to discard the box immediately and switch back to Edit Mode.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="edit boundaries edges existing annotation resize">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to edit the boundaries of an existing annotation box?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: In Edit Mode, click the box you want to modify to select it. Then, hover over any of the four edges until your cursor changes, and click and drag the edge to resize it. You can also click the center of the box to drag and move the entire annotation.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="delete specific annotation trash keyboard d">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to delete a specific annotation from the canvas?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Select the annotation in Edit Mode, then press the <kbd class="kbd">Delete</kbd> key (or <kbd class="kbd">D</kbd>). Alternatively, you can click the "Delete Selected" trash can icon in the Annotation Tools section. You can doubel click the trash icon in the annotation box as well. </p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="magic wand auto snap boundary energy breath first search">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to use the Magic Wand tool to automatically snap a box to a sound's bounds?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click the Magic Wand button to arm it. Click near the target sound. The algorithm will automatically shrink-wrap the box to the exact frequency and time bounds based on the acoustic energy.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="adjust sensitivity magic wand scroll wheel">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to adjust the sensitivity of the Magic Wand tool?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: While the Magic Wand is armed, hold <kbd class="kbd">Shift</kbd> and scroll your mouse wheel. A tooltip will appear showing the Breadth-First Search (BFS) threshold percentage. A higher percentage (e.g., 5%) captures more faint background noise, while a lower percentage (e.g., 80%) restricts the box to only the loudest peaks.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="repeat mode identical sizes copy dimensions">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to rapidly create identical-sized annotations using Repeat Mode?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click the "Repeat Annotation" button to arm the tool. A dotted annotation box of same size of last committed annotation starts moving with the mouse. Simply click on new areas of the spectrogram to instantly stamp copies of the original box's exact dimensions. Note: Horizontal snap guide (pink line) is available.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="scc cross correlation automatically find similar label">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to automatically find and label similar sounds using the Run SCC (Cross-Correlation) tool?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Select one existing annotations to act as a template. Click "Run SCC". Tweak the settings in the form if required. The system will scan the entire audio track for similar acoustic patterns as per the 3 presents. Select any one preset to apply and generate new annotation boxes where matches are found.</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Species & Taxonomy Management</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="assign species taxonomy selector new existing">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to select  a species to create annotation?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Press species toggle button for Scientific name or common name. In the Species Search box type the common or scientific name, and select the matching suggestion.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="upload custom species list csv database">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to upload a custom species list CSV?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Manage Species List". Under the "Upload Custom CSV" section, choose your `.csv` file. It should contain standard taxonomy columns (e.g., common_name, scientific_name).</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="export current species list backup">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to export the current species list for backup?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open "Manage Species List". Click the "Export List as CSV" button to download a spreadsheet, or click "Save JS file" to export the raw JavaScript array structure used by Spectrolipi.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="quickly access recent species list">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to quickly access recently used species?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Ensure "Turn on Recent species list" is checked in the Spectrolipi Settings. A floating, draggable "Recent Species" list will appear on screen, giving you one-click access to species you've applied recently (last 10).</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Annotation Grid (Table Operations)</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="select multiple rows grid all once">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to select one, multiple, or all rows in the annotation grid?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click the checkbox in the first column of any row to select it. To select all rows simultaneously, click the master checkbox located at the very top of that column in the table header.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="sort grid columns begin time species">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to sort the grid by specific columns (like "Begin Time" or "Species")?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click directly on the column header text (e.g., click "Begin Time (s)"). Click it again to toggle between Ascending and Descending order.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="resize reorder columns grid tabulator">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to resize or reorder the columns in the grid?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: To resize, hover over the border between two column headers and drag horizontally. To reorder, click and hold a column header and drag it left or right to a new position.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="edit text notes directly grid cells">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to edit text notes directly inside the grid cells?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Double-click on any cell in the "Notes" column. An inline text editor will appear; type your notes and hit Enter to save. Use <kbd class="kbd">Tab</kbd> to quickly jump to the next row's note cell.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="bulk update species tags sex life stage multiple rows">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to bulk update Species or Metadata tags for multiple selected rows?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Check the boxes for the target rows in the grid. To update Species, choose a species in the search box and click the "Update Species" list icon in the Annotation Tools. To update tags (Sex, Life Stage), click the "Update Tags" icon in the Annotation Tools to open the bulk tag editor.</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Sound Editing (Destructive Tools)</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="select specific time span audio timeline highlight">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to select a specific time span on the audio timeline?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click the "Select Time Span" pointer icon under Sound Editing Tools. Click and drag horizontally across the spectrogram canvas to define a blue highlighted time block.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="cut completely remove section audio slice">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to cut and completely remove a section of audio?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: First, create a time span selection. Then, click the "Cut Audio" scissors icon. The highlighted audio will be deleted entirely from memory, and the track will collapse to fill the gap.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="replace section audio pure silence mute zero">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to replace a section of audio with pure silence?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Create a time span selection and click the "Silence Audio" icon. In the dialog box, ensure the mode is set to "Replace" and click Apply. The selected area's volume will be set to zero, but the total length of the track will remain identical.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="insert new silence audio track increase total length">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to insert new silence into the audio track to increase its total length?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Create a time span selection roughly where you want the silence inserted, and click the "Silence Audio" icon. Switch the mode to "Insert". Type in the duration in seconds (e.g., 2.5), and click Apply. The track length will increase.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="apply high pass low pass filter cutoff">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to apply a High Pass or Low Pass filter to a specific audio section?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Create a time selection. Click the "Apply Filters" icon. In the dialog, select either High Pass or Low Pass, enter your cutoff frequency in Hz, and click Apply.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="normalize volume amplitude peak decibel db">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to normalize the volume (amplitude) of the audio?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: You can normalize the whole file or a selected time span. Click the "Normalize" icon, enter a target peak decibel level (like -3dB), and click Apply.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="undo audio edit cut silence filter normalize mistake">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to undo an audio edit (cut, silence, filter) if I made a mistake?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Click the "Undo Edit" (rotate-left) icon in the Sound Editing Tools panel. This safely reverts the underlying audio buffer back to its state immediately prior to your last destructive action.</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Advanced AI & BirdNET Integration</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="birdnet ai classify sounds detect automatic model overlay">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to automatically detect and classify sounds using the BirdNET AI model?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Run BirdNET Model". A dialog will appear with configuration options. It may take a few seconds to load the model. Select your parameters and click "Start Analysis" to process the audio through the AI model locally in your browser.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="convert birdnet predictions annotation boxes spectrogram append">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to instantly convert BirdNET predictions into annotation boxes on my spectrogram?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: After running the analysis, you will see a list of detected species & unique species in the dialog. Select required species from the unique species list and click "Insert Annotations". The model's time-stamps will instantly become editable bounding boxes on your canvas.</p>
+      </div>
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Xeno-canto Integration</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="configure xeno-canto api key authentication password upload">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to configure my Xeno-canto API key?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Upload to Xeno-Canto". In the upload form, locate the "API Key" field at the bottom. You must copy and paste your personal API key directly from the "Your Account" page on the Xeno-canto website to authenticate.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="upload annotations directly xeno-canto form dataset set">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to upload my annotations directly to Xeno-canto?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Ensure you have assigned species to your annotations. Click "Upload to Xeno-Canto" in the hamburger menu. Fill out the comprehensive form. Note: Xeno-canto file no is Mandatory. Provide your API key. Select Direct Upload with API and click Priceed.</p>
+      </div>
+	  
+	  <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="export xeno-canto compliant json format without uploading direct">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to export a Xeno-canto compliant JSON file without uploading?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: In the "Upload to Xeno-Canto" form, fill out all your metadata fields, but instead of selecting Direct Upload with API, select "Export JSON". This generates the exact formatted json file that Xeno-canto expects, gets saved it locally in downloads folder. You can then manually upload to Xeno-canto.</p>
+      </div>
+	  
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="combine multiple local annotation files single xeno-canto dataset set">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to combine multiple local annotation files into a single Xeno-canto dataset?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the hamburger menu and select "Create Xeno-canto Set". A dashboard will open allowing you to upload multiple local audio files along with their respective CSV annotations. You can define global metadata (like location) for the entire batch and package them together for upload.</p>
+      </div>
+
+
+
+      <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+      <h3 style="color: var(--accent-color); margin-bottom: 1.5rem; font-size: 1.4rem;">Exporting Data & Media</h3>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="export current loaded audio wav file download">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to export the currently loaded audio as a WAV file?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Export Sound File". This will download a new `.wav` file of your current audio, which includes any destructive edits (cuts, silences, filters) you applied during the session.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="generate save individual wav audio clips annotation box slicing batch">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to generate and save individual WAV audio clips for every annotation box?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Generate Audio Clips". Spectrolipi will slice the audio track based on the start and end times of your annotations and download them as a batch of individual files directly to your computer.</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="export scrolling video spectrogram audio sync share">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to export a scrolling video of the spectrogram?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left hamburger menu and click "Export Video". This will capture a synchronized, scrolling video of the visual spectrogram canvas matched with the audio playback, perfect for sharing visual examples.</p>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // Navigation highlighting
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('section');
+
+    // Removed scroll-based active state logic
+
+    // Clear search on navigation
+    navLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+      });
+    });
+
+    // Real-time Search and Filter logic
+    const searchInput = document.getElementById('searchInput');
+    const cards = document.querySelectorAll('.card');
+    const modeBoxes = document.querySelectorAll('.mode-box');
+    const tableRows = document.querySelectorAll('tbody tr');
+    const docSections = document.querySelectorAll('.doc-section');
+    const qaItems = document.querySelectorAll('.qa-item');
+    const noResults = document.getElementById('noResults');
+
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase().trim();
+      let totalVisible = 0;
+
+      const isVisible = (el) => el.style.display !== 'none';
+
+      // Filter cards
+      cards.forEach(card => {
+        const title = card.querySelector('.card-title').textContent.toLowerCase();
+        const desc = card.querySelector('.card-desc').textContent.toLowerCase();
+        const keywords = card.getAttribute('data-keywords').toLowerCase();
+        
+        if (query === '' || title.includes(query) || desc.includes(query) || keywords.includes(query)) {
+          card.style.display = '';
+          totalVisible++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      // Filter Mode Boxes
+      modeBoxes.forEach(box => {
+        const text = box.textContent.toLowerCase();
+        const keywords = box.getAttribute('data-keywords').toLowerCase();
+        
+        if (query === '' || text.includes(query) || keywords.includes(query)) {
+          box.style.display = '';
+          totalVisible++;
+        } else {
+          box.style.display = 'none';
+        }
+      });
+
+      // Filter Table Rows
+      tableRows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const keywords = row.getAttribute('data-keywords').toLowerCase();
+        
+        if (query === '' || text.includes(query) || keywords.includes(query)) {
+          row.style.display = '';
+          totalVisible++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      // Filter QA Items
+      qaItems.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        const keywords = item.getAttribute('data-keywords').toLowerCase();
+        
+        if (query === '' || text.includes(query) || keywords.includes(query)) {
+          item.style.display = '';
+          totalVisible++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+
+      // Show/Hide section based on child visibility
+      docSections.forEach(section => {
+        const visibleCards = Array.from(section.querySelectorAll('.card')).filter(isVisible);
+        const visibleBoxes = Array.from(section.querySelectorAll('.mode-box')).filter(isVisible);
+        const visibleRows = Array.from(section.querySelectorAll('tbody tr')).filter(isVisible);
+        const visibleQa = Array.from(section.querySelectorAll('.qa-item')).filter(isVisible);
+
+        if (visibleCards.length > 0 || visibleBoxes.length > 0 || visibleRows.length > 0 || visibleQa.length > 0) {
+          section.style.display = '';
+        } else {
+          section.style.display = 'none';
+        }
+      });
+
+      // Toggle no results feedback
+      if (totalVisible === 0) {
+        noResults.style.display = 'block';
+      } else {
+        noResults.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
