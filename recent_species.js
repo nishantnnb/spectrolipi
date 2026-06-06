@@ -102,7 +102,7 @@
   closeBtn.onpointerdown = (e) => e.stopPropagation();
   closeBtn.onclick = (e) => {
     e.stopPropagation();
-    setFloatingRecentSpecies(false);
+    container.style.display = 'none';
   };
 
   titleGroup.appendChild(title);
@@ -278,8 +278,21 @@
   window.addEventListener('spectrogram-generated', () => {
     console.log('[RecentSpecies][spectrogram-generated] EVENT RECEIVED. Setting isSpectrogramLoaded=true (was', isSpectrogramLoaded, ')');
     isSpectrogramLoaded = true;
+    if (_spectroPoller) { clearInterval(_spectroPoller); _spectroPoller = null; }
     renderList();
   });
+
+  // Fallback poller: the spectrogram-generated event doesn't always reach this
+  // listener (last script loaded), so poll the globals until spectrogram is detected.
+  let _spectroPoller = !isSpectrogramLoaded ? setInterval(() => {
+    if (globalThis._spectroAudioBuffer || globalThis._spectroSpectra) {
+      console.log('[RecentSpecies][poller] Spectrogram detected via globals');
+      isSpectrogramLoaded = true;
+      clearInterval(_spectroPoller);
+      _spectroPoller = null;
+      renderList();
+    }
+  }, 500) : null;
 
   // Listen for species selections globally
   window.addEventListener('species-select', (e) => {
