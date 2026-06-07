@@ -21,8 +21,28 @@
     const rawList = localStorage.getItem('spectrolipi.recentSpecies.v1');
     if (rawList) {
       recentSpecies = JSON.parse(rawList);
+      // Ensure legacy items have addedAt to maintain their sequence
+      recentSpecies.forEach((sp, idx) => {
+        if (!sp.addedAt) {
+          sp.addedAt = Date.now() - idx * 1000;
+        }
+      });
     }
   } catch(e) {}
+
+  function saveRecentSpecies() {
+    try {
+      localStorage.setItem('spectrolipi.recentSpecies.v1', JSON.stringify(recentSpecies));
+    } catch(err) {}
+  }
+
+  function sortRecentSpecies() {
+    recentSpecies.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return (b.addedAt || 0) - (a.addedAt || 0);
+    });
+  }
 
   // Create UI
   const container = document.createElement('div');
@@ -168,28 +188,116 @@
     recentSpecies.forEach((sp, idx) => {
       const row = document.createElement('div');
       row.style.cssText = `
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         padding: 6px 10px;
         font-size: 12px;
         color: #fff;
         cursor: pointer;
         border-bottom: 1px solid rgba(255,255,255,0.05);
         transition: background 0.1s;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       `;
       if (idx === recentSpecies.length - 1) {
         row.style.borderBottom = 'none';
       }
       
+      const textSpan = document.createElement('span');
+      textSpan.style.cssText = 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;';
       const primaryText = displayMode === 'common' ? (sp.common || sp.scientific) : (sp.scientific || sp.common);
-      row.textContent = primaryText;
+      textSpan.textContent = primaryText;
+      
+      const actionContainer = document.createElement('div');
+      actionContainer.style.cssText = 'display: flex; align-items: center; gap: 4px;';
+      
+      const removeBtn = document.createElement('div');
+      removeBtn.title = "Remove species";
+      removeBtn.style.cssText = `
+        padding: 2px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ff5252;
+        opacity: 0;
+        transition: opacity 0.2s, background 0.2s;
+        border-radius: 3px;
+      `;
+      removeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+      
+      removeBtn.addEventListener('mouseenter', () => {
+        removeBtn.style.background = 'rgba(255, 0, 0, 0.2)';
+      });
+      removeBtn.addEventListener('mouseleave', () => {
+        removeBtn.style.background = 'transparent';
+      });
+      
+      removeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        recentSpecies.splice(idx, 1);
+        saveRecentSpecies();
+        renderList();
+      });
+      
+      const pinBtn = document.createElement('div');
+      pinBtn.title = sp.isPinned ? "Unpin species" : "Pin species";
+      pinBtn.style.cssText = `
+        padding: 2px 4px;
+        margin-left: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.2s, color 0.2s;
+        color: ${sp.isPinned ? '#64B5F6' : '#aaa'};
+        opacity: ${sp.isPinned ? '1' : '0.6'};
+      `;
+      
+      const iconHtmlSolid = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <g transform="translate(12,12) rotate(45) translate(-12,-12)">
+          <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h4.5v6.5l.5.5.5-.5V16H16v-2l-2-2z"/>
+        </g>
+      </svg>`;
+      
+      const iconHtmlUnpinned = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <mask id="pin-slash-mask-${idx}">
+          <rect width="24" height="24" fill="white"/>
+          <line x1="3" y1="3" x2="21" y2="21" stroke="black" stroke-width="4" stroke-linecap="round"/>
+        </mask>
+        <g mask="url(#pin-slash-mask-${idx})">
+          <g transform="translate(12,12) rotate(45) translate(-12,-12)">
+            <path d="M16 12V4h1V2H7v2h1v8l-2 2v2h4.5v6.5l.5.5.5-.5V16H16v-2l-2-2z"/>
+          </g>
+        </g>
+        <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>`;
+      
+      pinBtn.innerHTML = sp.isPinned ? iconHtmlSolid : iconHtmlUnpinned;
+      
+      pinBtn.addEventListener('mouseenter', () => {
+        if (!sp.isPinned) pinBtn.style.opacity = '1';
+      });
+      pinBtn.addEventListener('mouseleave', () => {
+        if (!sp.isPinned) pinBtn.style.opacity = '0.6';
+      });
+      
+      pinBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sp.isPinned = !sp.isPinned;
+        sortRecentSpecies();
+        saveRecentSpecies();
+        renderList();
+      });
       
       row.addEventListener('mouseenter', () => {
         row.style.background = 'rgba(21, 101, 192, 0.7)';
+        removeBtn.style.opacity = '1';
       });
       row.addEventListener('mouseleave', () => {
         row.style.background = 'transparent';
+        removeBtn.style.opacity = '0';
       });
       
       row.addEventListener('click', (e) => {
@@ -198,6 +306,11 @@
         triggerSelection(sp);
       });
       
+      actionContainer.appendChild(removeBtn);
+      actionContainer.appendChild(pinBtn);
+      
+      row.appendChild(textSpan);
+      row.appendChild(actionContainer);
       listContainer.appendChild(row);
     });
   }
@@ -286,18 +399,30 @@
       scientific: e.detail.scientific || ''
     };
     
-    recentSpecies = recentSpecies.filter(x => (x.scientific || x.common) !== (sp.scientific || sp.common));
-    recentSpecies.unshift(sp);
+    const isExisting = recentSpecies.some(x => (x.scientific || x.common) === (sp.scientific || sp.common));
+    if (isExisting) {
+      // FIFO: If already in the list, no action is taken to preserve its exact chronological position
+      return;
+    }
+    
+    const pinnedCount = recentSpecies.filter(x => x.isPinned).length;
+    if (pinnedCount >= MAX_SPECIES) {
+      // List is completely filled with pinned species; cannot add new unpinned item
+      return;
+    }
+    
+    sp.isPinned = false;
+    sp.addedAt = Date.now();
+    recentSpecies.push(sp);
+    sortRecentSpecies();
     
     if (recentSpecies.length > MAX_SPECIES) {
+      // The array is sorted: Pinned first, then Unpinned newest->oldest
+      // Thus, the very last element is guaranteed to be the oldest unpinned item.
       recentSpecies.pop();
     }
     
-    // Save updated list to localStorage
-    try {
-      localStorage.setItem('spectrolipi.recentSpecies.v1', JSON.stringify(recentSpecies));
-    } catch(err) {}
-    
+    saveRecentSpecies();
     renderList();
   });
 
