@@ -8,27 +8,21 @@
   let isActive = true;
   let isSpectrogramLoaded = !!(globalThis._spectroAudioBuffer || globalThis._spectroSpectra);
 
-  console.log('[RecentSpecies][INIT] isSpectrogramLoaded=', isSpectrogramLoaded, 'isActive=', isActive, '_spectroAudioBuffer=', !!globalThis._spectroAudioBuffer, '_spectroSpectra=', !!globalThis._spectroSpectra);
-
   // Initialize from settings and load saved recent species
   try {
     const raw = localStorage.getItem('spectrolipi.settings.v1');
-    console.log('[RecentSpecies][INIT] localStorage settings raw=', raw);
     if (raw) {
       const s = JSON.parse(raw);
-      console.log('[RecentSpecies][INIT] parsed settings: recentSpeciesEnabled=', s.recentSpeciesEnabled, 'defaultSpeciesFormat=', s.defaultSpeciesFormat);
       if (s.defaultSpeciesFormat) displayMode = s.defaultSpeciesFormat;
       if (s.recentSpeciesEnabled === false) isActive = false;
     }
     
     // Load recent species list
     const rawList = localStorage.getItem('spectrolipi.recentSpecies.v1');
-    console.log('[RecentSpecies][INIT] localStorage recentSpecies rawList=', rawList);
     if (rawList) {
       recentSpecies = JSON.parse(rawList);
     }
-  } catch(e) { console.error('[RecentSpecies][INIT] error:', e); }
-  console.log('[RecentSpecies][INIT] FINAL STATE: isActive=', isActive, 'isSpectrogramLoaded=', isSpectrogramLoaded, 'recentSpecies.length=', recentSpecies.length);
+  } catch(e) {}
 
   // Create UI
   const container = document.createElement('div');
@@ -159,23 +153,15 @@
   container.appendChild(listContainer);
 
   function renderList() {
-    const caller = new Error().stack.split('\n')[2]?.trim() || 'unknown';
-    console.log('[RecentSpecies][renderList] CALLED from:', caller);
     // Dynamic fallback: if the spectrogram-generated event was missed, check globals directly
     if (!isSpectrogramLoaded) {
       isSpectrogramLoaded = !!(globalThis._spectroAudioBuffer || globalThis._spectroSpectra);
-      if (isSpectrogramLoaded) console.log('[RecentSpecies][renderList] FALLBACK detected spectrogram is loaded via globals');
     }
-    console.log('[RecentSpecies][renderList] CONDITIONS: recentSpecies.length=', recentSpecies.length, 'isActive=', isActive, 'isSpectrogramLoaded=', isSpectrogramLoaded);
-    console.log('[RecentSpecies][renderList] container in DOM=', document.body.contains(container), 'container.id=', container.id);
     if (recentSpecies.length === 0 || !isActive || !isSpectrogramLoaded) {
-      const reason = recentSpecies.length === 0 ? 'EMPTY_LIST' : !isActive ? 'INACTIVE' : 'SPECTRO_NOT_LOADED';
-      console.log('[RecentSpecies][renderList] HIDING panel. Reason:', reason);
       container.style.display = 'none';
       return;
     }
     
-    console.log('[RecentSpecies][renderList] SHOWING panel with', recentSpecies.length, 'items');
     container.style.display = 'flex';
     listContainer.innerHTML = '';
     
@@ -217,7 +203,6 @@
   }
 
   function setFloatingRecentSpecies(state) {
-    console.log('[RecentSpecies][setFloating] called with state=', state, '-> isActive will be', !!state);
     isActive = !!state;
     renderList();
     
@@ -276,7 +261,6 @@
   renderList(); // Initial render if DOM already loaded
 
   window.addEventListener('spectrogram-generated', () => {
-    console.log('[RecentSpecies][spectrogram-generated] EVENT RECEIVED. Setting isSpectrogramLoaded=true (was', isSpectrogramLoaded, ')');
     isSpectrogramLoaded = true;
     if (_spectroPoller) { clearInterval(_spectroPoller); _spectroPoller = null; }
     renderList();
@@ -286,7 +270,6 @@
   // listener (last script loaded), so poll the globals until spectrogram is detected.
   let _spectroPoller = !isSpectrogramLoaded ? setInterval(() => {
     if (globalThis._spectroAudioBuffer || globalThis._spectroSpectra) {
-      console.log('[RecentSpecies][poller] Spectrogram detected via globals');
       isSpectrogramLoaded = true;
       clearInterval(_spectroPoller);
       _spectroPoller = null;
@@ -296,17 +279,12 @@
 
   // Listen for species selections globally
   window.addEventListener('species-select', (e) => {
-    console.log('[RecentSpecies][species-select] EVENT RECEIVED! detail=', e.detail);
-    if (!e.detail || (!e.detail.scientific && !e.detail.common)) {
-      console.log('[RecentSpecies][species-select] EARLY RETURN - no detail or both scientific and common are empty');
-      return;
-    }
+    if (!e.detail || (!e.detail.scientific && !e.detail.common)) return;
     
     const sp = {
       common: e.detail.common || '',
       scientific: e.detail.scientific || ''
     };
-    console.log('[RecentSpecies][species-select] Adding species:', sp, 'recentSpecies before:', recentSpecies.length);
     
     recentSpecies = recentSpecies.filter(x => (x.scientific || x.common) !== (sp.scientific || sp.common));
     recentSpecies.unshift(sp);
@@ -314,13 +292,11 @@
     if (recentSpecies.length > MAX_SPECIES) {
       recentSpecies.pop();
     }
-    console.log('[RecentSpecies][species-select] recentSpecies after:', recentSpecies.length);
     
     // Save updated list to localStorage
     try {
       localStorage.setItem('spectrolipi.recentSpecies.v1', JSON.stringify(recentSpecies));
-      console.log('[RecentSpecies][species-select] Saved to localStorage OK');
-    } catch(err) { console.error('[RecentSpecies][species-select] localStorage save error:', err); }
+    } catch(err) {}
     
     renderList();
   });
