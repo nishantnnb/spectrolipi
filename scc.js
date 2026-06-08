@@ -1,1 +1,1408 @@
-!function(){const t="sccModal",e="sccModalStyles",n=(t,e,n)=>Math.max(e,Math.min(n,t)),a=t=>Number(t).toFixed(4);async function r(t=800){try{const e=globalThis._playbackScrollJump&&"function"==typeof globalThis._playbackScrollJump.pause?globalThis._playbackScrollJump:globalThis._playback&&"function"==typeof globalThis._playback.pause?globalThis._playback:null;if(!e)return;const n=e.pause&&e.pause.call(e);n&&"function"==typeof n.then&&await Promise.race([n,new Promise((e,n)=>setTimeout(n,t))]).catch(()=>{})}catch(t){}}function i(t,e){try{const n=Array.isArray(t)?t.slice():[];if(n.length<=1)return n;n.sort((t,e)=>t.t1-e.t1||t.t2-e.t2);const a=[];let r={...n[0]};for(let t=1;t<n.length;t++){const i=n[t];if(i.t1-r.t2<e){r.t2=Math.max(r.t2,i.t2),r.f1=Math.min(r.f1,i.f1),r.f2=Math.max(r.f2,i.f2);const t="number"==typeof r.score?r.score:Number(r.score||0),e="number"==typeof i.score?i.score:Number(i.score||0);r.score=Math.max(isFinite(t)?t:0,isFinite(e)?e:0)}else a.push(r),r={...i}}return a.push(r),a}catch(e){return Array.isArray(t)?t:[]}}function o(){let t=[];try{window.annotationGrid&&"function"==typeof window.annotationGrid.getSelectedRows&&!1!==window.annotationGrid.initialized&&(t=window.annotationGrid.getSelectedRows().map(t=>t.getData()))}catch(t){return[]}if(0===t.length)try{const e=globalThis._editAnnotations&&globalThis._editAnnotations.getEditingId();if(e){const n=(globalThis._annotations&&"function"==typeof globalThis._annotations.getAll?globalThis._annotations.getAll():[]).find(t=>String(t.id)===String(e));n&&(t=[n])}}catch(t){}return t}function s(){return{spectra:globalThis._spectroSpectra||null,bins:globalThis._spectroBins||0,framesPerSec:globalThis._spectroFramesPerSec||0,sampleRate:globalThis._spectroSampleRate||44100}}function c(t,e,a){const r=e/2,i=n(t/Math.max(1e-9,r),0,1);return Math.min(a-1,Math.max(0,Math.floor(i*(a-1))))}function l(t,e,a){const r=Math.floor(n(t,0,Number.MAX_SAFE_INTEGER)*Math.max(1e-9,e));return"number"==typeof a&&isFinite(a)?Math.min(Math.max(0,r),Math.max(0,a-1)):Math.max(0,r)}function d(t,e,n,a,r,i,o,s){const d=c(o,a,e),m=c(s,a,e);let h=Math.min(d,m),p=Math.max(d,m);h=Math.max(0,h-1),p=Math.min(e-1,p+1);const u=Math.max(1,p-h+1),f=Math.max(1,Math.floor((t.length||0)/e)),g=l(r,n,f),y=l(i,n,f);let x=Math.min(g,y),b=Math.max(g,y);x=Math.max(0,x-1),b=Math.min(f-1,b+1);const w=Math.max(1,b-x+1),M=new Float32Array(u*w);for(let n=0;n<w;n++){const a=(x+n)*e;for(let e=0;e<u;e++){const r=h+e;M[e*w+n]=t[a+r]||0}}return{data:M,width:w,height:u,frameStart:x,frameEnd:b,binStart:h,binEnd:p}}function m(t,e,n,a,r){if(a===e&&r===n)return{data:t.slice(0),width:e,height:n};const i=new Float32Array(a*r),o=(e-1)/Math.max(1,a-1),s=(n-1)/Math.max(1,r-1);for(let c=0;c<r;c++){const r=c*s,l=Math.floor(r),d=Math.min(n-1,l+1),m=r-l;for(let n=0;n<a;n++){const r=n*o,s=Math.floor(r),h=Math.min(e-1,s+1),p=r-s,u=t[l*e+s],f=t[l*e+h],g=t[d*e+s],y=u+(f-u)*p,x=g+(t[d*e+h]-g)*p;i[c*a+n]=y+(x-y)*m}}return{data:i,width:a,height:r}}function h(t,e,n,a,r){const i=Math.max(1,Math.floor(a||1)),o=Math.max(1,Math.floor(r||1)),s=Math.max(1,Math.floor((e+i-1)/i)),c=Math.max(1,Math.floor((n+o-1)/o)),l=new Float32Array(s*c);for(let a=0;a<c;a++){const r=a*o,c=Math.min(n,r+o);for(let n=0;n<s;n++){const o=n*i,d=Math.min(e,o+i);let m=0,h=0;for(let n=r;n<c;n++){let a=n*e+o;for(let e=o;e<d;e++)m+=t[a++]||0,h++}l[a*s+n]=h?m/h:0}}return{data:l,width:s,height:c,strideX:i,strideY:o}}function p(t){const e=t.length||1;let n=0,a=0;for(let r=0;r<e;r++){const e=t[r];n+=e,a+=e*e}const r=n/e,i=Math.max(0,a/e-r*r);return{mean:r,std:Math.sqrt(i+1e-12)}}function u(t){const e=new Float32Array(t.length),n=p(t);for(let a=0;a<t.length;a++)e[a]=(t[a]-n.mean)/(n.std||1e-6);return{data:e,stat:n}}function f(t,e,a,r,i,o,s,c){if(r<0||i<0||r+o>e||i+s>a)return-1;const l=o*s;let d=0,m=0,h=0,p=0,u=0;for(let n=0;n<s;n++){const a=(i+n)*e+r,s=n*o;for(let e=0;e<o;e++){const n=t[a+e],r=c[s+e];d+=n,m+=n*n,h+=r,p+=r*r,u+=n*r}}const f=d/l,g=h/l,y=Math.max(0,m/l-f*f),x=Math.max(0,p/l-g*g),b=Math.sqrt(y),w=Math.sqrt(x);if(b<1e-4||w<1e-4)return-1;return n((u/l-f*g)/(b*w),-1,1)}function g(t,e,n){const a=new Float64Array((e+1)*(n+1));for(let r=1;r<=n;r++){let n=0;for(let i=1;i<=e;i++){n+=t[(r-1)*e+(i-1)]||0;a[r*(e+1)+i]=a[(r-1)*(e+1)+i]+n}}return{data:a,width:e+1,height:n+1}}function y(t,e,n,a,r,i,o){const s=a+i,c=r+o,l=t[r*e+a],d=t[r*e+s],m=t[c*e+a];return t[c*e+s]-d-m+l}async function x(t,e,a,r,i,o,s=2e3,c){const l=Math.max(1,e-i+1),d=Math.max(1,a-o+1),m=new Float32Array(l*d);let h,u;if(c&&c.S&&c.S2&&c.S.width===e+1)h=c.S,u=c.S2;else{h=g(t,e,a);const n=new Float32Array(e*a);for(let e=0;e<t.length;e++){const a=t[e];n[e]=a*a}u=g(n,e,a)}const f=p(r),x=Math.max(f.std,1e-6),b=i*o;let w=0;for(let a=0;a<d;a++){const c=a+1;for(let d=0;d<l;d++){const p=d+1,f=y(h.data,h.width,h.height,p,c,i,o),g=y(u.data,u.width,u.height,p,c,i,o),M=f/b,v=Math.max(0,g/b-M*M),S=Math.sqrt(v+1e-12);let E=0;for(let n=0;n<o;n++){const o=(a+n)*e+d,s=n*i;for(let e=0;e<i;e++)E+=(t[o+e]-M)*r[s+e]}const k=n(E/(S*x*b||1e-9),-1,1);m[a*l+d]=k,w++,w%s===0&&await new Promise(t=>setTimeout(t,0))}}return{data:m,width:l,height:d}}function b(t,e,n,a,r,i,o=1e4){const s=[];for(let r=0;r<n;r++)for(let n=0;n<e;n++){const i=t[r*e+n];i<a||s.push({x:n,y:r,s:i})}s.sort((t,e)=>e.s-t.s||t.x-e.x||t.y-e.y);const c=[],l=new Uint8Array(e*n),d=Math.max(1,Math.floor(r)),m=Math.max(1,Math.floor(i));for(const t of s){let a=!1;for(let r=Math.max(0,t.y-m);r<=Math.min(n-1,t.y+m)&&!a;r++)for(let n=Math.max(0,t.x-d);n<=Math.min(e-1,t.x+d);n++)if(l[r*e+n]){a=!0;break}if(!a){c.push(t);for(let a=Math.max(0,t.y-m);a<=Math.min(n-1,t.y+m);a++)for(let n=Math.max(0,t.x-d);n<=Math.min(e-1,t.x+d);n++)l[a*e+n]=1;if(c.length>=o)break}}return c}function w(t,e){const n=Math.max(t.t1,e.t1),a=Math.max(t.f1,e.f1),r=Math.min(t.t2,e.t2),i=Math.min(t.f2,e.f2),o=Math.max(0,r-n)*Math.max(0,i-a),s=Math.max(0,t.t2-t.t1)*Math.max(0,t.f2-t.f1),c=Math.max(0,e.t2-e.t1)*Math.max(0,e.f2-e.f1);return o/Math.max(1e-12,s+c-o)}function M(t,e=.3){const n=[];for(const a of t){let t=null;for(const r of n)if(w(a,r)>e){try{const t=new Set(r.templateIds||[]);(a.templateIds||[]).forEach(e=>t.add(e)),r.templateIds=Array.from(t)}catch(t){}t=r;break}t||n.push(a)}return n}function v(){const n=function(){if(document.getElementById(t))return document.getElementById(t);if(!document.getElementById(e)){const n=document.createElement("style");n.id=e,n.textContent=`\n#${t} { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 2147483600; background: rgba(0,0,0,0.45); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);} \n  #${t} .card { position: relative; width: 96%; max-width: 760px; max-height: 90vh; overflow: auto; background: #0f1216; color: #fff; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 12px 36px rgba(0,0,0,0.35); padding: 14px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }\n  #${t} h3 { margin: 4px 0 10px 0; font-size: 16px; font-weight: 600; }\n  #${t} .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }\n  /* Each .row is a horizontal label+control pair so the form appears as two compact columns */\n  #${t} .row { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 0; }\n  #${t} label { font-size: 12px; color: #cbd5e1; margin: 0; display: inline-block; flex: 0 0 36%; min-width: 110px; }\n  /* controls occupy remaining space but are capped to avoid overly wide inputs */\n  #${t} input[type="number"], #${t} input[type="text"], #${t} select {\n    flex: 1 1 160px; max-width: 260px; box-sizing: border-box; background: #0b0e12; color: #fff; border: 1px solid #1f2937; border-radius: 6px; padding: 6px 8px; font-size: 13px;\n  }\n  #${t} input[type="number"]::-webkit-outer-spin-button, #${t} input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }\n  /* Mobile: stack label above control and use full width */\n  @media (max-width: 640px) { \n    #${t} .grid { grid-template-columns: 1fr; }\n    #${t} .row { flex-direction: column; align-items: stretch; }\n    #${t} label { flex: 0 0 auto; min-width: 0; margin-bottom: 6px; }\n    #${t} input[type="number"], #${t} input[type="text"], #${t} select { max-width: 100%; }\n  }\n  #${t} .actions { margin-top: 12px; display: flex; gap: 10px; justify-content: flex-end; }\n  #${t} .btn { background: #2196F3; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; cursor: pointer; }\n  #${t} .btn[disabled] { opacity: 0.6; cursor: not-allowed; }\n  #${t} .progress { margin-top: 6px; font-size: 12px; color: #9ca3af; }\n  @media (max-width: 640px) { #${t} .grid { grid-template-columns: 1fr; } }\n        `,document.head.appendChild(n)}const n=document.createElement("div");return n.id=t,n.innerHTML='\n      <div class="card" role="dialog" aria-modal="true" aria-label="Run SCC options">\n        <h3>Run Spectrogram Cross-Correlation (SCC)</h3>\n        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">\n          <div style="font-size:13px;color:#cbd5e1;font-weight:600">Search SCC parameters</div>\n          <div>\n            <button id="scc-scan" class="btn" style="background:#10b981;padding:6px 10px;font-size:13px;">Search SCC parameters</button>\n            <button id="scc-stop" class="btn" style="background:#ef4444;padding:6px 10px;font-size:13px;display:none;margin-left:6px;">Stop</button>\n          </div>\n        </div>\n\n  <div style="margin-bottom:8px;color:#f1f5f9;font-size:13px">Note: Auto annotations may not be accurate. Please review the results carefully and do the necessary edits.</div>\n\n        <div class="grid">\n          <div class="row">\n            <label for="scc-mindur">Min duration (ms)</label>\n            <input id="scc-mindur" type="number" min="0" max="10000" step="10" value="50">\n          </div>\n          <div class="row">\n            <label for="scc-minfreq">Frequency include: Min (Hz)</label>\n            <input id="scc-minfreq" type="number" min="0" step="1" value="0">\n          </div>\n          <div class="row">\n            <label for="scc-maxfreq">Frequency include: Max (Hz)</label>\n            <input id="scc-maxfreq" type="number" min="0" step="1" value="22050">\n          </div>\n        </div>\n  <div class="progress" id="scc-progress" aria-live="polite"></div>\n  <div id="scc-presets-area" style="margin-top:8px;margin-bottom:8px;display:none;background:#071018;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"></div>\n  <div class="actions" style="align-items:center;">\n          <label id="scc-merge-label" title="This combines the annotations with distance less than the input duration." style="display:flex;align-items:center;gap:8px;margin-right:auto;font-size:13px;color:#cbd5e1;white-space:nowrap">\n            <input type="checkbox" id="scc-merge" />\n            <span>Merge detections below</span>\n            <input id="scc-merge-gap" type="number" min="0" max="10" step="0.1" value="1.0" style="width:68px;background:#0b1523;border:1px solid rgba(255,255,255,0.08);color:#e5e7eb;padding:4px 6px;border-radius:4px"> \n            <span>sec apart</span>\n          </label>\n        </div>\n        \x3c!-- top-right standard close button (X) --\x3e\n        <button id="scc-close-x" aria-label="Close" title="Close" style="position:absolute;top:10px;right:12px;background:transparent;border:none;color:#9ca3af;font-size:20px;line-height:1;cursor:pointer;padding:6px;border-radius:6px">&times;</button>\n      </div>',document.body.appendChild(n),n}();return n.style.display="flex",n}const S={val:null},E={wheel:null,touch:null};let k=null,T=null,_=null,C=null;function q(t){switch(String(t||"balanced")){case"fast":return{sx:3,sy:3};case"accurate":return{sx:1,sy:1};default:return{sx:2,sy:2}}}async function A(t,e,n,a,r,i){const o=Date.now(),s=[];let c=0,l=0,d=0,y=0,w=0;const M=q(a.quality),v=Math.max(1,Number(a.coarseSX)||Math.max(2,M.sx)),S=Math.max(1,Number(a.coarseSY)||Math.max(2,M.sy)),E=h(e.data,e.width,e.height,v,S),k=function(){try{const t=new Float32Array(E.data.length);for(let e=0;e<E.data.length;e++){const n=E.data[e];t[e]=n*n}const e=g(E.data,E.width,E.height);return{S:e,S2:g(t,E.width,E.height)}}catch(t){return null}}(),T=N(E.data,a.energyPct),_=I(a.pitchTolPct,a.pitchSteps),C=I(a.timeTolPct,a.timeSteps);for(let g=0;g<n.length;g++){if(i&&i.cancelled){return{detections:s,coarsePeaks:c,rawCandidates:l,variantsTried:d,skippedLowVar:y,skippedTooLarge:w,elapsedMs:Date.now()-o,aborted:!0}}const M=n[g];for(let n=0;n<_.length;n++)for(let g=0;g<C.length;g++){if(i&&i.cancelled){return{detections:s,coarsePeaks:c,rawCandidates:l,variantsTried:d,skippedLowVar:y,skippedTooLarge:w,elapsedMs:Date.now()-o,aborted:!0}}const q=_[n],A=C[g],I=Math.max(3,Math.round(M.height*q)),$=Math.max(3,Math.round(M.width*A)),N=m(M.data,M.width,M.height,$,I),L=p(N.data);if(d++,!r){const t=.001;if(L.std<t){y++;continue}}const P=h(N.data,N.width,N.height,v,S);if(E.width<P.width||E.height<P.height){w++;continue}const F=u(P.data),B=u(N.data),D=await x(E.data,E.width,E.height,F.data,P.width,P.height,2e3,k),R=Math.max(2,Math.floor(.9*P.width)),z=Math.max(2,Math.floor(.7*P.height)),W=a&&Number(a.maxCandidates)?Math.max(1,Number(a.maxCandidates)):5e4,H="number"==typeof a.coarseThresh?Math.max(-1,Math.min(1,a.coarseThresh)):0,j=b(D.data,D.width,D.height,H,R,z,W);c+=j.length;const V=Math.max(200,Math.floor(.05*j.length)),G=a&&Number(a.maxRefine)?Math.max(1,Number(a.maxRefine)):Math.min(j.length,V);for(let n=0;n<j.length&&n<G;n++){const r=j[n],i=r.x,o=r.y,c=P.width,d=P.height,m=i*v,h=o*S,p=e.frameStart+m,u=p+c*v-1,g=e.binStart+h,y=g+d*S-1,x=p/Math.max(1e-9,t.framesPerSec),b=(u+1)/Math.max(1e-9,t.framesPerSec),w=t.sampleRate/2,k=g/Math.max(1,t.bins-1)*w,_=y/Math.max(1,t.bins-1)*w;if(Math.max(0,1e3*(b-x))<a.minDurMs)continue;if("number"==typeof a.minFreq&&"number"==typeof a.maxFreq&&(_<a.minFreq||k>a.maxFreq))continue;let C=0,I=0;for(let t=0;t<d;t++){const e=(o+t)*E.width+i;for(let t=0;t<c;t++)C+=E.data[e+t]||0,I++}if(C/Math.max(1,I)<T)continue;const $=f(e.data,e.width,e.height,m,h,N.width,N.height,B.data);$>-.999&&(l++,s.push({t1:x,t2:b,f1:k,f2:_,score:$,variant:{pitchScale:q,timeScale:A},templateIds:M.srcIdList.slice()}))}if(await new Promise(t=>setTimeout(t,0)),i&&i.cancelled){return{detections:s,coarsePeaks:c,rawCandidates:l,variantsTried:d,skippedLowVar:y,skippedTooLarge:w,elapsedMs:Date.now()-o,aborted:!0}}}}return{detections:s,coarsePeaks:c,rawCandidates:l,variantsTried:d,skippedLowVar:y,skippedTooLarge:w,elapsedMs:Date.now()-o}}function I(t,e){const n=Math.max(0,Number(t)||0)/100;let a=Math.max(1,Math.min(11,Math.round(Number(e)||1)));if(a%2==0&&(a+=1),a<=1||n<=0)return[1];const r=(a-1)/2,i=[];for(let t=-r;t<=r;t++)i.push(1+t*n/r);return i}function $(t,e){if(!t.length||"none"===e)return null;const n=t[0],a=n.width,r=n.height,i=t.map(t=>t.width===a&&t.height===r?t.data:m(t.data,t.width,t.height,a,r).data),o=new Float32Array(a*r);if("mean"===e)for(let t=0;t<o.length;t++){let e=0;for(let n=0;n<i.length;n++)e+=i[n][t];o[t]=e/i.length}else{const t=new Float32Array(i.length);for(let e=0;e<o.length;e++){for(let n=0;n<i.length;n++)t[n]=i[n][e];const n=Array.from(t).sort((t,e)=>t-e);o[e]=n[Math.floor(n.length/2)]}}return{data:o,width:a,height:r}}function N(t,e){if(!t.length)return 0;const a=Array.from(t).sort((t,e)=>t-e);return a[n(Math.floor(e/100*(a.length-1)),0,a.length-1)]}function L(){const e=document.getElementById("runSccBtn");function n(){const t=document.getElementById("scc-scan");if(!t)return;if(!_)return void(t.disabled=!1);const e=o(),n=e&&1===e.length?e[0].id:null,a=document.getElementById("scc-mindur"),r=document.getElementById("scc-minfreq"),i=document.getElementById("scc-maxfreq"),s=Math.max(0,Number(a?a.value:"0"))||0,c=Number(r?r.value:"0")||0,l=Number(i?i.value:"0")||0;if(String(n)!==String(_.id)||s!==_.minDur||c!==_.minFreq||l!==_.maxFreq){t.disabled=!1;const e=document.getElementById("scc-presets-area");e&&(e.style.display="none")}else{t.disabled=!0;const e=document.getElementById("scc-presets-area");e&&k&&(e.style.display="block")}}e&&(e.__sccWired||(e.addEventListener("click",async()=>{try{try{const t=o()||[];if(!t||1!==t.length)return console.warn("SCC abort: No single row selected."),void alert("Please select only 1 template row to run SCC.");if(0===Array.from(new Set(t.map(t=>(t.scientificName||"").trim()).filter(Boolean))).length)return console.warn("SCC abort: No scientific name."),void alert("Selected template contains no Scientific Name. Please set the Species for your template row before running SCC.")}catch(t){}try{await r(800)}catch(t){}(function(){const e=v();S.val=document.body.style.overflow,document.body.style.overflow="hidden";try{const e=function(e){try{const n=document.getElementById(t);if(!n)return;const a=n.querySelector(".card");if(!a)return;if(!a.contains(e.target))return e.preventDefault(),void e.stopPropagation();let r=e.target,i=!1;const o=e.deltaY||0;for(;r&&r!==a;){try{const t=window.getComputedStyle(r).overflowY;if("auto"===t||"scroll"===t){const t=r.scrollTop||0,e=r.scrollHeight||0,n=r.clientHeight||0;if(o<0&&t>0){i=!0;break}if(o>0&&t+n<e){i=!0;break}}}catch(t){}r=r.parentElement}i||(e.preventDefault(),e.stopPropagation())}catch(t){}},n=function(e){try{const n=document.getElementById(t);if(!n)return;const a=n.querySelector(".card");if(!a)return;a.contains(e.target)||(e.preventDefault(),e.stopPropagation())}catch(t){}};E.wheel=e,E.touch=n,document.addEventListener("wheel",e,{passive:!1,capture:!0}),document.addEventListener("touchmove",n,{passive:!1,capture:!0})}catch(t){}})();const e=t=>document.getElementById(t);setTimeout(()=>{const t=e("scc-mindur");t&&t.focus()},50);let c=!0;try{const t=o()||[],n=1===t.length?t[0].id:null;if(_&&n&&String(_.id)===String(n)){const t=document.getElementById("scc-presets-area");t&&k&&(t.style.display="block");const n=e("scc-mindur"),a=e("scc-minfreq"),r=e("scc-maxfreq");n&&(n.value=String(_.minDur)),a&&(a.value=String(_.minFreq)),r&&(r.value=String(_.maxFreq));const i=document.getElementById("scc-scan");i&&(i.disabled=!0),c=!1}else{const t=document.getElementById("scc-presets-area");t&&(t.style.display="none");const e=document.getElementById("scc-scan");e&&(e.disabled=!1)}}catch(t){}if(c)try{const t=o();if(t&&t.length){const n=Math.max(0,Math.min(...t.map(t=>Number(t.lowFreq)||0))-100),a=Math.min((globalThis._spectroSampleRate||44100)/2,Math.max(...t.map(t=>Number(t.highFreq)||0))+100),r=e("scc-minfreq"),i=e("scc-maxfreq");r&&(r.value=String(Math.max(0,Math.floor(n)))),i&&(i.value=String(Math.max(0,Math.ceil(a))));try{const n=t.map(t=>{const e=Number(t.beginTime)||0,n=Number(t.endTime)||0;return Math.max(0,n-e)}),a=n.length?Math.max(...n):0,r=Math.max(10,Math.round(1e3*a*.25)),i=e("scc-mindur");i&&(i.value=String(r))}catch(t){}}}catch(t){}const l=e("scc-run"),m=e("scc-cancel"),h=()=>function(){const e=document.getElementById(t);e&&(e.style.display="none");try{C&&(C.cancelled=!0)}catch(t){}document.body.style.overflow=S.val||"";try{E.wheel&&(document.removeEventListener("wheel",E.wheel,{capture:!0}),E.wheel=null),E.touch&&(document.removeEventListener("touchmove",E.touch,{capture:!0}),E.touch=null)}catch(t){}try{const t=document.getElementById("createEditToggle");t&&"create"===String(t.dataset.mode||"").toLowerCase()&&t.dispatchEvent(new CustomEvent("mode-change",{detail:{mode:"edit"},bubbles:!0}))}catch(t){}}();m&&(m.onclick=()=>{try{C&&(C.cancelled=!0)}catch(t){}h()});try{const t=e("scc-close-x");t&&!t.__wired&&(t.addEventListener("click",h),t.__wired=!0)}catch(t){}const p=e("scc-mindur"),u=e("scc-minfreq"),f=e("scc-maxfreq");p&&!p.__sccWired&&(p.addEventListener("input",n),p.__sccWired=!0),u&&!u.__sccWired&&(u.addEventListener("input",n),u.__sccWired=!0),f&&!f.__sccWired&&(f.addEventListener("input",n),f.__sccWired=!0);const g=e("scc-scan"),y=e("scc-stop"),x=document.getElementById("scc-presets-area");y&&!y.__wired&&(y.addEventListener("click",()=>{try{C&&(C.cancelled=!0)}catch(t){}}),y.__wired=!0),g&&!g.__scanned&&(g.addEventListener("click",async()=>{if(!x)return;const t=o();if(t&&0!==t.length){x.style.display="block",x.innerHTML='<div style="color:#9ca3af">Searching presets, please wait...</div>';try{C&&(C.cancelled=!0)}catch(t){}C={cancelled:!1};try{g.disabled=!0,l&&(l.disabled=!0)}catch(t){}y&&(y.style.display="inline-block",y.disabled=!1);try{const t=o();if(!t||0===t.length)return void(x.innerHTML='<div style="color:#f97316">Please select a row first.</div>');const n=s();if(!n.spectra||!n.bins||!n.framesPerSec)return void(x.innerHTML='<div style="color:#f97316">Spectrogram not ready.</div>');const r=Number(e("scc-minfreq").value||"0")||0,c=Number(e("scc-maxfreq").value||String(Math.max(1e3,(n.sampleRate||44100)/2)))||Math.max(1e3,(n.sampleRate||44100)/2),l="number"==typeof globalThis._spectroDuration&&isFinite(globalThis._spectroDuration)?globalThis._spectroDuration:Math.max(...t.map(t=>Number(t.endTime)||0)),m=d(n.spectra,n.bins,n.framesPerSec,n.sampleRate,0,l,r,c),h=Math.max(0,Number(e("scc-mindur").value||"0")||0);_={id:t[0].id,minDur:h,minFreq:r,maxFreq:c};const p=t.map(t=>d(n.spectra,n.bins,n.framesPerSec,n.sampleRate,Number(t.beginTime)||0,Number(t.endTime)||0,Number(t.lowFreq)||0,Number(t.highFreq)||0)),u=[{name:"Quick Scan",opts:{threshold:.3,quality:"fast",pitchTolPct:5,pitchSteps:3,timeTolPct:0,timeSteps:1,composite:"none",energyPct:20,minDurMs:30}},{name:"Balanced Accurate",opts:{threshold:.55,quality:"balanced",pitchTolPct:10,pitchSteps:7,timeTolPct:5,timeSteps:1,composite:"mean",energyPct:8,minDurMs:50}},{name:"High Recall",opts:{threshold:.3,quality:"balanced",pitchTolPct:20,pitchSteps:11,timeTolPct:10,timeSteps:3,composite:"none",energyPct:0,minDurMs:20}}],f=[];let g=!1,y=null;try{y=function(t,e){try{if(!t)return null;const a=document.createElement("div");a.className="scc-scan-overlay",a.style.position="absolute",a.style.inset="0",a.style.display="flex",a.style.alignItems="center",a.style.justifyContent="center",a.style.pointerEvents="none";const r=document.createElement("div");r.className="scc-scan-box",r.style.pointerEvents="auto",r.style.width="460px",r.style.height="120px",r.style.display="flex",r.style.flexDirection="row",r.style.alignItems="center",r.style.justifyContent="flex-start",r.style.background="rgba(6,8,10,0.80)",r.style.borderRadius="10px",r.style.padding="12px 14px",r.style.gap="8px";const i="http://www.w3.org/2000/svg",o=document.createElementNS(i,"svg");o.setAttribute("width","96"),o.setAttribute("height","96"),o.setAttribute("viewBox","0 0 96 96");const s=48,c=48,l=42,d=28,m=[];function n(t,e){const n=e-t>Math.PI?1:0,a=s+l*Math.cos(t),r=c+l*Math.sin(t),i=s+l*Math.cos(e),o=c+l*Math.sin(e),m=s+d*Math.cos(e),h=c+d*Math.sin(e),p=s+d*Math.cos(t),u=c+d*Math.sin(t);return`M ${a} ${r} A ${l} ${l} 0 ${n} 1 ${i} ${o} L ${m} ${h} A ${d} ${d} 0 ${n} 0 ${p} ${u} Z`}for(let g=0;g<Math.max(1,e||5);g++){const y=g/e*Math.PI*2-Math.PI/2,x=(g+1)/e*Math.PI*2-Math.PI/2,b=document.createElementNS(i,"path");b.setAttribute("d",n(y,x)),b.setAttribute("fill","#334155"),b.setAttribute("stroke","rgba(255,255,255,0.03)"),b.style.transition="fill 180ms linear",b.dataset.idx=String(g),o.appendChild(b),m.push(b)}const h=document.createElementNS(i,"circle");h.setAttribute("cx",String(s)),h.setAttribute("cy",String(c)),h.setAttribute("r",String(d-6)),h.setAttribute("fill","#071018"),o.appendChild(h);const p=document.createElement("div");p.style.display="flex",p.style.flexDirection="column",p.style.alignItems="center",p.style.justifyContent="center",p.style.gap="6px",p.style.flex="0 0 auto";const u=document.createElement("div");u.className="scc-scan-label",u.style.color="#cbd5e1",u.style.fontSize="13px",u.style.textAlign="center",u.textContent=`Scanning 0 / ${e}`,p.appendChild(o),p.appendChild(u);const f=document.createElement("div");f.style.display="flex",f.style.flexDirection="column",f.style.alignItems="center",f.style.justifyContent="center",f.style.gap="6px",f.style.flex="0 0 auto",f.style.minWidth="80px";try{const w=document.createElement("img");w.className="scc-scan-logo",w.src="001Logo%26name.png",w.alt="Logo",w.style.pointerEvents="none",w.style.display="block",w.style.margin="0 auto",f.appendChild(w)}catch(M){}r.appendChild(p),r.appendChild(f),a.appendChild(r);try{const v=window.getComputedStyle(t);"static"!==v.position&&v.position||(t.style.position="relative")}catch(S){}return t.appendChild(a),{markDone(t){try{m[t]&&m[t].setAttribute("fill","#10b981"),u.textContent=`Scanning ${t+1} / ${m.length}`}catch(t){}},setStatus(t){try{u.textContent=String(t||"")}catch(t){}},hide(){try{a.remove()}catch(t){}}}}catch(E){return null}}(x,u.length),C&&(C.overlay=y)}catch(t){y=null}for(let a=0;a<u.length;a++){const i=u[a],o=Math.max(0,Number(e("scc-mindur").value||"0")||0),s=Object.assign({},i.opts,{minFreq:r,maxFreq:c,minDurMs:o}),l=s.composite&&"none"!==s.composite?[{...$(p,s.composite),srcIdList:t.map(t=>t.id)}]:p.map((e,n)=>({...e,srcIdList:[t[n].id]})),d=await A(n,m,l,s,!0,C);if(C&&C.cancelled){g=!0;break}let h=d.detections||[];h.sort((t,e)=>e.score-t.score||t.t1-e.t1||t.f1-e.f1);const x=M(h,.5).filter(t=>(t.score||-1)>=s.threshold);f.push({name:i.name,count:x.length,opts:s,detections:x,stats:{coarse:d.coarsePeaks,raw:d.rawCandidates,variantsTried:d.variantsTried,skippedLowVar:d.skippedLowVar,skippedTooLarge:d.skippedTooLarge,elapsedMs:d.elapsedMs||0}});try{y&&y.markDone(a),y&&y.setStatus(`${i.name}: ${x.length} detections`)}catch(t){}if(await new Promise(t=>setTimeout(t,0)),C&&C.cancelled){g=!0;break}}k=f;const b=f.length,w=u.length;let v="Presets results (select one to apply to the form below):";g&&b?v=`Scan stopped early. Showing ${b} of ${w} preset${1===w?"":"s"} that finished. You can still apply any completed preset below.`:g&&!b&&(v="Scan stopped before any preset finished. No cached detections yet.");let S=`<div style="color:#cbd5e1;margin-bottom:6px;font-size:13px">${v}</div>`;S+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';for(let t=0;t<f.length;t++){const e=f[t];S+=`<label style="display:flex;align-items:flex-start;padding:8px;background:#071722;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"><input type=radio name=scc-preset value=${t} style="margin-right:10px;margin-top:6px"><div style="flex:1"><div style="font-weight:600">${e.name}</div><div style="color:#9ca3af;font-size:12px;margin-top:4px">variants:${e.stats.variantsTried} skippedLow:${e.stats.skippedLowVar} skippedSize:${e.stats.skippedTooLarge}</div></div><div style="text-align:right;font-weight:600;margin-left:8px">${e.count}<div style="color:#9ca3af;font-size:12px;margin-top:4px">coarse:${e.stats.coarse} raw:${e.stats.raw} time:${e.stats.elapsedMs}ms</div></div></label>`}S+="</div>",S+='<div style="margin-top:8px; display:flex; align-items:center; justify-content:flex-end; gap:12px"><button id="scc-apply" class="btn" style="background:#0ea5e9; padding:6px 10px; font-size:13px;" disabled>Apply selected preset</button></div>',x.innerHTML=S;try{y&&y.hide()}catch(t){}const E=x.querySelectorAll('input[name="scc-preset"]'),q=x.querySelector("#scc-apply"),I=x.querySelector("#scc-merge-apply"),N=x.querySelector("#scc-merge-gap-apply");try{const t=document.getElementById("scc-merge"),e=document.getElementById("scc-merge-gap");t&&I&&(I.checked=!!t.checked,I.addEventListener("change",()=>{t.checked=I.checked}),t.addEventListener("change",()=>{I.checked=t.checked})),e&&N&&(N.value=e.value,N.addEventListener("input",()=>{e.value=N.value}),e.addEventListener("input",()=>{N.value=e.value}))}catch(t){}E.forEach(t=>t.addEventListener("change",t=>{const e=Number(t.target.value);T=e;const n=f[e];if(n){try{document.getElementById("scc-mindur")&&(document.getElementById("scc-mindur").value=String(n.opts.minDurMs||n.opts.minDur||50))}catch(t){}try{document.getElementById("scc-minfreq")&&(document.getElementById("scc-minfreq").value=String(Math.max(0,Math.floor(n.opts.minFreq||0))))}catch(t){}try{document.getElementById("scc-maxfreq")&&(document.getElementById("scc-maxfreq").value=String(Math.max(0,Math.ceil(n.opts.maxFreq||0))))}catch(t){}q&&(q.disabled=!(n&&Array.isArray(n.detections)&&n.detections.length))}})),q&&!q.__wired&&(q.addEventListener("click",async()=>{try{const t="number"==typeof T?T:-1;if(t<0||!f[t])return void alert("Select a preset first.");const e=f[t],n=Array.isArray(e.detections)?e.detections:[];if(!n.length)return void alert("No detections cached for the selected preset.");try{window.__spectroWait&&window.__spectroWait.show({etaText:"Applying preset…",titleText:"Applying preset",bodyText:"Inserting cached detections into the grid. Please wait…"})}catch(t){}try{await new Promise(t=>setTimeout(t,20))}catch(t){}const r=o(),s=r.length>0&&r[0].species||"",c=r.length>0&&r[0].scientificName||"";let l=n;try{const t=!(!document.getElementById("scc-merge-apply")||!document.getElementById("scc-merge-apply").checked)||!(!document.getElementById("scc-merge")||!document.getElementById("scc-merge").checked);let e=1;try{const t=document.getElementById("scc-merge-gap-apply"),n=document.getElementById("scc-merge-gap"),a=parseFloat(t&&t.value||n&&n.value);isNaN(a)||(e=Math.max(0,a))}catch(t){}t&&(l=i(n,e))}catch(t){}const d=l.map(t=>({beginTime:Number(a(t.t1)),endTime:Number(a(t.t2)),lowFreq:Number(a(t.f1)),highFreq:Number(a(t.f2)),species:s,scientificName:c,notes:""}));if(d.length){let t=[];try{t=globalThis._annotations.addMany(d,"scc-apply");const e=window.annotationGrid;if(e&&"function"==typeof e.getSelectedRows){const t=e.getSelectedRows();Array.isArray(t)&&t.forEach(t=>{try{"function"==typeof t.deselect?t.deselect():"function"==typeof e.deselectRow&&e.deselectRow(t)}catch(t){}})}if(e&&"function"==typeof e.selectRow)for(const n of t)try{e.selectRow(n.id)}catch(t){}}catch(t){}t&&t.length>0&&(q.disabled=!0)}}catch(t){alert("Apply failed: "+(t&&t.message?t.message:String(t)))}finally{try{window.__spectroWait&&window.__spectroWait.hide()}catch(t){}}}),q.__wired=!0)}catch(t){C&&C.cancelled?x.innerHTML='<div style="color:#f59e0b">Search cancelled.</div>':x.innerHTML='<div style="color:#f97316">Search failed: '+(t&&t.message?t.message:String(t))+"</div>"}finally{try{g.disabled=!1}catch(t){}try{l&&(l.disabled=!1)}catch(t){}y&&(y.style.display="none"),C=null}}else alert("Please select a row first.")}),g.__scanned=!0),n()}catch(t){console.error("SCC Error:",t),alert("An unexpected error occurred opening SCC: "+t.message)}}),e.__sccWired=!0))}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",L):L()}();
+// scc.js
+// Spectrogram Cross-Correlation (SCC) auto-annotation
+// UI: Run SCC button opens dialog to configure options and run detections from selected grid rows.
+// Algorithm: generate pitch/time variants of template(s), compute normalized 2D cross-correlation on spectrogram magnitudes,
+// peak-pick with guard bands, convert to time/frequency boxes, NMS by IoU, and insert into the grid.
+
+(function(){
+  const RUN_BTN_ID = 'runSccBtn';
+  const MODAL_ID = 'sccModal';
+  const STYLE_ID = 'sccModalStyles';
+
+  // Small helpers
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const round4 = (v) => Number(v).toFixed(4);
+
+  // Very safe pause helper: attempts to pause playback if available, bounded by timeoutMs
+  async function safePausePlayback(timeoutMs = 800) {
+    try {
+      const holder = (globalThis._playbackScrollJump && typeof globalThis._playbackScrollJump.pause === 'function') ? globalThis._playbackScrollJump :
+                     (globalThis._playback && typeof globalThis._playback.pause === 'function') ? globalThis._playback : null;
+      if (!holder) return;
+      const p = holder.pause && holder.pause.call(holder);
+      if (p && typeof p.then === 'function') {
+        await Promise.race([p, new Promise((_, r) => setTimeout(r, timeoutMs))]).catch(() => {});
+      }
+    } catch (e) {}
+  }
+
+  // Merge adjacent detections if their gap is less than maxGapSec.
+  // Each detection is an object with at least {t1,t2,f1,f2,score}.
+  function mergeDetectionsByGap(dets, maxGapSec){
+    try {
+      const arr = Array.isArray(dets) ? dets.slice() : [];
+      if (arr.length <= 1) return arr;
+      // sort by begin time, then end time
+      arr.sort((a,b) => (a.t1 - b.t1) || (a.t2 - b.t2));
+      const out = [];
+      let cur = { ...arr[0] };
+      for (let i=1;i<arr.length;i++){
+        const nxt = arr[i];
+        const gap = (nxt.t1 - cur.t2);
+        if (gap < maxGapSec){
+          // merge into cur: extend end time, expand freq range, keep max score
+          cur.t2 = Math.max(cur.t2, nxt.t2);
+          cur.f1 = Math.min(cur.f1, nxt.f1);
+          cur.f2 = Math.max(cur.f2, nxt.f2);
+          const s1 = (typeof cur.score === 'number') ? cur.score : Number(cur.score||0);
+          const s2 = (typeof nxt.score === 'number') ? nxt.score : Number(nxt.score||0);
+          cur.score = Math.max(isFinite(s1)?s1:0, isFinite(s2)?s2:0);
+        } else {
+          out.push(cur);
+          cur = { ...nxt };
+        }
+      }
+      out.push(cur);
+      return out;
+    } catch(e){ return Array.isArray(dets) ? dets : []; }
+  }
+
+  function getGridSelectedTemplates() {
+    let rows = [];
+    try {
+      if (window.annotationGrid && typeof window.annotationGrid.getSelectedRows === 'function' && window.annotationGrid.initialized !== false) {
+        rows = window.annotationGrid.getSelectedRows().map(r => r.getData());
+      }
+    } catch (e) { return []; }
+    // Fallback to active edit session if grid selection lags
+    if (rows.length === 0) {
+      try { 
+        const eid = globalThis._editAnnotations && globalThis._editAnnotations.getEditingId(); 
+        if (eid) {
+          const all = globalThis._annotations && typeof globalThis._annotations.getAll === 'function' ? globalThis._annotations.getAll() : [];
+          const found = all.find(x => String(x.id) === String(eid));
+          if (found) rows = [found];
+        }
+      } catch(e){}
+    }
+    return rows;
+  }
+
+  function getSpectroMeta() {
+    return {
+      spectra: globalThis._spectroSpectra || null,
+      bins: globalThis._spectroBins || 0,
+      framesPerSec: globalThis._spectroFramesPerSec || 0,
+      sampleRate: globalThis._spectroSampleRate || 44100
+    };
+  }
+
+  function hzToBin(hz, sr, bins) {
+    const nyq = sr / 2;
+    const frac = clamp(hz / Math.max(1e-9, nyq), 0, 1);
+    return Math.min(bins - 1, Math.max(0, Math.floor(frac * (bins - 1))));
+  }
+  function timeToFrame(t, fps, maxFrames) {
+    const idx = Math.floor(clamp(t, 0, Number.MAX_SAFE_INTEGER) * Math.max(1e-9, fps));
+    if (typeof maxFrames === 'number' && isFinite(maxFrames)) return Math.min(Math.max(0, idx), Math.max(0, maxFrames - 1));
+    return Math.max(0, idx);
+  }
+
+  function extractTemplate2D(spectra, bins, fps, sr, t0, t1, fLow, fHigh) {
+    // Quantize template to exact frame & bin boundaries and add a 1-frame/bin padding to
+    // reduce sensitivity to tiny redraw differences. This makes extraction deterministic
+    // for slightly different user-drawn box coordinates.
+    const b0 = hzToBin(fLow, sr, bins);
+    const b1 = hzToBin(fHigh, sr, bins);
+    let bb0 = Math.min(b0, b1), bb1 = Math.max(b0, b1);
+    const padBins = 1;
+    bb0 = Math.max(0, bb0 - padBins);
+    bb1 = Math.min(bins - 1, bb1 + padBins);
+    const h = Math.max(1, bb1 - bb0 + 1);
+
+    const totalFrames = Math.max(1, Math.floor((spectra.length || 0) / bins));
+    const f0 = timeToFrame(t0, fps, totalFrames);
+    const f1 = timeToFrame(t1, fps, totalFrames);
+    let ff0 = Math.min(f0, f1), ff1 = Math.max(f0, f1);
+    const padFrames = 1;
+    ff0 = Math.max(0, ff0 - padFrames);
+    ff1 = Math.min(totalFrames - 1, ff1 + padFrames);
+    const w = Math.max(1, ff1 - ff0 + 1);
+
+    const out = new Float32Array(h * w);
+    for (let x = 0; x < w; x++){
+      const frameIdx = ff0 + x;
+      const base = frameIdx * bins;
+      for (let y = 0; y < h; y++){
+        const binIdx = bb0 + y;
+        out[y * w + x] = spectra[base + binIdx] || 0;
+      }
+    }
+    return { data: out, width: w, height: h, frameStart: ff0, frameEnd: ff1, binStart: bb0, binEnd: bb1 };
+  }
+
+  // Simple resize (bilinear-like along independent axes)
+  function resize2D(arr, w, h, newW, newH) {
+    if (newW === w && newH === h) return { data: arr.slice(0), width: w, height: h };
+    const out = new Float32Array(newW * newH);
+    const sx = (w - 1) / Math.max(1, (newW - 1));
+    const sy = (h - 1) / Math.max(1, (newH - 1));
+    for (let yy = 0; yy < newH; yy++){
+      const srcY = yy * sy;
+      const y0 = Math.floor(srcY), y1 = Math.min(h - 1, y0 + 1);
+      const wy = srcY - y0;
+      for (let xx = 0; xx < newW; xx++){
+        const srcX = xx * sx;
+        const x0 = Math.floor(srcX), x1 = Math.min(w - 1, x0 + 1);
+        const wx = srcX - x0;
+        const a = arr[y0 * w + x0];
+        const b = arr[y0 * w + x1];
+        const c = arr[y1 * w + x0];
+        const d = arr[y1 * w + x1];
+        const top = a + (b - a) * wx;
+        const bot = c + (d - c) * wx;
+        out[yy * newW + xx] = top + (bot - top) * wy;
+      }
+    }
+    return { data: out, width: newW, height: newH };
+  }
+
+  function downsample2D(arr, w, h, strideX, strideY) {
+    const sX = Math.max(1, Math.floor(strideX || 1));
+    const sY = Math.max(1, Math.floor(strideY || 1));
+    const newW = Math.max(1, Math.floor((w + sX - 1) / sX));
+    const newH = Math.max(1, Math.floor((h + sY - 1) / sY));
+    const out = new Float32Array(newW * newH);
+    for (let yy = 0; yy < newH; yy++){
+      const y0 = yy * sY;
+      const y1 = Math.min(h, y0 + sY);
+      for (let xx = 0; xx < newW; xx++){
+        const x0 = xx * sX;
+        const x1 = Math.min(w, x0 + sX);
+        let sum = 0; let cnt = 0;
+        for (let y = y0; y < y1; y++){
+          let off = y * w + x0;
+          for (let x = x0; x < x1; x++) { sum += arr[off++] || 0; cnt++; }
+        }
+        out[yy * newW + xx] = cnt ? (sum / cnt) : 0;
+      }
+    }
+    return { data: out, width: newW, height: newH, strideX: sX, strideY: sY };
+  }
+
+  function meanStd(arr) {
+    const n = arr.length || 1;
+    let sum = 0, sum2 = 0;
+    for (let i = 0; i < n; i++){ const v = arr[i]; sum += v; sum2 += v * v; }
+    const mu = sum / n;
+    const varr = Math.max(0, (sum2 / n) - mu * mu);
+    const sd = Math.sqrt(varr + 1e-12);
+    return { mean: mu, std: sd };
+  }
+
+  function zeroMeanUnit(arr) {
+    const out = new Float32Array(arr.length);
+    const s = meanStd(arr);
+    for (let i = 0; i < arr.length; i++) out[i] = (arr[i] - s.mean) / (s.std || 1e-6);
+    return { data: out, stat: s };
+  }
+
+  // Exact NCC on a same-size image patch vs template (both in full resolution), returns [-1,1]
+  function nccScorePatch(img, iw, ih, x0, y0, tw, th, templ) {
+    if (x0 < 0 || y0 < 0 || x0 + tw > iw || y0 + th > ih) return -1;
+    const n = tw * th;
+    let sumI = 0, sumI2 = 0, sumT = 0, sumT2 = 0, sumIT = 0;
+    for (let yy = 0; yy < th; yy++) {
+      const iOff = (y0 + yy) * iw + x0;
+      const tOff = yy * tw;
+      for (let xx = 0; xx < tw; xx++) {
+        const I = img[iOff + xx];
+        const T = templ[tOff + xx];
+        sumI += I; sumI2 += I * I;
+        sumT += T; sumT2 += T * T;
+        sumIT += I * T;
+      }
+    }
+    const muI = sumI / n;
+    const muT = sumT / n;
+    const sI2 = Math.max(0, sumI2 / n - muI * muI);
+    const sT2 = Math.max(0, sumT2 / n - muT * muT);
+    const sI = Math.sqrt(sI2);
+    const sT = Math.sqrt(sT2);
+    if (sI < 1e-4 || sT < 1e-4) return -1; // too flat, unreliable
+    const num = sumIT / n - muI * muT;
+    return clamp(num / (sI * sT), -1, 1);
+  }
+
+  // Integral image helpers (prefix sum and prefix sum squares)
+  function integralImage(arr, w, h) {
+    const S = new Float64Array((w + 1) * (h + 1));
+    for (let y = 1; y <= h; y++){
+      let rowSum = 0;
+      for (let x = 1; x <= w; x++){
+        const v = arr[(y - 1) * w + (x - 1)] || 0;
+        rowSum += v;
+        const idx = y * (w + 1) + x;
+        S[idx] = S[(y - 1) * (w + 1) + x] + rowSum;
+      }
+    }
+    return { data: S, width: w + 1, height: h + 1 };
+  }
+  function rectSum(S, w1, h1, x, y, rw, rh) {
+    // S is (w1 x h1) prefix array, arr was (w x h); x,y 1-based offset inside S
+    const x2 = x + rw;
+    const y2 = y + rh;
+    const A = S[y * w1 + x];
+    const B = S[y * w1 + x2];
+    const C = S[y2 * w1 + x];
+    const D = S[y2 * w1 + x2];
+    return D - B - C + A;
+  }
+
+  // NCC: normalized cross-correlation (zero-mean) using integral images for patch mean/std and naive dot for sum(I*T)
+  // Optional precomputed integrals (precomputed = { S, S2 }) avoid recomputing them per call.
+  async function nccMap(image, iw, ih, templZ, tw, th, yieldEvery = 2000, precomputed) {
+    const outW = Math.max(1, iw - tw + 1);
+    const outH = Math.max(1, ih - th + 1);
+    const out = new Float32Array(outW * outH);
+
+    let S, S2;
+    if (precomputed && precomputed.S && precomputed.S2 && precomputed.S.width === (iw + 1)) {
+      S = precomputed.S;
+      S2 = precomputed.S2;
+    } else {
+      S = integralImage(image, iw, ih);
+      const imageSq = new Float32Array(iw * ih);
+      for (let i = 0; i < image.length; i++) { const v = image[i]; imageSq[i] = v * v; }
+      S2 = integralImage(imageSq, iw, ih);
+    }
+
+    const templStat = meanStd(templZ); // templZ is already zero-mean if from zeroMeanUnit, but compute std for safety
+    const tStd = Math.max(templStat.std, 1e-6);
+    const n = tw * th;
+
+    let iter = 0;
+    for (let y = 0; y < outH; y++){
+      const sy = y + 1;
+      for (let x = 0; x < outW; x++){
+        const sx = x + 1;
+        const sumI = rectSum(S.data, S.width, S.height, sx, sy, tw, th);
+        const sumI2 = rectSum(S2.data, S2.width, S2.height, sx, sy, tw, th);
+        const muI = sumI / n;
+        const varI = Math.max(0, sumI2 / n - muI * muI);
+        const sI = Math.sqrt(varI + 1e-12);
+        // dot(I - muI, Tz)
+        let dot = 0;
+        for (let yy = 0; yy < th; yy++){
+          const iOff = (y + yy) * iw + x;
+          const tOff = yy * tw;
+          for (let xx = 0; xx < tw; xx++){
+            dot += (image[iOff + xx] - muI) * templZ[tOff + xx];
+          }
+        }
+        const denom = (sI * tStd * n) || 1e-9;
+        const score = clamp(dot / denom, -1, 1);
+        out[y * outW + x] = score;
+
+        iter++;
+        if ((iter % yieldEvery) === 0) await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    return { data: out, width: outW, height: outH };
+  }
+
+  // Peak picking with guard bands; deterministic ordering (score desc, then x asc, then y asc)
+  function pickPeaks(corr, cw, ch, threshold, guardX, guardY, maxPeaks = 10000) {
+    const peaks = [];
+    for (let y = 0; y < ch; y++){
+      for (let x = 0; x < cw; x++){
+        const s = corr[y * cw + x];
+        if (s < threshold) continue;
+        peaks.push({ x, y, s });
+      }
+    }
+    peaks.sort((a,b) => (b.s - a.s) || (a.x - b.x) || (a.y - b.y));
+    const out = [];
+    const taken = new Uint8Array(cw * ch);
+    const gx = Math.max(1, Math.floor(guardX));
+    const gy = Math.max(1, Math.floor(guardY));
+    for (const p of peaks) {
+      let suppressed = false;
+      for (let yy = Math.max(0, p.y - gy); yy <= Math.min(ch - 1, p.y + gy) && !suppressed; yy++){
+        for (let xx = Math.max(0, p.x - gx); xx <= Math.min(cw - 1, p.x + gx); xx++){
+          if (taken[yy * cw + xx]) { suppressed = true; break; }
+        }
+      }
+      if (suppressed) continue;
+      out.push(p);
+      // mark guard area
+      for (let yy = Math.max(0, p.y - gy); yy <= Math.min(ch - 1, p.y + gy); yy++){
+        for (let xx = Math.max(0, p.x - gx); xx <= Math.min(cw - 1, p.x + gx); xx++){
+          taken[yy * cw + xx] = 1;
+        }
+      }
+      if (out.length >= maxPeaks) break;
+    }
+    return out;
+  }
+
+  function iouRect(a, b) {
+    const x1 = Math.max(a.t1, b.t1);
+    const y1 = Math.max(a.f1, b.f1);
+    const x2 = Math.min(a.t2, b.t2);
+    const y2 = Math.min(a.f2, b.f2);
+    const iw = Math.max(0, x2 - x1);
+    const ih = Math.max(0, y2 - y1);
+    const inter = iw * ih;
+    const areaA = Math.max(0, (a.t2 - a.t1)) * Math.max(0, (a.f2 - a.f1));
+    const areaB = Math.max(0, (b.t2 - b.t1)) * Math.max(0, (b.f2 - b.f1));
+    const uni = Math.max(1e-12, areaA + areaB - inter);
+    return inter / uni;
+  }
+
+  function nms(boxes, iouThresh = 0.3) {
+    // boxes sorted by score desc prior to call
+    const kept = [];
+    for (const b of boxes) {
+      let mergedInto = null;
+      for (const k of kept) {
+        if (iouRect(b, k) > iouThresh) {
+          // keep highest score (already in kept), but merge contributing template IDs
+          try {
+            const a = new Set(k.templateIds || []);
+            (b.templateIds || []).forEach(id => a.add(id));
+            k.templateIds = Array.from(a);
+          } catch (e) {}
+          mergedInto = k;
+          break;
+        }
+      }
+      if (!mergedInto) kept.push(b);
+    }
+    return kept;
+  }
+
+  function parseBandMask(str) {
+    // format: "0-200, 4000-5000" (Hz)
+    if (!str) return [];
+    return String(str).split(',').map(s => s.trim()).map(tok => {
+      const m = tok.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+      if (!m) return null;
+      const a = Number(m[1]);
+      const b = Number(m[2]);
+      if (!isFinite(a) || !isFinite(b)) return null;
+      return { f1: Math.min(a,b), f2: Math.max(a,b) };
+    }).filter(Boolean);
+  }
+
+  function intersectsBandMask(f1, f2, mask) {
+    if (!Array.isArray(mask) || !mask.length) return false;
+    for (const r of mask) {
+      const lo = Math.max(f1, r.f1);
+      const hi = Math.min(f2, r.f2);
+      if (hi > lo) return true;
+    }
+    return false;
+  }
+
+  function buildModal() {
+    if (document.getElementById(MODAL_ID)) return document.getElementById(MODAL_ID);
+    if (!document.getElementById(STYLE_ID)) {
+  const st = document.createElement('style');
+    st.id = STYLE_ID;
+    st.textContent = `
+#${MODAL_ID} { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 2147483600; background: rgba(0,0,0,0.45); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);} 
+  #${MODAL_ID} .card { position: relative; width: 96%; max-width: 760px; max-height: 90vh; overflow: auto; background: #0f1216; color: #fff; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 12px 36px rgba(0,0,0,0.35); padding: 14px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+  #${MODAL_ID} h3 { margin: 4px 0 10px 0; font-size: 16px; font-weight: 600; }
+  #${MODAL_ID} .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  /* Each .row is a horizontal label+control pair so the form appears as two compact columns */
+  #${MODAL_ID} .row { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 6px 0; }
+  #${MODAL_ID} label { font-size: 12px; color: #cbd5e1; margin: 0; display: inline-block; flex: 0 0 36%; min-width: 110px; }
+  /* controls occupy remaining space but are capped to avoid overly wide inputs */
+  #${MODAL_ID} input[type="number"], #${MODAL_ID} input[type="text"], #${MODAL_ID} select {
+    flex: 1 1 160px; max-width: 260px; box-sizing: border-box; background: #0b0e12; color: #fff; border: 1px solid #1f2937; border-radius: 6px; padding: 6px 8px; font-size: 13px;
+  }
+  #${MODAL_ID} input[type="number"]::-webkit-outer-spin-button, #${MODAL_ID} input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  /* Mobile: stack label above control and use full width */
+  @media (max-width: 640px) { 
+    #${MODAL_ID} .grid { grid-template-columns: 1fr; }
+    #${MODAL_ID} .row { flex-direction: column; align-items: stretch; }
+    #${MODAL_ID} label { flex: 0 0 auto; min-width: 0; margin-bottom: 6px; }
+    #${MODAL_ID} input[type="number"], #${MODAL_ID} input[type="text"], #${MODAL_ID} select { max-width: 100%; }
+  }
+  #${MODAL_ID} .actions { margin-top: 12px; display: flex; gap: 10px; justify-content: flex-end; }
+  #${MODAL_ID} .btn { background: #2196F3; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
+  #${MODAL_ID} .btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+  #${MODAL_ID} .progress { margin-top: 6px; font-size: 12px; color: #9ca3af; }
+  @media (max-width: 640px) { #${MODAL_ID} .grid { grid-template-columns: 1fr; } }
+        `;
+        document.head.appendChild(st);
+      }
+
+    const wrap = document.createElement('div');
+    wrap.id = MODAL_ID;
+    wrap.innerHTML = `
+      <div class="card" role="dialog" aria-modal="true" aria-label="Run SCC options">
+        <h3>Run Spectrogram Cross-Correlation (SCC)</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:13px;color:#cbd5e1;font-weight:600">Detect similar shapes</div>
+          <div>
+            <button id="scc-scan" class="btn" style="background:#10b981;padding:6px 10px;font-size:13px;">Detect similar shapes</button>
+            <button id="scc-stop" class="btn" style="background:#ef4444;padding:6px 10px;font-size:13px;display:none;margin-left:6px;">Stop</button>
+          </div>
+        </div>
+
+  <div style="margin-bottom:8px;color:#f1f5f9;font-size:13px">Note: Auto annotations may not be accurate. Please review the results carefully and do the necessary edits.</div>
+
+        <div class="grid">
+          <div class="row">
+            <label for="scc-mindur">Min duration (ms)</label>
+            <input id="scc-mindur" type="number" min="0" max="10000" step="10" value="50">
+          </div>
+          <div class="row">
+            <label for="scc-minfreq">Frequency include: Min (Hz)</label>
+            <input id="scc-minfreq" type="number" min="0" step="1" value="0">
+          </div>
+          <div class="row">
+            <label for="scc-maxfreq">Frequency include: Max (Hz)</label>
+            <input id="scc-maxfreq" type="number" min="0" step="1" value="22050">
+          </div>
+        </div>
+  <div class="progress" id="scc-progress" aria-live="polite"></div>
+  <div id="scc-presets-area" style="margin-top:8px;margin-bottom:8px;display:none;background:#071018;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"></div>
+  <div class="actions" style="align-items:center;">
+          <label id="scc-merge-label" title="This combines the annotations with distance less than the input duration." style="display:flex;align-items:center;gap:8px;margin-right:auto;font-size:13px;color:#cbd5e1;white-space:nowrap">
+            <input type="checkbox" id="scc-merge" />
+            <span>Merge detections below</span>
+            <input id="scc-merge-gap" type="number" min="0" max="10" step="0.1" value="1.0" style="width:68px;background:#0b1523;border:1px solid rgba(255,255,255,0.08);color:#e5e7eb;padding:4px 6px;border-radius:4px"> 
+            <span>sec apart</span>
+          </label>
+        </div>
+        <!-- top-right standard close button (X) -->
+        <button id="scc-close-x" aria-label="Close" title="Close" style="position:absolute;top:10px;right:12px;background:transparent;border:none;color:#9ca3af;font-size:20px;line-height:1;cursor:pointer;padding:6px;border-radius:6px">&times;</button>
+      </div>`;
+    document.body.appendChild(wrap);
+    return wrap;
+  }
+
+  function showModal() { const m = buildModal(); m.style.display = 'flex'; return m; }
+  function hideModal() { const m = document.getElementById(MODAL_ID); if (m) m.style.display = 'none'; }
+  // prevent background scrolling when modal is open
+  const __bodyOverflowBackup = { val: null };
+  // modal scroll interception handlers (prevent background scroll while modal open)
+  const __scc_modal_handlers = { wheel: null, touch: null };
+  // last scan state (keeps preset scan results and last selected preset index)
+  let __scc_lastScanRows = null;
+  let __scc_lastSelectedPresetIndex = null;
+  let __scc_lastScanParams = null;
+  // active scan abort token (used to cancel long-running preset scans)
+  let __scc_currentScan = null;
+  function _showModal() {
+    const m = showModal();
+    __bodyOverflowBackup.val = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // add capturing handlers to stop scroll events from reaching background when the event target is outside the modal card
+    try {
+      const wheelHandler = function (ev) {
+        try {
+          const modal = document.getElementById(MODAL_ID);
+          if (!modal) return;
+          const card = modal.querySelector('.card');
+          if (!card) return;
+          // If the wheel target is outside the card, always prevent background scroll
+          if (!card.contains(ev.target)) { ev.preventDefault(); ev.stopPropagation(); return; }
+
+          // If the wheel target is inside the card, allow the scroll only if some ancestor
+          // inside the card can actually scroll in the wheel direction. Otherwise prevent it
+          // so the page behind doesn't move when card content is already at its limit.
+          let node = ev.target;
+          let allow = false;
+          const deltaY = ev.deltaY || 0;
+          while (node && node !== card) {
+            try {
+              const style = window.getComputedStyle(node);
+              const overflowY = style.overflowY;
+              const canScroll = (overflowY === 'auto' || overflowY === 'scroll');
+              if (canScroll) {
+                const st = node.scrollTop || 0;
+                const sh = node.scrollHeight || 0;
+                const ch = node.clientHeight || 0;
+                if (deltaY < 0 && st > 0) { allow = true; break; }
+                if (deltaY > 0 && (st + ch) < sh) { allow = true; break; }
+              }
+            } catch (e) {}
+            node = node.parentElement;
+          }
+          if (!allow) { ev.preventDefault(); ev.stopPropagation(); }
+        } catch (e) {}
+      };
+      const touchHandler = function (ev) {
+        try {
+          const modal = document.getElementById(MODAL_ID);
+          if (!modal) return;
+          const card = modal.querySelector('.card');
+          if (!card) return;
+          if (!card.contains(ev.target)) { ev.preventDefault(); ev.stopPropagation(); }
+        } catch (e) {}
+      };
+      __scc_modal_handlers.wheel = wheelHandler;
+      __scc_modal_handlers.touch = touchHandler;
+      document.addEventListener('wheel', wheelHandler, { passive: false, capture: true });
+      document.addEventListener('touchmove', touchHandler, { passive: false, capture: true });
+    } catch (e) {}
+    return m;
+  }
+  function _hideModal() {
+    const m = document.getElementById(MODAL_ID);
+    if (m) m.style.display = 'none';
+    // cancel any ongoing preset scan when modal is closed
+    try { if (__scc_currentScan) __scc_currentScan.cancelled = true; } catch (e) {}
+    document.body.style.overflow = __bodyOverflowBackup.val || '';
+    try {
+      if (__scc_modal_handlers.wheel) {
+        document.removeEventListener('wheel', __scc_modal_handlers.wheel, { capture: true });
+        __scc_modal_handlers.wheel = null;
+      }
+      if (__scc_modal_handlers.touch) {
+        document.removeEventListener('touchmove', __scc_modal_handlers.touch, { capture: true });
+        __scc_modal_handlers.touch = null;
+      }
+    } catch (e) {}
+    // If the UI is currently in 'create' mode, switch to 'edit' after closing SCC modal
+    try {
+      const wrap = document.getElementById('createEditToggle');
+      if (wrap && String(wrap.dataset.mode || '').toLowerCase() === 'create') {
+        wrap.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'edit' }, bubbles: true }));
+      }
+    } catch (e) {}
+  }
+  function setProgress(txt){ const el = document.getElementById('scc-progress'); if (el) el.textContent = String(txt || ''); }
+  function setDisabled(dis){ const run = document.getElementById('scc-run'); const cancel = document.getElementById('scc-cancel'); if (run) run.disabled = !!dis; if (cancel) cancel.disabled = !!dis; }
+
+  function computeQualityStrides(quality){
+    switch(String(quality||'balanced')){
+      case 'fast': return { sx: 3, sy: 3 };
+      case 'accurate': return { sx: 1, sy: 1 };
+      default: return { sx: 2, sy: 2 };
+    }
+  }
+
+  // Lightweight detection helper usable for trial runs (returns counts and candidate list)
+  async function detectCandidatesForParams(meta, extractSearch, templatesToUse, localOpts, allowLowVar, abortToken) {
+    const tStart = Date.now();
+    const found = [];
+    let coarse = 0, rawc = 0;
+    let variantsTried = 0, skippedLowVar = 0, skippedTooLarge = 0;
+    const qualityStrides = computeQualityStrides(localOpts.quality);
+    // Force a coarse downsample for scanning to bound runtime even when quality='accurate'
+    const coarseSX = Math.max(1, Number(localOpts.coarseSX) || Math.max(2, qualityStrides.sx));
+    const coarseSY = Math.max(1, Number(localOpts.coarseSY) || Math.max(2, qualityStrides.sy));
+    const localSearch = downsample2D(extractSearch.data, extractSearch.width, extractSearch.height, coarseSX, coarseSY);
+    // Precompute integrals for localSearch so template variants reuse them
+    const __precomp = (function(){
+      try {
+        const imageSq = new Float32Array(localSearch.data.length);
+        for (let i = 0; i < localSearch.data.length; i++) { const v = localSearch.data[i]; imageSq[i] = v * v; }
+        const S = integralImage(localSearch.data, localSearch.width, localSearch.height);
+        const S2 = integralImage(imageSq, localSearch.width, localSearch.height);
+        return { S, S2 };
+      } catch(e) { return null; }
+    })();
+    const localEnergyThresh = percentile(localSearch.data, localOpts.energyPct);
+    const localPitchScales = buildScales(localOpts.pitchTolPct, localOpts.pitchSteps);
+    const localTimeScales = buildScales(localOpts.timeTolPct, localOpts.timeSteps);
+
+    for (let ti = 0; ti < templatesToUse.length; ti++){
+      if (abortToken && abortToken.cancelled) {
+        const elapsedMs = Date.now() - tStart;
+        return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, aborted: true };
+      }
+      const Tbase = templatesToUse[ti];
+      for (let ps = 0; ps < localPitchScales.length; ps++){
+        for (let ts = 0; ts < localTimeScales.length; ts++){
+          if (abortToken && abortToken.cancelled) {
+            const elapsedMs = Date.now() - tStart;
+            return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, aborted: true };
+          }
+          const sF = localPitchScales[ps];
+          const sT = localTimeScales[ts];
+          const newH = Math.max(3, Math.round(Tbase.height * sF));
+          const newW = Math.max(3, Math.round(Tbase.width * sT));
+          const Tscaled = resize2D(Tbase.data, Tbase.width, Tbase.height, newW, newH);
+          const preStat = meanStd(Tscaled.data);
+          variantsTried++;
+          // During trial scans we may want to avoid rejecting low-variance variants so the
+          // user can see counts based purely on other parameters. Only enforce the
+          // low-variance skip when allowLowVar is false.
+          if (!allowLowVar) {
+            const varThresh = 1e-3;
+            if (preStat.std < varThresh) { skippedLowVar++; continue; }
+          }
+          const Tds = downsample2D(Tscaled.data, Tscaled.width, Tscaled.height, coarseSX, coarseSY);
+          if (localSearch.width < Tds.width || localSearch.height < Tds.height) { skippedTooLarge++; continue; }
+          const Tnorm = zeroMeanUnit(Tds.data);
+          const TfullZ = zeroMeanUnit(Tscaled.data);
+
+          // NCC over downsampled search image
+          const corr = await nccMap(localSearch.data, localSearch.width, localSearch.height, Tnorm.data, Tds.width, Tds.height, 2000, __precomp);
+
+          // Peak picking
+          const guardX = Math.max(2, Math.floor(Tds.width * 0.9));
+          const guardY = Math.max(2, Math.floor(Tds.height * 0.7));
+          // Allow a preset-configurable cap on how many coarse peaks to consider for refinement.
+          // This prevents extremely large peak lists from causing long-running fine NCC passes.
+          const maxPeaks = (localOpts && Number(localOpts.maxCandidates)) ? Math.max(1, Number(localOpts.maxCandidates)) : 50000;
+          // Non-negative coarse threshold prunes weak matches early (default 0)
+          const coarseThresh = (typeof localOpts.coarseThresh === 'number') ? Math.max(-1, Math.min(1, localOpts.coarseThresh)) : 0;
+          const peaks = pickPeaks(corr.data, corr.width, corr.height, coarseThresh, guardX, guardY, maxPeaks);
+          coarse += peaks.length;
+
+          // refine only the top-N peaks to avoid expensive full-resolution NCC on every coarse peak
+          // peaks is already sorted by coarse score desc from pickPeaks; choose topN based on localOpts.maxRefine
+          const defaultRefineCount = Math.max(200, Math.floor(peaks.length * 0.05)); // at least 200 or 5%
+          const maxRefine = (localOpts && Number(localOpts.maxRefine)) ? Math.max(1, Number(localOpts.maxRefine)) : Math.min(peaks.length, defaultRefineCount);
+          for (let pi = 0; pi < peaks.length && pi < maxRefine; pi++) {
+            const p = peaks[pi];
+            const x_ds = p.x; const y_ds = p.y;
+            const w_ds = Tds.width; const h_ds = Tds.height;
+            const x0_img = x_ds * coarseSX;
+            const y0_img = y_ds * coarseSY;
+
+            const frameStart = extractSearch.frameStart + x0_img;
+            const frameEnd = frameStart + (w_ds * coarseSX) - 1;
+            const binStart = extractSearch.binStart + y0_img;
+            const binEnd = binStart + (h_ds * coarseSY) - 1;
+
+            const tStart = frameStart / Math.max(1e-9, meta.framesPerSec);
+            const tEnd = (frameEnd + 1) / Math.max(1e-9, meta.framesPerSec);
+            const nyq = meta.sampleRate / 2;
+            const fLow = (binStart / Math.max(1, meta.bins - 1)) * nyq;
+            const fHigh = (binEnd / Math.max(1, meta.bins - 1)) * nyq;
+
+            const durMs = Math.max(0, (tEnd - tStart) * 1000);
+            if (durMs < localOpts.minDurMs) continue;
+            // frequency include range: skip if outside
+            if (typeof localOpts.minFreq === 'number' && typeof localOpts.maxFreq === 'number') {
+              if (fHigh < localOpts.minFreq || fLow > localOpts.maxFreq) continue;
+            }
+
+            // Energy filter
+            let eSum = 0, eCount = 0;
+            for (let yy = 0; yy < h_ds; yy++){
+              const imgOff = (y_ds + yy) * localSearch.width + x_ds;
+              for (let xx = 0; xx < w_ds; xx++){ eSum += localSearch.data[imgOff + xx] || 0; eCount++; }
+            }
+            const eMean = eSum / Math.max(1, eCount);
+            if (eMean < localEnergyThresh) continue;
+
+            const fineScore = nccScorePatch(
+              extractSearch.data,
+              extractSearch.width,
+              extractSearch.height,
+              x0_img,
+              y0_img,
+              Tscaled.width,
+              Tscaled.height,
+              TfullZ.data
+            );
+            if (!(fineScore > -0.999)) continue;
+
+            rawc++;
+            found.push({ t1: tStart, t2: tEnd, f1: fLow, f2: fHigh, score: fineScore, variant: { pitchScale: sF, timeScale: sT }, templateIds: Tbase.srcIdList.slice() });
+          }
+          await new Promise(r => setTimeout(r, 0));
+          if (abortToken && abortToken.cancelled) {
+            const elapsedMs = Date.now() - tStart;
+            return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, aborted: true };
+          }
+        }
+      }
+    }
+    const elapsedMs = Date.now() - tStart;
+    return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs };
+  }
+
+  function buildScales(tolPct, stepsOdd){
+    const tol = Math.max(0, Number(tolPct)||0) / 100;
+    let steps = Math.max(1, Math.min(11, Math.round(Number(stepsOdd)||1)));
+    if ((steps % 2) === 0) steps += 1; // force odd
+    if (steps <= 1 || tol <= 0) return [1.0];
+    const half = (steps - 1) / 2;
+    const arr = [];
+    for (let i = -half; i <= half; i++) { arr.push(1.0 + (i * tol / half)); }
+    return arr;
+  }
+
+  function composeTemplates(templates, mode){
+    if (!templates.length || mode === 'none') return null;
+    const ref = templates[0];
+    const tw = ref.width, th = ref.height;
+    const mats = templates.map(t => (t.width === tw && t.height === th) ? t.data : resize2D(t.data, t.width, t.height, tw, th).data);
+    const out = new Float32Array(tw * th);
+    if (mode === 'mean') {
+      for (let i = 0; i < out.length; i++){
+        let s = 0; for (let k = 0; k < mats.length; k++) s += mats[k][i];
+        out[i] = s / mats.length;
+      }
+    } else {
+      const tmp = new Float32Array(mats.length);
+      for (let i = 0; i < out.length; i++){
+        for (let k = 0; k < mats.length; k++) tmp[k] = mats[k][i];
+        // median
+        const arr = Array.from(tmp).sort((a,b)=>a-b);
+        out[i] = arr[Math.floor(arr.length/2)];
+      }
+    }
+    return { data: out, width: tw, height: th };
+  }
+
+  function percentile(arr, p){
+    if (!arr.length) return 0;
+    const a = Array.from(arr).sort((x,y)=>x-y);
+    const idx = clamp(Math.floor((p/100) * (a.length-1)), 0, a.length-1);
+    return a[idx];
+  }
+
+  // Small UI: create a circular 5-segment overlay to show preset scan progress
+  function createScanOverlay(parentEl, totalSegments) {
+    try {
+      if (!parentEl) return null;
+      const wrap = document.createElement('div');
+      wrap.className = 'scc-scan-overlay';
+      wrap.style.position = 'fixed';
+      wrap.style.inset = '0';
+      wrap.style.zIndex = '2147483647';
+      wrap.style.display = 'flex';
+      wrap.style.alignItems = 'center';
+      wrap.style.justifyContent = 'center';
+      wrap.style.pointerEvents = 'none';
+
+  const box = document.createElement('div');
+  box.className = 'scc-scan-box';
+  box.style.pointerEvents = 'auto';
+  // make a horizontal rectangle: spinner left, logo+text right
+  box.style.width = '460px';
+  box.style.height = '120px';
+  box.style.display = 'flex';
+  box.style.flexDirection = 'row';
+  box.style.alignItems = 'center';
+  box.style.justifyContent = 'flex-start';
+  box.style.background = 'rgba(6,8,10,0.80)';
+  box.style.borderRadius = '10px';
+  box.style.padding = '12px 14px';
+  box.style.gap = '8px';
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  // smaller circular spinner on the left
+  svg.setAttribute('width','96'); svg.setAttribute('height','96'); svg.setAttribute('viewBox','0 0 96 96');
+
+  const cx = 48, cy = 48, rOut = 42, rIn = 28;
+      const segs = [];
+      function wedgePath(a0, a1) {
+        const large = (a1 - a0) > Math.PI ? 1 : 0;
+        const x0 = cx + rOut * Math.cos(a0);
+        const y0 = cy + rOut * Math.sin(a0);
+        const x1 = cx + rOut * Math.cos(a1);
+        const y1 = cy + rOut * Math.sin(a1);
+        const xi1 = cx + rIn * Math.cos(a1);
+        const yi1 = cy + rIn * Math.sin(a1);
+        const xi0 = cx + rIn * Math.cos(a0);
+        const yi0 = cy + rIn * Math.sin(a0);
+        return `M ${x0} ${y0} A ${rOut} ${rOut} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${rIn} ${rIn} 0 ${large} 0 ${xi0} ${yi0} Z`;
+      }
+
+      for (let i = 0; i < Math.max(1, totalSegments || 5); i++) {
+        const a0 = (i/totalSegments) * Math.PI * 2 - Math.PI/2;
+        const a1 = ((i+1)/totalSegments) * Math.PI * 2 - Math.PI/2;
+        const p = document.createElementNS(svgNS,'path');
+        p.setAttribute('d', wedgePath(a0,a1));
+        p.setAttribute('fill','#334155');
+        p.setAttribute('stroke','rgba(255,255,255,0.03)');
+        p.style.transition = 'fill 180ms linear';
+        p.dataset.idx = String(i);
+        svg.appendChild(p);
+        segs.push(p);
+      }
+
+      const inner = document.createElementNS(svgNS,'circle');
+      inner.setAttribute('cx',String(cx)); inner.setAttribute('cy',String(cy)); inner.setAttribute('r',String(rIn-6));
+      inner.setAttribute('fill','#071018');
+      svg.appendChild(inner);
+
+      // Left column: spinner with status below it
+      const leftCol = document.createElement('div');
+      leftCol.style.display = 'flex';
+      leftCol.style.flexDirection = 'column';
+      leftCol.style.alignItems = 'center';
+      leftCol.style.justifyContent = 'center';
+      leftCol.style.gap = '6px';
+      leftCol.style.flex = '0 0 auto';
+
+      const statusLabel = document.createElement('div');
+      statusLabel.className = 'scc-scan-label';
+      statusLabel.style.color = '#cbd5e1';
+      statusLabel.style.fontSize = '13px';
+      statusLabel.style.textAlign = 'center';
+      statusLabel.textContent = `Scanning 0 / ${totalSegments}`;
+
+      leftCol.appendChild(svg);
+      leftCol.appendChild(statusLabel);
+
+      // Right column: logo only (closer to spinner)
+      const rightCol = document.createElement('div');
+      rightCol.style.display = 'flex';
+      rightCol.style.flexDirection = 'column';
+      rightCol.style.alignItems = 'center';
+      rightCol.style.justifyContent = 'center';
+      rightCol.style.gap = '6px';
+      rightCol.style.flex = '0 0 auto';
+      rightCol.style.minWidth = '80px';
+
+      // Add branding logo into the right column (non-interactive)
+      try {
+        const logoImg = document.createElement('img');
+        logoImg.className = 'scc-scan-logo';
+        logoImg.src = '002LogoWOname_small.png';
+        logoImg.alt = 'Logo';
+        logoImg.style.pointerEvents = 'none';
+        logoImg.style.display = 'block';
+        logoImg.style.margin = '0 auto';
+        logoImg.style.maxWidth = '160px';
+        logoImg.style.maxHeight = '60px';
+        logoImg.style.objectFit = 'contain';
+        rightCol.appendChild(logoImg);
+      } catch (e) {}
+
+      // Append left and right columns
+      box.appendChild(leftCol);
+      box.appendChild(rightCol);
+      wrap.appendChild(box);
+
+      // attach overlay to document root so fixed positioning works cleanly
+      document.documentElement.appendChild(wrap);
+
+      return {
+        markDone(i) { try { if (segs[i]) segs[i].setAttribute('fill','#10b981'); statusLabel.textContent = `Scanning ${i+1} / ${segs.length}`;} catch (e) {} },
+        setStatus(txt) { try { statusLabel.textContent = String(txt||''); } catch (e) {} },
+        hide() { try { wrap.remove(); } catch (e) {} }
+      };
+    } catch (e) { return null; }
+  }
+
+  async function runSccWithOptions(opts){
+    const sel = getGridSelectedTemplates();
+    if (!sel.length) { alert('Select one template row in the grid first.'); return; }
+    if (sel.length > 1) { alert('Please select only 1 template row to run SCC.'); return; }
+
+    const meta = getSpectroMeta();
+    if (!meta.spectra || !meta.bins || !meta.framesPerSec) { alert('Spectrogram not ready. Generate it first.'); return; }
+
+  // Pause playback safely before heavy SCC work to avoid overlays/audio conflicts
+  try { await safePausePlayback(1000); } catch (e) {}
+  setDisabled(true);
+  // show wait overlay for long runs (provide explicit title/body to avoid stale spectrogram copy)
+  try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Running SCC...', titleText: 'Running SCC', bodyText: 'Computing detections — this may take several seconds.' }); } catch (e) {}
+  // yield briefly so the overlay can paint before heavy synchronous work begins
+  try { await new Promise(r => setTimeout(r, 50)); } catch (e) {}
+  // instrumentation counters
+    let totalCoarsePeaks = 0;
+    let totalRawCandidates = 0;
+
+    // Build template matrices from selections
+    const templates = sel.map(r => extractTemplate2D(
+      meta.spectra, meta.bins, meta.framesPerSec, meta.sampleRate,
+      Number(r.beginTime)||0, Number(r.endTime)||0, Number(r.lowFreq)||0, Number(r.highFreq)||0
+    ));
+
+    
+
+  let runResult = { added: 0, raw: 0, coarse: 0, dedup: 0 };
+  try {
+
+    // Optionally composite
+    let composite = null;
+    if (opts.composite !== 'none' && templates.length >= 1) {
+      composite = composeTemplates(templates, opts.composite);
+    }
+
+  // Build search image = frequency include range. Use user-provided minFreq/maxFreq if present,
+  // otherwise default to templates range +/-100Hz.
+  const tplMin = Math.max(0, Math.min(...sel.map(r => Number(r.lowFreq)||0)));
+  const tplMax = Math.max(...sel.map(r => Number(r.highFreq)||0));
+  const f1Search = (typeof opts.minFreq === 'number' && !isNaN(opts.minFreq)) ? Math.max(0, opts.minFreq) : Math.max(0, tplMin - 100);
+  const f2Search = (typeof opts.maxFreq === 'number' && !isNaN(opts.maxFreq)) ? Math.min(meta.sampleRate/2, opts.maxFreq) : Math.min(meta.sampleRate/2, tplMax + 100);
+
+  const fullDuration = (typeof globalThis._spectroDuration === 'number' && isFinite(globalThis._spectroDuration)) ? globalThis._spectroDuration : Math.max(...sel.map(r => Number(r.endTime)||0));
+  const extractSearch = extractTemplate2D(meta.spectra, meta.bins, meta.framesPerSec, meta.sampleRate, 0, fullDuration, f1Search, f2Search);
+
+    // Downsample according to quality
+    const strides = computeQualityStrides(opts.quality);
+    const searchDS = downsample2D(extractSearch.data, extractSearch.width, extractSearch.height, strides.sx, strides.sy);
+  // debug logs removed
+
+  // Energy floor precompute over search image (mean magnitude per patch approximately via direct values)
+  const energyVals = searchDS.data; // approximate energy with magnitudes
+  const energyThresh = percentile(energyVals, opts.energyPct);
+  // debug logs removed
+
+    // Build template variants
+    const pitchScales = buildScales(opts.pitchTolPct, opts.pitchSteps);
+    const timeScales = buildScales(opts.timeTolPct, opts.timeSteps);
+
+    const templatesToUse = composite ? [{ ...composite, srcIdList: sel.map(r => r.id) }] : templates.map((t,i) => ({ ...t, srcIdList: [sel[i].id] }));
+
+  // debug logs removed
+
+  // Run detection pass for the user options (single pass; no automatic relaxed rerun)
+  const pass1 = await detectCandidatesForParams(meta, extractSearch, templatesToUse, opts, !!opts.allowLowVar);
+    let detections = pass1.detections;
+    totalCoarsePeaks = pass1.coarsePeaks;
+    totalRawCandidates = pass1.rawCandidates;
+
+  // Sort by score desc then t1 asc
+  detections.sort((a,b) => (b.score - a.score) || (a.t1 - b.t1) || (a.f1 - b.f1));
+  // debug logs removed
+
+  setProgress(`Deduplicating (${detections.length} raw detections)...`);
+  const dedupAll = nms(detections, 0.5);
+
+  // Apply user threshold after deduplication so threshold only filters final detections
+  const dedup = dedupAll.filter(d => (d.score || -1) >= opts.threshold);
+  // debug logs removed
+
+    // Insert into grid
+    // Use the species and scientificName from the selected template row directly.
+    const speciesGuess = sel.length > 0 ? (sel[0].species || '') : '';
+    const speciesScientificGuess = sel.length > 0 ? (sel[0].scientificName || '') : '';
+
+    // Optionally merge by gap < 1s, based on checkbox
+    let finalDetections = dedup;
+    try {
+      const mergeFlag = !!(document.getElementById('scc-merge') && document.getElementById('scc-merge').checked);
+      let gapSec = 1.0; try { const el = document.getElementById('scc-merge-gap'); const v = parseFloat(el && el.value); if (!isNaN(v)) gapSec = Math.max(0, v); } catch(e){}
+      if (mergeFlag) finalDetections = mergeDetectionsByGap(dedup, gapSec);
+    } catch(e){}
+
+    const rowsToCreate = finalDetections.map((d) => ({
+        beginTime: d.t1,
+        endTime: d.t2,
+        lowFreq: d.f1,
+        highFreq: d.f2,
+        species: speciesGuess,
+        scientificName: speciesScientificGuess
+    }));
+
+    let addedRows = [];
+    if (rowsToCreate.length) {
+      try { 
+        addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-create');
+      } catch (e) {}
+      // Deselect previously-selected template rows and select newly added rows for convenience
+      try {
+        const grid = window.annotationGrid;
+        const addedIds = addedRows.map(r => r.id);
+        if (grid) {
+          // Try to deselect any currently selected rows
+          try {
+            if (typeof grid.getSelectedRows === 'function') {
+              const prev = grid.getSelectedRows();
+              if (Array.isArray(prev)) prev.forEach(rObj => { try { if (typeof rObj.deselect === 'function') rObj.deselect(); else if (typeof grid.deselectRow === 'function') grid.deselectRow(rObj); } catch(e){} });
+            } else if (typeof grid.deselectRow === 'function') {
+              const selIds = sel.map(s => s.id);
+              selIds.forEach(id => { try { grid.deselectRow(id); } catch(e){} });
+            }
+          } catch (e) {}
+
+          // Select the newly added rows
+          try {
+            if (typeof grid.selectRow === 'function') {
+              for (const id of addedIds) { try { grid.selectRow(id); } catch(e){} }
+            } else if (typeof grid.getRow === 'function') {
+              for (const id of addedIds) { try { const r = grid.getRow(id); if (r && typeof r.select === 'function') r.select(); } catch(e){} }
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
+    }
+
+    runResult = { added: rowsToCreate.length, raw: totalRawCandidates, coarse: totalCoarsePeaks, dedup: dedup.length };
+
+    setProgress(`${rowsToCreate.length} detections added.`);
+    } catch (e) {
+      throw e;
+    } finally {
+      // hide wait overlay when finished
+      try { window.__spectroWait && window.__spectroWait.hide(); } catch (e) {}
+      setDisabled(false);
+    }
+
+    return runResult;
+
+  }
+
+    // end runSccWithOptions
+
+
+  function wireButton(){
+    const btn = document.getElementById(RUN_BTN_ID);
+    if (!btn) return;
+    if (btn.__sccWired) return;
+
+    function checkScanBtnState() {
+      const scanBtn = document.getElementById('scc-scan');
+      if (!scanBtn) return;
+      if (!__scc_lastScanParams) { scanBtn.disabled = false; return; }
+      const sel = getGridSelectedTemplates();
+      const currentId = sel && sel.length === 1 ? sel[0].id : null;
+      const mdEl = document.getElementById('scc-mindur');
+      const mfEl = document.getElementById('scc-minfreq');
+      const xfEl = document.getElementById('scc-maxfreq');
+      const currentMinDurMs = Math.max(0, Number(mdEl ? mdEl.value : '0')) || 0;
+      const minFreq = Number(mfEl ? mfEl.value : '0') || 0;
+      const maxFreq = Number(xfEl ? xfEl.value : '0') || 0;
+
+      if (String(currentId) !== String(__scc_lastScanParams.id) ||
+          currentMinDurMs !== __scc_lastScanParams.minDur ||
+          minFreq !== __scc_lastScanParams.minFreq ||
+          maxFreq !== __scc_lastScanParams.maxFreq) {
+          scanBtn.disabled = false;
+          const presetsArea = document.getElementById('scc-presets-area');
+          if (presetsArea) presetsArea.style.display = 'none';
+      } else {
+          scanBtn.disabled = true;
+          const presetsArea = document.getElementById('scc-presets-area');
+          if (presetsArea && __scc_lastScanRows) presetsArea.style.display = 'block';
+      }
+    }
+
+    btn.addEventListener('click', async () => {
+      try {
+      // Before opening SCC modal, ensure exactly one template is selected and species is set.
+      try {
+        const selRows = getGridSelectedTemplates() || [];
+        if (!selRows || selRows.length !== 1) {
+          console.warn('SCC abort: No single row selected.');
+          alert('Please select only 1 template row to run SCC.');
+          return;
+        }
+        const uniq = Array.from(new Set(selRows.map(r => (r.scientificName||'').trim()).filter(Boolean)));
+        if (uniq.length === 0) {
+          console.warn('SCC abort: No scientific name.');
+          alert('Selected template contains no Scientific Name. Please set the Species for your template row before running SCC.');
+          return;
+        }
+      } catch (e) { /* continue to open modal on unexpected error */ }
+      // pause playback before opening modal to avoid background audio and focus races
+      try { await safePausePlayback(800); } catch (e) {}
+      const modal = _showModal();
+      const $ = (id) => document.getElementById(id);
+
+      setTimeout(() => {
+        const firstInput = $('scc-mindur');
+        if (firstInput) firstInput.focus();
+      }, 50);
+
+      let shouldPrefill = true;
+      try {
+        const selRows = getGridSelectedTemplates() || [];
+        const currentId = selRows.length === 1 ? selRows[0].id : null;
+        if (__scc_lastScanParams && currentId && String(__scc_lastScanParams.id) === String(currentId)) {
+            const presetsArea = document.getElementById('scc-presets-area');
+            if (presetsArea && __scc_lastScanRows) {
+                presetsArea.style.display = 'block';
+            }
+            
+            const minDurEl = $('scc-mindur');
+            const minFreqEl = $('scc-minfreq');
+            const maxFreqEl = $('scc-maxfreq');
+            if (minDurEl) minDurEl.value = String(__scc_lastScanParams.minDur);
+            if (minFreqEl) minFreqEl.value = String(__scc_lastScanParams.minFreq);
+            if (maxFreqEl) maxFreqEl.value = String(__scc_lastScanParams.maxFreq);
+            
+            const scanBtn = document.getElementById('scc-scan');
+            if (scanBtn) scanBtn.disabled = true;
+            shouldPrefill = false;
+        } else {
+            const presetsArea = document.getElementById('scc-presets-area');
+            if (presetsArea) {
+                presetsArea.style.display = 'none';
+            }
+            const scanBtn = document.getElementById('scc-scan');
+            if (scanBtn) scanBtn.disabled = false;
+        }
+      } catch(e) {}
+
+      if (shouldPrefill) {
+        // Prefill frequency include defaults based on selected templates
+        try {
+        const selRows = getGridSelectedTemplates();
+        if (selRows && selRows.length) {
+          const minF = Math.max(0, Math.min(...selRows.map(r => Number(r.lowFreq)||0)) - 100);
+          const maxF = Math.min((globalThis._spectroSampleRate||44100)/2, Math.max(...selRows.map(r => Number(r.highFreq)||0)) + 100);
+          const minEl = $('scc-minfreq'); const maxEl = $('scc-maxfreq');
+          if (minEl) minEl.value = String(Math.max(0, Math.floor(minF)));
+          if (maxEl) maxEl.value = String(Math.max(0, Math.ceil(maxF)));
+          // Default min duration: 25% of the longest selected template duration (ms), floor 10ms
+          try {
+            const durations = selRows.map(r => {
+              const b = Number(r.beginTime) || 0; const e = Number(r.endTime) || 0; return Math.max(0, e - b);
+            });
+            const maxDur = durations.length ? Math.max(...durations) : 0; // seconds
+            const defaultMinDurMs = Math.max(10, Math.round(maxDur * 1000 * 0.25));
+            const minDurEl = $('scc-mindur');
+            if (minDurEl) minDurEl.value = String(defaultMinDurMs);
+          } catch (e) {}
+        }
+      } catch (e) {}
+      }
+  const run = $('scc-run');
+  const cancel = $('scc-cancel');
+  const close = () => _hideModal();
+  // ensure cancel also aborts any in-flight scan (guarded in case the element was removed from the UI)
+  if (cancel) cancel.onclick = () => { try { if (__scc_currentScan) __scc_currentScan.cancelled = true; } catch (e) {} close(); };
+  // wire top-right X close button, if present
+  try {
+    const closeX = $('scc-close-x');
+    if (closeX && !closeX.__wired) { closeX.addEventListener('click', close); closeX.__wired = true; }
+  } catch(e) {}
+
+      const minDurEl = $('scc-mindur');
+      const minFreqEl = $('scc-minfreq');
+      const maxFreqEl = $('scc-maxfreq');
+      if (minDurEl && !minDurEl.__sccWired) { minDurEl.addEventListener('input', checkScanBtnState); minDurEl.__sccWired = true; }
+      if (minFreqEl && !minFreqEl.__sccWired) { minFreqEl.addEventListener('input', checkScanBtnState); minFreqEl.__sccWired = true; }
+      if (maxFreqEl && !maxFreqEl.__sccWired) { maxFreqEl.addEventListener('input', checkScanBtnState); maxFreqEl.__sccWired = true; }
+
+      // Wire the preset scan and stop buttons
+      const scanBtn = $('scc-scan');
+      const stopBtn = $('scc-stop');
+      const presetsArea = document.getElementById('scc-presets-area');
+      if (stopBtn && !stopBtn.__wired) {
+        stopBtn.addEventListener('click', () => {
+          try { if (__scc_currentScan) __scc_currentScan.cancelled = true; } catch (e) {}
+        });
+        stopBtn.__wired = true;
+      }
+      if (scanBtn && !scanBtn.__scanned) {
+        scanBtn.addEventListener('click', async () => {
+          if (!presetsArea) return;
+              // validate selection first; do not clear existing presets area on invalid selection
+              const sel = getGridSelectedTemplates();
+              if (!sel || sel.length === 0) { alert('Please select a row first.'); return; }
+              // proceed and show searching message
+              presetsArea.style.display = 'block';
+              presetsArea.innerHTML = '<div style="color:#9ca3af">Searching presets, please wait...</div>';
+              // cancel any previous scan and start a fresh one
+              try { if (__scc_currentScan) __scc_currentScan.cancelled = true; } catch (e) {}
+              __scc_currentScan = { cancelled: false };
+              try { scanBtn.disabled = true; if (run) run.disabled = true; } catch (e) {}
+              if (stopBtn) { stopBtn.style.display = 'inline-block'; stopBtn.disabled = false; }
+          try {
+            const sel = getGridSelectedTemplates();
+            if (!sel || sel.length === 0) {
+              presetsArea.innerHTML = '<div style="color:#f97316">Please select a row first.</div>';
+              return;
+            }
+            const meta = getSpectroMeta();
+            if (!meta.spectra || !meta.bins || !meta.framesPerSec) { presetsArea.innerHTML = '<div style="color:#f97316">Spectrogram not ready.</div>'; return; }
+            // frequency include from inputs
+            const minFreq = Number(($('scc-minfreq').value||'0')) || 0;
+            const maxFreq = Number(($('scc-maxfreq').value||String(Math.max(1000, (meta.sampleRate||44100)/2)))) || Math.max(1000, (meta.sampleRate||44100)/2);
+            const fullDuration = (typeof globalThis._spectroDuration === 'number' && isFinite(globalThis._spectroDuration)) ? globalThis._spectroDuration : Math.max(...sel.map(r => Number(r.endTime)||0));
+            const extractSearch = extractTemplate2D(meta.spectra, meta.bins, meta.framesPerSec, meta.sampleRate, 0, fullDuration, minFreq, maxFreq);
+            const currentMinDurMs = Math.max(0, Number(($('scc-mindur').value||'0')) || 0);
+
+            __scc_lastScanParams = {
+              id: sel[0].id,
+              minDur: currentMinDurMs,
+              minFreq: minFreq,
+              maxFreq: maxFreq
+            };
+
+            // build templates
+            const templates = sel.map(r => extractTemplate2D(meta.spectra, meta.bins, meta.framesPerSec, meta.sampleRate, Number(r.beginTime)||0, Number(r.endTime)||0, Number(r.lowFreq)||0, Number(r.highFreq)||0));
+
+            // Preset definitions
+            const presets = [
+              { name: 'Quick Scan', opts: { threshold: 0.30, quality: 'fast', pitchTolPct:5, pitchSteps:3, timeTolPct:0, timeSteps:1, composite:'none', energyPct:20, minDurMs:30 } },
+              { name: 'Balanced Accurate', opts: { threshold: 0.55, quality: 'balanced', pitchTolPct:10, pitchSteps:7, timeTolPct:5, timeSteps:1, composite:'mean', energyPct:8, minDurMs:50 } },
+              { name: 'High Recall', opts: { threshold: 0.30, quality: 'balanced', pitchTolPct:20, pitchSteps:11, timeTolPct:10, timeSteps:3, composite:'none', energyPct:0, minDurMs:20 } }
+            ];
+
+            const rows = [];
+            let stoppedEarly = false;
+            // create scan overlay (5 segments) and attach to presets area
+            let __overlay = null;
+            try { __overlay = createScanOverlay(presetsArea, presets.length); if (__scc_currentScan) __scc_currentScan.overlay = __overlay; } catch (e) { __overlay = null; }
+            for (let i=0;i<presets.length;i++){
+              const p = presets[i];
+              // prepare opts with frequency include and the current Min duration input
+              const currentMinDurMs = Math.max(0, Number(($('scc-mindur').value||'0')) || 0);
+              const pOpts = Object.assign({}, p.opts, { minFreq, maxFreq, minDurMs: currentMinDurMs });
+              // prepare templatesToUse according to composite
+              const templatesToUse = (pOpts.composite && pOpts.composite !== 'none') ? [{ ...composeTemplates(templates, pOpts.composite), srcIdList: sel.map(r => r.id) }] : templates.map((t,idx)=> ({ ...t, srcIdList: [sel[idx].id] }));
+                // For preset scanning we want counts based on the parameter values only —
+                // allow low-variance templates during trial runs so the scan reports numbers
+                // even if the template would normally be skipped in a strict run.
+                const res = await detectCandidatesForParams(meta, extractSearch, templatesToUse, pOpts, true, __scc_currentScan);
+                if (__scc_currentScan && __scc_currentScan.cancelled) { stoppedEarly = true; break; }
+                // compute final dedup+threshold count
+                let dets = res.detections || [];
+                dets.sort((a,b) => (b.score - a.score) || (a.t1 - b.t1) || (a.f1 - b.f1));
+                const dedupAll = nms(dets, 0.5);
+                const final = dedupAll.filter(d => (d.score || -1) >= pOpts.threshold);
+                rows.push({ name: p.name, count: final.length, opts: pOpts, detections: final, stats: { coarse: res.coarsePeaks, raw: res.rawCandidates, variantsTried: res.variantsTried, skippedLowVar: res.skippedLowVar, skippedTooLarge: res.skippedTooLarge, elapsedMs: res.elapsedMs || 0 } });
+                try { if (__overlay) __overlay.markDone(i); if (__overlay) __overlay.setStatus(`${p.name}: ${final.length} detections`); } catch (e) {}
+              // small yield to keep UI responsive
+              await new Promise(r=>setTimeout(r,0));
+              if (__scc_currentScan && __scc_currentScan.cancelled) { stoppedEarly = true; break; }
+            }
+
+            // store scan rows for later comparison
+            __scc_lastScanRows = rows;
+
+            // render results as a 2-column grid to reduce vertical scrolling
+            const completedCount = rows.length;
+            const presetCount = presets.length;
+            let introText = 'Presets results (select one to apply to the form below):';
+            if (stoppedEarly && completedCount) {
+              introText = `Scan stopped early. Showing ${completedCount} of ${presetCount} preset${presetCount===1?'':'s'} that finished. You can still apply any completed preset below.`;
+            } else if (stoppedEarly && !completedCount) {
+              introText = 'Scan stopped before any preset finished. No cached detections yet.';
+            }
+            let html = `<div style="color:#cbd5e1;margin-bottom:6px;font-size:13px">${introText}</div>`;
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+            for (let i=0;i<rows.length;i++){ const r=rows[i];
+              html += `<label style="display:flex;align-items:flex-start;padding:8px;background:#071722;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"><input type=radio name=scc-preset value=${i} style="margin-right:10px;margin-top:6px"><div style="flex:1"><div style="font-weight:600">${r.name}</div><div style="color:#9ca3af;font-size:12px;margin-top:4px">variants:${r.stats.variantsTried} skippedLow:${r.stats.skippedLowVar} skippedSize:${r.stats.skippedTooLarge}</div></div><div style="text-align:right;font-weight:600;margin-left:8px">${r.count}<div style="color:#9ca3af;font-size:12px;margin-top:4px">coarse:${r.stats.coarse} raw:${r.stats.raw} time:${r.stats.elapsedMs}ms</div></div></label>`;
+            }
+        html += '</div>';
+          // Apply selected preset button (use main merge controls; do not duplicate inside presets)
+        html += '<div style="margin-top:8px; display:flex; align-items:center; justify-content:flex-end; gap:12px">'
+          + '<button id="scc-apply" class="btn" style="background:#0ea5e9; padding:6px 10px; font-size:13px;" disabled>Apply selected preset</button>'
+          + '</div>';
+            presetsArea.innerHTML = html;
+            try { if (__overlay) __overlay.hide(); } catch (e) {}
+
+            // radio change handler fills form values and records selection
+            const radios = presetsArea.querySelectorAll('input[name="scc-preset"]');
+            const applyBtn = presetsArea.querySelector('#scc-apply');
+            const mergeApply = presetsArea.querySelector('#scc-merge-apply');
+            const mergeGapApply = presetsArea.querySelector('#scc-merge-gap-apply');
+            // sync with main checkbox if present
+            try {
+              const mergeMain = document.getElementById('scc-merge');
+              const mergeGapMain = document.getElementById('scc-merge-gap');
+              if (mergeMain && mergeApply) {
+                mergeApply.checked = !!mergeMain.checked;
+                mergeApply.addEventListener('change',()=>{ mergeMain.checked = mergeApply.checked; });
+                mergeMain.addEventListener('change',()=>{ mergeApply.checked = mergeMain.checked; });
+              }
+              if (mergeGapMain && mergeGapApply) {
+                mergeGapApply.value = mergeGapMain.value;
+                mergeGapApply.addEventListener('input',()=>{ mergeGapMain.value = mergeGapApply.value; });
+                mergeGapMain.addEventListener('input',()=>{ mergeGapApply.value = mergeGapMain.value; });
+              }
+            } catch(e){}
+            radios.forEach(rb => rb.addEventListener('change', (ev) => {
+              const idx = Number(ev.target.value);
+              __scc_lastSelectedPresetIndex = idx;
+              const selPreset = rows[idx];
+              if (!selPreset) return;
+              // populate only the three kept form fields (min duration, min freq, max freq)
+              try { if (document.getElementById('scc-mindur')) document.getElementById('scc-mindur').value = String(selPreset.opts.minDurMs || selPreset.opts.minDur || 50); } catch(e){}
+              try { if (document.getElementById('scc-minfreq')) document.getElementById('scc-minfreq').value = String(Math.max(0, Math.floor(selPreset.opts.minFreq||0))); } catch(e){}
+              try { if (document.getElementById('scc-maxfreq')) document.getElementById('scc-maxfreq').value = String(Math.max(0, Math.ceil(selPreset.opts.maxFreq||0))); } catch(e){}
+              if (applyBtn) applyBtn.disabled = !(selPreset && Array.isArray(selPreset.detections) && selPreset.detections.length);
+            }));
+
+            // Wire Apply selected preset: insert cached detection rows
+            if (applyBtn && !applyBtn.__wired) {
+              applyBtn.addEventListener('click', async () => {
+                try {
+                  // ensure selection present
+                  const idx = (typeof __scc_lastSelectedPresetIndex === 'number') ? __scc_lastSelectedPresetIndex : -1;
+                  if (idx < 0 || !rows[idx]) { alert('Select a preset first.'); return; }
+                  const presetRow = rows[idx];
+                  const dets = Array.isArray(presetRow.detections) ? presetRow.detections : [];
+                  if (!dets.length) { alert('No detections cached for the selected preset.'); return; }
+
+                  // show overlay
+                  try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Applying preset…', titleText: 'Applying preset', bodyText: 'Inserting cached detections into the grid. Please wait…' }); } catch(e){}
+                  try { await new Promise(r=>setTimeout(r,20)); } catch(e){}
+
+                  // species guess (match run behavior)
+                  // Use the species and scientificName from the selected template row directly.
+                  const selRows = getGridSelectedTemplates();
+                  const speciesGuess = selRows.length > 0 ? (selRows[0].species || '') : '';
+                  const speciesScientificGuess = selRows.length > 0 ? (selRows[0].scientificName || '') : '';
+
+                  // Optionally merge by gap < 1s
+                  let toInsert = dets;
+                  try {
+                    const mergeFlag = !!(document.getElementById('scc-merge-apply') && document.getElementById('scc-merge-apply').checked) || !!(document.getElementById('scc-merge') && document.getElementById('scc-merge').checked);
+                    let gapSec = 1.0;
+                    try {
+                      const elA = document.getElementById('scc-merge-gap-apply');
+                      const elM = document.getElementById('scc-merge-gap');
+                      const v = parseFloat(elA && elA.value || elM && elM.value);
+                      if (!isNaN(v)) gapSec = Math.max(0, v);
+                    } catch(e){}
+                    if (mergeFlag) toInsert = mergeDetectionsByGap(dets, gapSec);
+                  } catch(e){}
+                const rowsToCreate = toInsert.map((d) => ({
+                    beginTime: Number(round4(d.t1)),
+                    endTime: Number(round4(d.t2)),
+                    lowFreq: Number(round4(d.f1)),
+                    highFreq: Number(round4(d.f2)),
+                    species: speciesGuess,
+                    scientificName: speciesScientificGuess,
+                    notes: ''
+                  }));
+
+                if (rowsToCreate.length) {
+                  let addedRows = [];
+                  try {
+                    addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-apply');
+                      // Deselect previous, select newly-added
+                      const grid = window.annotationGrid;
+                      if (grid && typeof grid.getSelectedRows === 'function') {
+                        const prev = grid.getSelectedRows();
+                        if (Array.isArray(prev)) prev.forEach(rObj => { try { if (typeof rObj.deselect === 'function') rObj.deselect(); else if (typeof grid.deselectRow === 'function') grid.deselectRow(rObj); } catch(e){} });
+                      }
+                      if (grid && typeof grid.selectRow === 'function') {
+                        for (const r of addedRows) { try { grid.selectRow(r.id); } catch(e){} }
+                      }
+                    } catch(e){}
+                  if (addedRows && addedRows.length > 0) applyBtn.disabled = true;
+                  }
+
+                } catch (e) {
+                  alert('Apply failed: ' + (e && e.message ? e.message : String(e)));
+                } finally {
+                  try { window.__spectroWait && window.__spectroWait.hide(); } catch(e){}
+                }
+              });
+              applyBtn.__wired = true;
+            }
+
+          } catch (e) {
+            if (__scc_currentScan && __scc_currentScan.cancelled) {
+              presetsArea.innerHTML = '<div style="color:#f59e0b">Search cancelled.</div>';
+            } else {
+              presetsArea.innerHTML = '<div style="color:#f97316">Search failed: ' + (e && e.message ? e.message : String(e)) + '</div>';
+            }
+          } finally {
+            try { scanBtn.disabled = false; } catch (e) {}
+            try { if (run) run.disabled = false; } catch (e) {}
+            if (stopBtn) { stopBtn.style.display = 'none'; }
+            __scc_currentScan = null;
+          }
+        });
+        scanBtn.__scanned = true;
+      }
+      // The "Run" button was removed from the modal UI per simplified workflow; keep wiring complete but do not attach a run handler here.
+      checkScanBtnState();
+
+      } catch (err) {
+        console.error('SCC Error:', err);
+        alert('An unexpected error occurred opening SCC: ' + err.message);
+      }
+    });
+    btn.__sccWired = true;
+  }
+
+  // Defer wire until DOM ready
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireButton);
+  else wireButton();
+})();
