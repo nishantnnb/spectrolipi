@@ -2,7 +2,9 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Spectrolipi</title>
+  <title>Bioacoustics Spectrogram Labeling Tool - Spectrolipi</title>
+  <meta name="description" content="Bioacoustics researchers, birders, and machine-learning practitioners often need a tool to visualize and annotate spectrograms to make the most of their sound recordings. Sound-data annotation is a crucial step in building high-quality machine-learning models for sound-based identification. To support this workflow, a new open-source tool &quot;Spectrolipi&quot; is now available. Spectrolipi is a browser-based, user-friendly tool with automation options to create annotations during spectrogram playback. It features seamless Xeno-Canto integration and bird species detection using BirdNET." />
+  <meta name="keywords" content="annotations, sound data annotation, bounding box, spectrogram labeling tool, bioacoustics, bioacoustic-analysis, xeno-canto integration, spectrogram-analysis, Spectrogram, machine-learning, BirdNET" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1292,9 +1294,6 @@
 
       const upBtn = findUploadAnnoBtn();
       if (upBtn) upBtn.disabled = !hasFile;
-
-      const uploadXenoCantoBtn = findUploadXenoCantoBtn();
-      if (uploadXenoCantoBtn) uploadXenoCantoBtn.disabled = !hasFile;
 
       const exportBtn = findExportBtn();
       if (exportBtn) exportBtn.disabled = !hasFile;

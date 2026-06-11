@@ -1614,6 +1614,18 @@
           if (f) {
             // Ensure UI defaults to Create mode when a new file is selected
             try { const wrap = document.getElementById('createEditToggle'); if (wrap) wrap.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'create' }, bubbles: true })); } catch(e){}
+            
+            // Smart List Restoration Logic
+            if (!window.__isXcLoad) {
+              const backup = localStorage.getItem('spectrolipi.smartListBackup.v1');
+              if (backup) {
+                localStorage.setItem('spectrolipi.recentSpecies.v1', backup);
+                localStorage.removeItem('spectrolipi.smartListBackup.v1');
+                if (typeof window.__reloadSmartList === 'function') window.__reloadSmartList();
+              }
+            } else {
+              window.__isXcLoad = false;
+            }
 
             // Strict backup lifecycle on file open: combined prompt for annotations + metadata, then restore/purge accordingly
             try {
@@ -3041,10 +3053,86 @@
         window.__spectroWait.show({ etaText: 'Downloading from Xeno-canto...' });
       }
 
-      console.log(`[XC-DEBUG] --- STARTING XENO-CANTO IMPORT FOR XC${cleanId} ---`);
       const audioUrl = `https://xeno-canto.org/${cleanId}/download`;
 
-      console.log(`[XC-DEBUG] Fetching actual audio file from URL: ${audioUrl}`);
+      // Fetch metadata from XC API v3
+      let finalFilename = `XC${cleanId}.mp3`;
+      let newSmartList = [];
+      try {
+        let xcApiKey = '';
+        try {
+          if (typeof window.__getXcSettings === 'function') {
+            xcApiKey = window.__getXcSettings().apiKey || '';
+          } else {
+            const raw = localStorage.getItem('xc.settings.v1');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && parsed.apiKey) xcApiKey = parsed.apiKey;
+            }
+          }
+        } catch(e) {}
+
+        if (xcApiKey) {
+          const queryUrl = `https://xeno-canto.org/api/3/recordings?query=nr:${cleanId}&key=${encodeURIComponent(xcApiKey)}`;
+          const metaUrls = [
+            queryUrl,
+            `https://corsproxy.io/?${encodeURIComponent(queryUrl)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(queryUrl)}`
+          ];
+          
+          let metadata = null;
+          for (const url of metaUrls) {
+            try {
+              const res = await fetch(url);
+              if (res.ok) {
+                metadata = await res.json();
+                break;
+              }
+            } catch(e) { /* continue to next proxy */ }
+          }
+
+          if (metadata && metadata.recordings && metadata.recordings.length > 0) {
+            const rec = metadata.recordings[0];
+            if (rec['file-name']) {
+              finalFilename = rec['file-name'];
+            }
+            
+            function resolveSp(sciName) {
+              let common = '';
+              let scientific = String(sciName).trim();
+              if (scientific && Array.isArray(window.__speciesRecords)) {
+                 const recs = window.__speciesRecords;
+                 const match = recs.find(r => r.scientific && r.scientific.toLowerCase() === scientific.toLowerCase());
+                 if (match) common = match.common || '';
+              }
+              return { scientific, common, isPinned: true, addedAt: Date.now() };
+            }
+            
+            // 1. Primary species
+            if (rec.gen && rec.sp) {
+              newSmartList.push(resolveSp(rec.gen + ' ' + rec.sp));
+            }
+            
+            // 2. Background species (also)
+            if (Array.isArray(rec.also)) {
+               for (const alsoName of rec.also) {
+                  if (newSmartList.length >= 10) break;
+                  const alsoSci = String(alsoName).trim();
+                  if (alsoSci) {
+                     if (!newSmartList.some(s => s.scientific.toLowerCase() === alsoSci.toLowerCase())) {
+                         newSmartList.push(resolveSp(alsoSci));
+                     }
+                  }
+               }
+            }
+            
+          } else {
+            // No recordings found in API response
+          }
+        }
+      } catch(e) {
+        // Failed to parse metadata API response
+      }
       
       // Attempt to download the audio file directly first, then fall back to proxies
       const audioFetchUrls = [
@@ -3060,8 +3148,9 @@
       
       for (let i = 0; i < audioFetchUrls.length; i++) {
         try {
-          console.log(`[XC-DEBUG] Fetching audio (Attempt ${i+1}): ${audioFetchUrls[i].url}`);
+          const startTime = performance.now();
           let response = await fetch(audioFetchUrls[i].url);
+          const elapsed = (performance.now() - startTime).toFixed(2);
           if (response.ok) {
             let buffer = await response.arrayBuffer();
             // Check if buffer is actually an audio file (e.g. > 10KB), not just an HTML error page
@@ -3070,34 +3159,37 @@
               arrayBuffer = buffer;
               break; // Success, exit loop
             } else {
-              const text = new TextDecoder().decode(buffer.slice(0, 50));
-              console.warn(`[XC-DEBUG] Audio Attempt ${i+1} returned a tiny file (${buffer.byteLength} bytes), likely an error page. Starts with: ${text}`);
+              // Returned a tiny file, likely an error page
             }
           } else {
-            console.warn(`[XC-DEBUG] Audio Attempt ${i+1} returned ${response.status}`);
+            // Failed attempt, response not ok
           }
         } catch (audioErr) {
-          console.warn(`[XC-DEBUG] Audio Attempt ${i+1} failed:`, audioErr);
+          // Attempt failed
         }
       }
       
       if (!audioSuccess || !arrayBuffer) {
         if (window.__spectroWait) window.__spectroWait.hide();
-        console.error('[XC-DEBUG] All audio proxies failed.');
         alert(`Failed to download audio from Xeno-canto.\nThe browser blocked direct access (CORS), and the backup proxies failed.\nAudio URL: ${audioUrl}`);
         return;
       }
 
-      console.log(`[XC-DEBUG] ArrayBuffer created (${arrayBuffer.byteLength} bytes). Mocking File object...`);
-      const filename = `XC${cleanId}.mp3`;
-      const mockFile = new File([arrayBuffer], filename, { type: 'audio/mpeg' });
+      if (newSmartList.length > 0) {
+        const currentList = localStorage.getItem('spectrolipi.recentSpecies.v1');
+        if (currentList) {
+          localStorage.setItem('spectrolipi.smartListBackup.v1', currentList);
+        }
+        localStorage.setItem('spectrolipi.recentSpecies.v1', JSON.stringify(newSmartList));
+        window.__isXcLoad = true;
+        if (typeof window.__reloadSmartList === 'function') window.__reloadSmartList();
+      }
 
-      console.log('[XC-DEBUG] Pre-filling basic metadata...');
+      const mockFile = new File([arrayBuffer], finalFilename, { type: 'audio/mpeg' });
       window.__lastMetadata = Object.assign({}, window.__lastMetadata || {}, {
         xcfileno: cleanId
       });
 
-      console.log('[XC-DEBUG] Injecting File into Spectrolipi File Input and dispatching event...');
       const fileInput = document.getElementById('file');
       if (fileInput) {
         // Programmatically set the file input files using DataTransfer
@@ -3107,14 +3199,11 @@
         
         // Dispatch the change event exactly as if the user clicked and selected a file
         fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-        console.log('[XC-DEBUG] --- IMPORT COMPLETE! Spectrogram should now generate. ---');
       } else {
         if (window.__spectroWait) window.__spectroWait.hide();
-        console.error('[XC-DEBUG] Could not find the #file input element in the DOM!');
       }
     } catch (err) {
       if (window.__spectroWait) window.__spectroWait.hide();
-      console.error('[XC-DEBUG] Unexpected global error in loadFromXenoCanto:', err);
       alert(`An unexpected error occurred: ${err.message}`);
     }
   };
@@ -3132,7 +3221,137 @@
       xcBtn.style.cssText = 'margin-left: 8px; font-size: 11px; padding: 3px 6px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 4px; vertical-align: middle; text-align: center; line-height: 1.2;';
       xcBtn.onmouseover = () => xcBtn.style.background = '#1976D2';
       xcBtn.onmouseout = () => xcBtn.style.background = '#2196F3';
-      xcBtn.onclick = (e) => { e.preventDefault(); const id = prompt('Enter Xeno-canto ID (e.g. XC123456):'); if (id) window.loadFromXenoCanto(id); };
+      xcBtn.onclick = (e) => { 
+        e.preventDefault(); 
+        
+        // Check API key
+        let xcApiKey = '';
+        let settings = null;
+        try {
+          if (typeof window.__getXcSettings === 'function') {
+            settings = window.__getXcSettings();
+            xcApiKey = settings.apiKey || '';
+          } else {
+            const raw = localStorage.getItem('xc.settings.v1');
+            if (raw) {
+              settings = JSON.parse(raw);
+              if (settings && settings.apiKey) xcApiKey = settings.apiKey;
+            }
+          }
+        } catch(err) {}
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(18,22,26,0.6);display:flex;align-items:center;justify-content:center;z-index:2147483647;backdrop-filter:blur(4px);';
+        
+        const card = document.createElement('div');
+        card.style.cssText = 'width:320px;background:#1e232b;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.5);padding:20px;color:#eee;font-family:system-ui,sans-serif;';
+        
+        const title = document.createElement('h4');
+        title.textContent = 'Load from Xeno-Canto';
+        title.style.cssText = 'margin:0 0 16px 0;font-size:16px;font-weight:600;';
+        
+        const idLabel = document.createElement('label');
+        idLabel.textContent = 'XC ID (e.g. XC123456):';
+        idLabel.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;';
+        
+        const idInput = document.createElement('input');
+        idInput.type = 'text';
+        idInput.placeholder = 'XC123456';
+        idInput.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #444;border-radius:6px;font-size:14px;background:#12151a;color:#fff;margin-bottom:16px;outline:none;';
+        
+        let keyWrap = null;
+        let keyInput = null;
+        if (!xcApiKey) {
+          keyWrap = document.createElement('div');
+          keyWrap.style.cssText = 'margin-bottom:16px;';
+          
+          const keyLabel = document.createElement('label');
+          keyLabel.textContent = 'API Key (Optional, to fetch species):';
+          keyLabel.style.cssText = 'display:block;font-size:13px;margin-bottom:6px;';
+          
+          const keyInputWrap = document.createElement('div');
+          keyInputWrap.style.cssText = 'display:flex;align-items:center;position:relative;';
+          
+          keyInput = document.createElement('input');
+          keyInput.type = 'password';
+          keyInput.placeholder = 'API Key';
+          keyInput.style.cssText = 'width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #444;border-radius:6px;font-size:14px;background:#12151a;color:#fff;outline:none;padding-right:48px;';
+          
+          const keyToggle = document.createElement('button');
+          keyToggle.type = 'button';
+          keyToggle.textContent = 'Show';
+          keyToggle.style.cssText = 'position:absolute;right:8px;background:transparent;border:none;color:#aaa;cursor:pointer;font-size:12px;padding:4px;';
+          keyToggle.onclick = () => {
+             if (keyInput.type === 'password') { keyInput.type = 'text'; keyToggle.textContent = 'Hide'; }
+             else { keyInput.type = 'password'; keyToggle.textContent = 'Show'; }
+          };
+          
+          keyInputWrap.appendChild(keyInput);
+          keyInputWrap.appendChild(keyToggle);
+          keyWrap.appendChild(keyLabel);
+          keyWrap.appendChild(keyInputWrap);
+        }
+        
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;justify-content:flex-end;gap:10px;margin-top:20px;';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = 'padding:8px 14px;border-radius:6px;border:1px solid #444;background:#2a303c;color:#fff;cursor:pointer;font-size:13px;';
+        
+        const loadBtn = document.createElement('button');
+        loadBtn.textContent = 'Load';
+        loadBtn.style.cssText = 'padding:8px 14px;border-radius:6px;border:none;background:#0b66ff;color:#fff;cursor:pointer;font-size:13px;font-weight:500;';
+        
+        const cleanup = () => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
+        
+        cancelBtn.onclick = cleanup;
+        
+        loadBtn.onclick = () => {
+          const id = idInput.value.trim();
+          if (!id) { alert('Please enter an XC ID.'); return; }
+          
+          if (keyInput) {
+            const enteredKey = keyInput.value.trim();
+            if (enteredKey) {
+               if (typeof window.__setXcSettings === 'function') {
+                  window.__setXcSettings(Object.assign(settings || {}, { apiKey: enteredKey }));
+               } else {
+                  let s = settings || {};
+                  s.apiKey = enteredKey;
+                  try { localStorage.setItem('xc.settings.v1', JSON.stringify(s)); } catch(e) {}
+               }
+            }
+          }
+          cleanup();
+          window.loadFromXenoCanto(id);
+        };
+        
+        actions.appendChild(cancelBtn);
+        actions.appendChild(loadBtn);
+        
+        card.appendChild(title);
+        card.appendChild(idLabel);
+        card.appendChild(idInput);
+        if (keyWrap) card.appendChild(keyWrap);
+        card.appendChild(actions);
+        
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => idInput.focus(), 10);
+        
+        idInput.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') { ev.preventDefault(); loadBtn.click(); }
+          if (ev.key === 'Escape') { ev.preventDefault(); cleanup(); }
+        });
+        if (keyInput) {
+           keyInput.addEventListener('keydown', (ev) => {
+             if (ev.key === 'Enter') { ev.preventDefault(); loadBtn.click(); }
+             if (ev.key === 'Escape') { ev.preventDefault(); cleanup(); }
+           });
+        }
+      };
 
       fileInput.parentNode.insertBefore(xcBtn, fileInput.nextSibling);
     }

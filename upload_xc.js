@@ -231,6 +231,26 @@
       cancel: overlayScope.querySelector('#xc-cancel')
     };
 
+    const fileInput = document.getElementById('file');
+    const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+
+    if (!hasFile) {
+       nodes.fileno.disabled = true;
+       nodes.setname.disabled = true;
+       nodes.setcreator.disabled = true;
+       nodes.setowner.disabled = true;
+       nodes.setsource.disabled = true;
+       nodes.seturi.disabled = true;
+       nodes.project.disabled = true;
+       nodes.projecturi.disabled = true;
+       nodes.funding.disabled = true;
+       nodes.taxon.disabled = true;
+       nodes.completeness.disabled = true;
+       nodes.exportJson.disabled = true;
+       nodes.directUpload.disabled = true;
+       nodes.proceed.disabled = true;
+    }
+
     if (nodes.apiToggle && nodes.apiKey) {
       nodes.apiToggle.addEventListener('click', () => {
         if (nodes.apiKey.type === 'password') {

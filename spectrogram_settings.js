@@ -76,7 +76,7 @@
           <div style="display:flex; gap:16px;">
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ccc;cursor:pointer;">
               <input type="checkbox" id="ss-recent-species" style="cursor:pointer;" checked>
-              Turn on Recent species list
+              Turn on Smart list
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#ccc;cursor:pointer;">
               <input type="checkbox" id="ss-magnifier" style="cursor:pointer;">

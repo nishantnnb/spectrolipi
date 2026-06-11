@@ -16,19 +16,31 @@
       if (s.defaultSpeciesFormat) displayMode = s.defaultSpeciesFormat;
       if (s.recentSpeciesEnabled === false) isActive = false;
     }
-    
-    // Load recent species list
-    const rawList = localStorage.getItem('spectrolipi.recentSpecies.v1');
-    if (rawList) {
-      recentSpecies = JSON.parse(rawList);
-      // Ensure legacy items have addedAt to maintain their sequence
-      recentSpecies.forEach((sp, idx) => {
-        if (!sp.addedAt) {
-          sp.addedAt = Date.now() - idx * 1000;
-        }
-      });
-    }
   } catch(e) {}
+    
+  function loadRecentSpeciesFromStorage() {
+    try {
+      const rawList = localStorage.getItem('spectrolipi.recentSpecies.v1');
+      if (rawList) {
+        recentSpecies = JSON.parse(rawList);
+        recentSpecies.forEach((sp, idx) => {
+          if (!sp.addedAt) {
+            sp.addedAt = Date.now() - idx * 1000;
+          }
+        });
+      } else {
+        recentSpecies = [];
+      }
+    } catch(e) {}
+  }
+  
+  // Initial load
+  loadRecentSpeciesFromStorage();
+
+  window.__reloadSmartList = function() {
+    loadRecentSpeciesFromStorage();
+    if (typeof renderList === 'function') renderList();
+  };
 
   function saveRecentSpecies() {
     try {
@@ -80,7 +92,7 @@
   titleGroup.style.cssText = 'display:flex; align-items:center; gap:6px; pointer-events: none;';
   
   const title = document.createElement('div');
-  title.textContent = 'Recent Species';
+  title.textContent = 'Smart List';
   title.style.cssText = 'font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; pointer-events: none;';
   
   const toggleBtn = document.createElement('button');
@@ -184,9 +196,24 @@
     
     container.style.display = 'flex';
     listContainer.innerHTML = '';
+    const elHidden = document.getElementById('selectedSpeciesKey');
+    const elResult = document.getElementById('speciesResult');
+    const selSci = elHidden ? elHidden.value || '' : '';
+    const selText = elResult ? elResult.textContent || '' : '';
+    const isResultEmpty = elResult && elResult.parentElement ? elResult.parentElement.classList.contains('empty') : true;
     
     recentSpecies.forEach((sp, idx) => {
+      let isSelected = false;
+      if (!isResultEmpty) {
+        if (selSci && sp.scientific && selSci.toLowerCase() === sp.scientific.toLowerCase()) {
+          isSelected = true;
+        } else if (!selSci && selText && (selText.toLowerCase() === (sp.common || '').toLowerCase() || selText.toLowerCase() === (sp.scientific || '').toLowerCase())) {
+          isSelected = true;
+        }
+      }
+
       const row = document.createElement('div');
+      const baseBg = isSelected ? 'rgba(255, 167, 38, 0.35)' : 'transparent';
       row.style.cssText = `
         display: flex;
         justify-content: space-between;
@@ -197,6 +224,8 @@
         cursor: pointer;
         border-bottom: 1px solid rgba(255,255,255,0.05);
         transition: background 0.1s;
+        background: ${baseBg};
+        font-weight: ${isSelected ? '600' : 'normal'};
       `;
       if (idx === recentSpecies.length - 1) {
         row.style.borderBottom = 'none';
@@ -296,7 +325,7 @@
         removeBtn.style.opacity = '1';
       });
       row.addEventListener('mouseleave', () => {
-        row.style.background = 'transparent';
+        row.style.background = baseBg;
         removeBtn.style.opacity = '0';
       });
       
@@ -402,6 +431,7 @@
     const isExisting = recentSpecies.some(x => (x.scientific || x.common) === (sp.scientific || sp.common));
     if (isExisting) {
       // FIFO: If already in the list, no action is taken to preserve its exact chronological position
+      renderList(); // Still need to render to update the highlight!
       return;
     }
     
@@ -423,6 +453,10 @@
     }
     
     saveRecentSpecies();
+    renderList();
+  });
+
+  window.addEventListener('species-select-cleared', () => {
     renderList();
   });
 

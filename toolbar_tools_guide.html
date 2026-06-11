@@ -706,7 +706,7 @@
             <p style="margin-bottom: 0.5rem;"><strong>Priority Toggle (Sci/Common):</strong> Click the mode badge toggle next to the search input to cycle the primary database search keys between Scientific Names and Common Names.</p>
             <p style="margin-bottom: 0.5rem;"><strong>Clearing Selection:</strong> Mouse over the selected species field and click the <i class="fa-solid fa-xmark"></i> close indicator to clear selection.</p>
             <p style="margin-bottom: 0.5rem;"><strong>Bulk Updates:</strong> Highlight multiple annotations in the table, select a new species in the selector, and click the <strong>"Update Species"</strong> button to update them all at once.</p>
-            <p><strong>Recent Species List:</strong> Shows a draggable dashboard of lately used taxonomy options for quick access. This can be enabled from Spectrolipi Settings.</p>
+            <p><strong>Smart List:</strong> Shows a draggable list species for quick access. For a file loaded from XC, it is the species list from that XC record. This can be enabled from Spectrolipi Settings.</p>
           </div>
         </div>
       </div>
@@ -815,7 +815,7 @@
           <div class="card-desc">Configure application-wide display features, overlay parameters, and toggle options.</div>
           <div class="badge"><i class="fa-solid fa-cog"></i> Settings Available</div>
           <div class="card-meta" style="margin-top: 0.5rem;">
-            <span><strong>Turn on Recent Species List:</strong> Shows draggable dashboard of lately used taxonomy options.</span>
+            <span><strong>Turn on Smart List:</strong> Shows draggable list of species for quick access.</span>
             <span><strong>Turn on Magnifier:</strong> Toggles magnifying window overlay that follows your mouse.</span>
             <span><strong>Default Species Format:</strong> Sets default display format to Scientific or Common name.</span>
           </div>
@@ -1261,7 +1261,7 @@
         • <strong>Default species format:</strong> Select whether species selection toggle button and labels display "Common name" or "Scientific name" by default.<br>
         • <strong>Maximum Frequency (Y-Max):</strong> To set default Y axix zoom.<br>
         • <strong>FFT Size:</strong> To set default underlying resolution of the spectrogram bins.<br>
-        • <strong>Turn on Recent species list:</strong> Toggles a draggable list of your recently selected species.<br>
+        • <strong>Turn on Smart list:</strong> Toggles a draggable list of species for quick access.<br>
         • <strong>Turn On Magnifier:</strong> Toggles the cursor tracking magnifying lens.</p>
       </div>
 
@@ -1333,9 +1333,9 @@
         <p style="color: var(--text-muted); line-height: 1.5;">A: Open "Manage Species List". Click the "Export List as CSV" button to download a spreadsheet, or click "Save JS file" to export the raw JavaScript array structure used by Spectrolipi.</p>
       </div>
 
-      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="quickly access recent species list">
-        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How to quickly access recently used species?</h4>
-        <p style="color: var(--text-muted); line-height: 1.5;">A: Ensure "Turn on Recent species list" is checked in the Spectrolipi Settings. A floating, draggable "Recent Species" list will appear on screen, giving you one-click access to species you've applied recently (last 10).</p>
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="quickly access smart list">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: What is smart species list?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Ensure "Turn on Smart list" is checked in the Spectrolipi Settings. A floating, draggable "Smart List" will appear on screen, giving you one-click access to species you've applied recently (last 10) or if the sound file was loaded from XC, it contains the species list from that XC record.</p>
       </div>
 
       <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
