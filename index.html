@@ -150,6 +150,9 @@
             <button id="createXcSetBtn" type="button" class="left-submenu-btn" role="menuitem">
               <span>Create set</span>
             </button>
+            <button id="yourXcRecordingsBtn" type="button" class="left-submenu-btn" role="menuitem">
+              <span>Xeno-Canto recordings</span>
+            </button>
           </div>
         </div>
         <script>
@@ -163,6 +166,7 @@
             const parent = document.getElementById('xcMenuParent');
             const submenu = document.getElementById('xcSubMenu');
             const createSetBtn = document.getElementById('createXcSetBtn');
+            const yourXcRecordingsBtn = document.getElementById('yourXcRecordingsBtn');
             const importExtAnnoBtn = document.getElementById('importExtAnnoBtn');
             const uploadBtn = document.getElementById('uploadXenoCantoBtn');
             const exportVideoBtn = document.getElementById('exportVideoBtn');
@@ -233,6 +237,13 @@
                 } else {
                   alert('Create set function not found. Ensure xc_create_set.js is loaded.');
                 }
+              });
+            }
+            if (yourXcRecordingsBtn) {
+              yourXcRecordingsBtn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                window.open('xc_user_recordings.html', '_blank');
               });
             }
             if (uploadBtn) {

@@ -3126,6 +3126,33 @@
                }
             }
             
+            // 3. Load annotations if present
+            if (rec['annotation-set'] && Array.isArray(rec['annotation-set'].annotations)) {
+              const pendingAnnos = rec['annotation-set'].annotations;
+              const addXcAnnos = function() {
+                window.removeEventListener('spectrogram-generated', addXcAnnos);
+                if (globalThis._annotations && typeof globalThis._annotations.addMany === 'function') {
+                  const annos = pendingAnnos.map(a => {
+                    const spRes = resolveSp(a.scientific_name || '');
+                    return {
+                      beginTime: Number(a.start_time || 0),
+                      endTime: Number(a.end_time || 0),
+                      lowFreq: Number(a.frequency_low || 0),
+                      highFreq: Number(a.frequency_high || 0),
+                      scientificName: spRes.scientific,
+                      species: spRes.common,
+                      soundType: a.sound_type || '',
+                      sex: a.sex || '',
+                      lifeStage: a.life_stage || '',
+                      notes: a.annotation_remarks || ''
+                    };
+                  });
+                  globalThis._annotations.addMany(annos, 'import');
+                }
+              };
+              window.addEventListener('spectrogram-generated', addXcAnnos);
+            }
+            
           } else {
             // No recordings found in API response
           }

@@ -837,6 +837,22 @@
             </ul>
           </div>
         </div>
+
+        <!-- Your Xeno-Canto Recordings -->
+        <div class="card" style="grid-column: 1 / -1;" data-keywords="xeno-canto recordings dashboard fetch metadata grid columns details annotation">
+          <div class="card-header">
+            <div class="icon-wrapper"><i class="fa-solid fa-list-check"></i></div>
+            <div class="card-title">Your Xeno-Canto Recordings</div>
+          </div>
+          <div class="card-desc">Fetches and displays a comprehensive grid of all your uploaded Xeno-Canto recordings and metadata.</div>
+          <div class="card-meta" style="background: transparent; border: none; padding: 0; margin-top: 0.75rem;">
+            <ul style="margin-left: 1.5rem; margin-top: 0.5rem; line-height: 1.5;">
+              <li style="margin-bottom: 0.25rem;"><strong>Customizable Grid:</strong> Sort, drag, and toggle visibility of over 30 metadata columns (Location, Remarks, Quality, etc.). Your column layout is saved automatically.</li>
+              <li style="margin-bottom: 0.25rem;"><strong>Details View:</strong> Click the <i class="fa-solid fa-circle-info" style="color:#60a5fa"></i> icon on any row to view hidden metadata properties without cluttering your grid.</li>
+              <li><strong>Smart XC Number Links:</strong> Click on the XC Number of any recording to open it. <strong>If annotations are present</strong>, they are automatically downloaded. <strong>If annotations are not present</strong>, the audio is loaded so the user can start annotating it immediately!</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1445,7 +1461,24 @@
         <p style="color: var(--text-muted); line-height: 1.5;">A: Open the hamburger menu and select "Create Xeno-canto Set". A dashboard will open allowing you to upload multiple local audio files along with their respective CSV annotations. You can define global metadata (like location) for the entire batch and package them together for upload.</p>
       </div>
 
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="view fetch past uploaded xeno-canto recordings library api key">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How do I view all my past uploaded Xeno-Canto recordings?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Open the left Hamburger menu and click "Your Xeno-Canto Recordings". Enter your Recordist Name and API key, then click "Fetch Recordings" to pull your entire library into an interactive grid.</p>
+      </div>
 
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="click xc number link smart shortcut download annotations">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: What happens when I click on the XC Number link in the grid?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: Clicking the XC number is a smart shortcut. If the recording already has annotations on Xeno-Canto, they will be automatically downloaded. If there are no annotations yet, the audio will load directly into the spectrogram so you can immediately begin creating new annotations!</p>
+      </div>
+
+      <div class="qa-item" style="margin-bottom: 1.5rem;" data-keywords="adjust view grid customize columns width filters sort details popup">
+        <h4 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main);">Q: How can I adjust the recordings grid view?</h4>
+        <p style="color: var(--text-muted); line-height: 1.5;">A: The grid is highly customizable and automatically saves your preferred layout across sessions:<br>
+        • <strong>Customize Columns:</strong> Click the "Customize Columns" button above the grid to toggle visibility of over 30 different metadata fields.<br>
+        • <strong>Adjust Widths:</strong> Hover over the borders between column headers and drag to manually resize them to your liking.<br>
+        • <strong>Filtering & Sorting:</strong> Use the text inputs or dropdowns directly beneath each column header to filter your recordings. Click the header title itself to sort the rows ascending or descending.<br>
+        • <strong>Details View:</strong> For metadata fields you choose to keep hidden, simply click the blue "Info" (i) icon on the far left side of any row to view all remaining properties in a popup.</p>
+      </div>
 
       <hr style="border-top: 1px solid var(--border-color); margin: 2rem 0;">
 

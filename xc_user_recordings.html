@@ -1,0 +1,530 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Xeno-Canto recordings - Spectrolipi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://unpkg.com/tabulator-tables@5.5.0/dist/css/tabulator.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/tabulator-tables@5.5.0/dist/js/tabulator.min.js"></script>
+  <link rel="icon" href="002LogoWOname_small.png" type="image/png">
+  <style>
+    body {
+      background: #0f1115;
+      color: #e5e7eb;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 8px;
+    }
+    h1 { margin: 0; font-size: 16px; color: #fff; white-space: nowrap; }
+    .btn-secondary:hover {
+      background: #4b5563;
+      color: #fff;
+    }
+    #recordingsGrid {
+      background: transparent;
+      border: 1px solid #2a303c;
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 400px;
+    }
+    
+    /* Tabulator Dark Theme Overrides & Filtering styles */
+    .tabulator { background: #181b21; border: none; font-size: 13px; }
+    .tabulator .tabulator-header { background: #1f232b; border-bottom: 1px solid #2a303c; color: #e5e7eb; font-weight: 600; }
+    .tabulator .tabulator-header .tabulator-col { background: #1f232b; border-right: 1px solid #2a303c; }
+    .tabulator .tabulator-header .tabulator-col .tabulator-col-content .tabulator-col-title { white-space: pre-wrap; text-align: center; line-height: 1.2; min-height: 36px; display: flex; align-items: center; justify-content: center; }
+    .tabulator .tabulator-row { background: #181b21; border-bottom: 1px solid #2a303c; color: #d1d5db; min-height: 36px; }
+    .tabulator .tabulator-row.tabulator-row-even { background: #1e2229; }
+    .tabulator .tabulator-row:hover { background: #262b35; }
+    .tabulator .tabulator-footer { background: #1f232b; border-top: 1px solid #2a303c; color: #9ca3af; }
+    
+    .tabulator-header-filter input, .tabulator-header-filter select {
+      background: #232730;
+      border: 1px solid #374151;
+      color: #e5e7eb;
+      padding: 4px;
+      border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+    }
+    .tabulator-header-filter input:focus, .tabulator-header-filter select:focus {
+      border-color: #3b82f6;
+      outline: none;
+    }
+    
+    .link { color: #60a5fa; text-decoration: none; font-weight: 500; }
+    .link:hover { text-decoration: underline; }
+    .badge-yes { background: #064e3b; color: #34d399; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .badge-no { background: #451a03; color: #fbbf24; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    
+    .instant-tooltip {
+      display: none;
+      position: fixed;
+      background-color: #1f232b;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 400;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      z-index: 99999;
+      max-width: 250px;
+      pointer-events: none;
+      line-height: 1.4;
+    }
+    
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index: 2000; }
+    .modal-content { background:#181b21; border:1px solid #2a303c; border-radius:8px; width:450px; max-width:90%; color:#fff; display:flex; flex-direction:column; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    .modal-header { padding:14px 20px; border-bottom:1px solid #2a303c; display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:16px; }
+    .modal-body { padding:20px; font-size:13px; max-height:60vh; overflow-y:auto; color: #d1d5db; }
+    .close-btn { background:transparent; border:none; color:#9ca3af; cursor:pointer; font-size:16px; padding: 4px; }
+    .close-btn:hover { color:#fff; }
+    .details-table { width: 100%; border-collapse: collapse; }
+    .details-table td { padding: 8px 4px; border-bottom: 1px solid #2a303c; word-break: break-word; }
+    .details-table tr:last-child td { border-bottom: none; }
+    .details-label { font-weight: 600; color: #9ca3af; width: 120px; vertical-align: top; }
+    
+    /* Column Selector Styling */
+    .col-selector-panel {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      background: #1f232b;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      z-index: 1000;
+      max-height: 400px;
+      overflow-y: auto;
+      min-width: 200px;
+    }
+    .col-selector-panel.show { display: block; }
+    .col-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 4px;
+      font-size: 13px;
+      color: #e5e7eb;
+      cursor: pointer;
+    }
+    .col-option input { cursor: pointer; }
+    .col-option:hover { background: #2a303c; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div style="background: #181b21; border: 1px solid #2a303c; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+    <h1>Xeno-Canto recordings</h1>
+    <div style="width: 1px; height: 20px; background: #374151; margin: 0 4px;"></div>
+    
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span style="font-size: 12px; color: #9ca3af; font-weight: 500;">Recordist:</span>
+      <input type="text" id="xcRecordist" placeholder="e.g. John Doe" style="background: #232730; border: 1px solid #374151; color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-size: 12px; outline: none; width: 140px;">
+    </div>
+    
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <span style="font-size: 12px; color: #9ca3af; font-weight: 500;">API Key:</span>
+      <input type="password" id="xcApiKey" placeholder="Your API Key" style="background: #232730; border: 1px solid #374151; color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-size: 12px; outline: none; width: 140px;">
+    </div>
+    
+    <button id="fetchBtn" style="background: #2563eb; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; height: 26px; transition: background 0.2s;">
+      <i class="fa-solid fa-cloud-arrow-down"></i> Fetch
+    </button>
+    
+    <div id="statusMsg" style="font-size: 12px; color: #9ca3af; white-space: nowrap;"></div>
+    
+    <div style="flex: 1;"></div>
+    
+    <div style="position: relative;">
+      <button id="customizeColsBtn" style="background: #374151; color: #d1d5db; border: 1px solid #4b5563; padding: 4px 12px; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; height: 26px; transition: all 0.2s;">
+        <i class="fa-solid fa-table-columns"></i> Customize Columns
+      </button>
+      <div id="colSelectorPanel" class="col-selector-panel"></div>
+    </div>
+  </div>
+  
+  <div id="recordingsGrid"></div>
+
+  <!-- Wait Overlay -->
+  <div id="waitOverlay" role="status" aria-live="polite" aria-hidden="true" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:2147483660;pointer-events:auto;background:rgba(0,0,0,0.6);">
+    <div style="max-width:520px;min-width:240px;padding:20px;border-radius:10px;background:#111;border:1px solid #2a303c;color:#fff;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+      <div class="spinner" style="width:36px;height:36px;border-radius:50%;border:4px solid rgba(255,255,255,0.15);border-top-color:#fff;animation:spin 900ms linear infinite"></div>
+      <img src="002LogoWOname_small.png" alt="Logo" style="height:56px;pointer-events:none;user-select:none;" />
+      <div style="text-align:center;">
+        <div style="font-weight:700;font-size:16px;">Fetching from Xeno-canto</div>
+        <div id="waitOverlayMsg" style="font-size:13px;color:#ddd;margin-top:4px;">Please wait...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details Modal -->
+  <div id="detailsModal" class="modal-backdrop">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>Recording Details</span>
+        <button class="close-btn" onclick="document.getElementById('detailsModal').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="detailsContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const table = new Tabulator("#recordingsGrid", {
+      data: [],
+      layout: "fitData",
+      height: "calc(100vh - 65px)",
+      pagination: "local",
+      paginationSize: 50,
+      movableColumns: true, // Enable column dragging
+      persistence: true,
+      persistenceID: "xcUserGridPrefsV15",
+      persistenceMode: "local",
+      columns: [
+        {
+          title: "",
+          field: "details",
+          width: 40,
+          hozAlign: "center",
+          headerSort: false,
+          toggleable: false, // Core column
+          frozen: true,
+          formatter: function(cell) {
+             const r = cell.getRow().getData();
+             const visibleFields = cell.getTable().getColumns().filter(col => col.isVisible()).map(col => col.getField());
+             const ignoreFields = ['annotation-set', 'sono', 'osci', 'file', 'file-name', 'id'];
+             if (visibleFields.includes('sp_full')) ignoreFields.push('gen', 'sp');
+             
+             let hasHiddenFields = false;
+             for (const k of Object.keys(r)) {
+                 if (!visibleFields.includes(k) && !ignoreFields.includes(k) && r[k] !== null && r[k] !== undefined && r[k] !== '') {
+                     hasHiddenFields = true;
+                     break;
+                 }
+             }
+             
+             if (hasHiddenFields) {
+               return `<i class="fa-solid fa-circle-info" style="cursor:pointer; color:#60a5fa; font-size:14px;" title="View Details"></i>`;
+             } else {
+               return `<i class="fa-solid fa-circle-info" style="cursor:not-allowed; color:#4b5563; font-size:14px;" title="All properties are visible in columns"></i>`;
+             }
+          },
+          cellClick: function(e, cell) {
+            const r = cell.getRow().getData();
+            const visibleFields = cell.getTable().getColumns().filter(col => col.isVisible()).map(col => col.getField());
+            const ignoreFields = ['annotation-set', 'sono', 'osci', 'file', 'file-name', 'id'];
+            if (visibleFields.includes('sp_full')) ignoreFields.push('gen', 'sp');
+            
+            let hasHiddenFields = false;
+            for (const k of Object.keys(r)) {
+                if (!visibleFields.includes(k) && !ignoreFields.includes(k) && r[k] !== null && r[k] !== undefined && r[k] !== '') {
+                    hasHiddenFields = true;
+                    break;
+                }
+            }
+            if (hasHiddenFields) {
+              showDetailsModal(r);
+            }
+          }
+        },
+        {
+          title: "Sr",
+          formatter: function(cell) {
+             const rowId = cell.getRow().getData().id;
+             const activeRows = cell.getTable().getRows("active");
+             for (let i = 0; i < activeRows.length; i++) {
+                if (activeRows[i].getData().id === rowId) return i + 1;
+             }
+             return "";
+          },
+          hozAlign: "center",
+          width: 50,
+          headerSort: false,
+          toggleable: false, // Core column
+          frozen: true,
+        },
+        { 
+          title: "XC\nNumber <i class='fa-solid fa-triangle-exclamation instant-tooltip-trigger' style='color:#fbbf24; cursor:pointer; margin-left:4px;' data-tooltip='Avoid opening multiple files. Close the tabs which are not required.'></i>", 
+          field: "id", 
+          width: 90,
+          toggleable: false, // Core column
+          frozen: true,
+          headerFilter: "input",
+          formatter: function(cell) {
+            const id = cell.getValue();
+            return `<a href="index.html?XCID=${id}" target="_blank" class="link">XC${id}</a>`;
+          }
+        },
+        { 
+          title: "Annotat-\nions <i class='fa-solid fa-triangle-exclamation instant-tooltip-trigger' style='color:#fbbf24; margin-left:4px; cursor:pointer;' data-tooltip='Note: Recent annotations which are pending for import at Xeno-canto website, are marked &amp;apos;No&amp;apos; untill imported successfully.'></i>", 
+          field: "hasAnnotations", 
+          hozAlign: "center",
+          toggleable: false, // Core column
+          frozen: true,
+          headerFilter: "list",
+          headerFilterParams: { values: {"": "All", "Yes": "Yes", "No": "No"} },
+          formatter: function(cell) {
+            const val = cell.getValue();
+            if (val === "Yes") {
+              return `<span class="badge-yes">Yes</span>`;
+            } else {
+              return `<span class="badge-no">No</span>`;
+            }
+          }
+        },
+        { title: "Scientific Name", field: "sp_full", headerFilter: "input" },
+        { title: "Common Name", field: "en", headerFilter: "input" },
+        { title: "Quality", field: "q", width: 90, hozAlign: "center", headerFilter: "list", headerFilterParams: { values: {"": "All", "A": "A", "B": "B", "C": "C", "D": "D", "E": "E", "no score": "No Score"} } },
+        { title: "Date\nrecorded", field: "date", width: 100, headerFilter: "input" },
+        { title: "Time", field: "time", width: 80, headerFilter: "input" },
+        { title: "Location", field: "loc", headerFilter: "input", width: 250 },
+        { title: "Country", field: "cnt", width: 130, headerFilter: "input" },
+        // Initially hidden columns below
+        { title: "Recordist", field: "rec", visible: false, headerFilter: "input" },
+        { title: "Group", field: "grp", visible: false, headerFilter: "list", headerFilterParams: { valuesLookup: true, clearable: true } },
+        { title: "Length", field: "length", visible: false, headerFilter: "input" },
+        { title: "Sound\nType", field: "type", visible: false, headerFilter: "input" },
+        { title: "Sex", field: "sex", visible: false, headerFilter: "list", headerFilterParams: { valuesLookup: true, clearable: true } },
+        { title: "Life\nStage", field: "stage", visible: false, headerFilter: "list", headerFilterParams: { valuesLookup: true, clearable: true } },
+        { title: "Method", field: "method", visible: false, headerFilter: "input" },
+        { title: "Animal\nSeen", field: "animal-seen", visible: false, headerFilter: "list", headerFilterParams: { values: {"": "All", "yes": "Yes", "no": "No", "unknown": "Unknown"} } },
+        { title: "Playback\nUsed", field: "playback-used", visible: false, headerFilter: "list", headerFilterParams: { values: {"": "All", "yes": "Yes", "no": "No", "unknown": "Unknown"} } },
+        { title: "Latitude", field: "lat", visible: false, headerFilter: "input" },
+        { title: "Longitude", field: "lon", visible: false, headerFilter: "input" },
+        { title: "Altitude", field: "alt", visible: false, headerFilter: "input" },
+        { title: "Subspecies", field: "ssp", visible: false, headerFilter: "input" },
+        { title: "Background\nSpecies", field: "also", visible: false, headerFilter: "input", formatter: function(cell) { const v = cell.getValue(); return Array.isArray(v) ? v.join(', ') : v; } },
+        { title: "Device", field: "dvc", visible: false, headerFilter: "input" },
+        { title: "Microphone", field: "mic", visible: false, headerFilter: "input" },
+        { title: "Sample\nRate", field: "smp", visible: false, headerFilter: "input" },
+        { title: "Temperature", field: "temp", visible: false, headerFilter: "input" },
+        { title: "Registration\nNumber", field: "regnr", visible: false, headerFilter: "input" },
+        { title: "Automatic", field: "auto", visible: false, headerFilter: "list", headerFilterParams: { valuesLookup: true, clearable: true } },
+        { title: "Date\nuploaded", field: "uploaded", visible: false, headerFilter: "input" },
+        { title: "License", field: "lic", visible: false, headerFilter: "input", formatter: function(cell) { const v = cell.getValue(); return v && v.startsWith('http') ? `<a href="${v}" target="_blank" class="link">${v}</a>` : v; } },
+        { title: "URL", field: "url", visible: false, headerFilter: "input", formatter: function(cell) { const v = cell.getValue(); return v && v.startsWith('http') ? `<a href="${v}" target="_blank" class="link">${v}</a>` : v; } },
+        { title: "Restricted\nSpecies", field: "_meta", visible: false, headerFilter: "list", headerFilterParams: { values: {"": "All", "Yes": "Yes", "No": "No"} }, formatter: function(cell) { const v = cell.getValue(); return (v && v.redacted_fields && Object.keys(v.redacted_fields).length > 0) ? `<span class="badge-yes">Yes</span>` : `<span class="badge-no">No</span>`; } },
+        { title: "Remarks", field: "rmk", visible: false, headerFilter: "input", width: 300 }
+      ],
+    });
+
+    // Build the column selector
+    table.on("tableBuilt", function() {
+      const panel = document.getElementById("colSelectorPanel");
+      table.getColumns().forEach(col => {
+        const def = col.getDefinition();
+        if (def.toggleable === false) return; // Skip locked columns
+        
+        const label = document.createElement("label");
+        label.className = "col-option";
+        
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = col.isVisible();
+        
+        cb.addEventListener("change", () => {
+          if (cb.checked) {
+            col.show();
+          } else {
+            col.hide();
+          }
+          table.redraw(true); // Redraw so the Details icon re-evaluates
+        });
+        
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(def.title));
+        panel.appendChild(label);
+      });
+    });
+
+    const colBtn = document.getElementById("customizeColsBtn");
+    const colPanel = document.getElementById("colSelectorPanel");
+    colBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      colPanel.classList.toggle("show");
+    });
+    
+    document.addEventListener("click", (e) => {
+      if (!colPanel.contains(e.target) && e.target !== colBtn) {
+        colPanel.classList.remove("show");
+      }
+    });
+
+    function showDetailsModal(r) {
+      const content = document.getElementById('detailsContent');
+      
+      // Get fields that are currently visible in the grid
+      const visibleFields = table.getColumns().filter(col => col.isVisible()).map(col => col.getField());
+      
+      // Fields to ignore because they are internal, irrelevant, or already prominently displayed
+      const ignoreFields = ['annotation-set', 'sono', 'osci', 'file', 'file-name', 'id'];
+      
+      // If sp_full (Scientific Name) is visible, hide raw gen/sp fields
+      if (visibleFields.includes('sp_full')) {
+        ignoreFields.push('gen', 'sp');
+      }
+      
+      let html = '<table class="details-table">';
+      
+      const keys = Object.keys(r).sort();
+      for (const key of keys) {
+        // If the property is currently visible as a column in the grid, don't show it in details!
+        if (visibleFields.includes(key)) continue;
+        if (ignoreFields.includes(key)) continue;
+        
+        let val = r[key];
+        if (val === null || val === undefined || val === '') continue;
+        
+        if (key === '_meta') {
+          val = (val && val.redacted_fields && Object.keys(val.redacted_fields).length > 0) ? "Yes" : "No";
+        }
+        
+        // Format arrays
+        if (Array.isArray(val)) {
+          val = val.join(', ');
+        }
+        
+        // Format URLs
+        if (typeof val === 'string' && val.startsWith('http')) {
+          val = `<a href="${val}" target="_blank" class="link">${val}</a>`;
+        }
+        
+        // Clean up key name for display
+        let displayKey = key;
+        const colMatch = table.getColumn(key);
+        if (colMatch) {
+          displayKey = colMatch.getDefinition().title;
+        } else {
+          displayKey = displayKey.replace(/-/g, ' ');
+          displayKey = displayKey.charAt(0).toUpperCase() + displayKey.slice(1);
+        }
+        
+        html += `<tr><td class="details-label">${displayKey}</td><td>${val}</td></tr>`;
+      }
+      
+      if (html === '<table class="details-table">') {
+         html += '<tr><td style="text-align:center; padding: 20px; color: #9ca3af;">All available properties are currently visible in the grid columns.</td></tr>';
+      }
+      html += '</table>';
+      content.innerHTML = html;
+      document.getElementById('detailsModal').style.display = 'flex';
+    }
+
+    // Load settings from localStorage
+    try {
+      const raw = localStorage.getItem('xc.settings.v1');
+      if (raw) {
+        const settings = JSON.parse(raw);
+        if (settings.annotatorName) document.getElementById('xcRecordist').value = settings.annotatorName;
+        if (settings.apiKey) document.getElementById('xcApiKey').value = settings.apiKey;
+      }
+    } catch (e) {
+      console.warn("Failed to load settings", e);
+    }
+
+    // Fetch logic
+    document.getElementById('fetchBtn').addEventListener('click', async () => {
+      const recordist = document.getElementById('xcRecordist').value.trim();
+      const apiKey = document.getElementById('xcApiKey').value.trim();
+      const statusEl = document.getElementById('statusMsg');
+      const waitOverlay = document.getElementById('waitOverlay');
+      const waitOverlayMsg = document.getElementById('waitOverlayMsg');
+      
+      if (!recordist || !apiKey) {
+        alert("Please provide both Recordist Name and API Key.");
+        return;
+      }
+      
+      waitOverlay.style.display = 'flex';
+      waitOverlayMsg.textContent = "Fetching page 1...";
+      statusEl.textContent = "";
+      
+      let allRecordings = [];
+      let page = 1;
+      let totalPages = 1;
+      
+      try {
+        do {
+          const query = encodeURIComponent(`rec:"${recordist}"`);
+          const url = `https://xeno-canto.org/api/3/recordings?query=${query}&key=${encodeURIComponent(apiKey)}&page=${page}&per_page=500`;
+          
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`API returned status ${response.status}`);
+          }
+          const data = await response.json();
+          
+          if (data.error) {
+            throw new Error(data.error.message || "API Error");
+          }
+          
+          totalPages = data.numPages || 1;
+          
+          if (data.recordings && data.recordings.length > 0) {
+            const formatted = data.recordings.map(r => {
+              let hasAnn = "No";
+              if (r['annotation-set'] && Array.isArray(r['annotation-set'].annotations) && r['annotation-set'].annotations.length > 0) {
+                hasAnn = "Yes";
+              }
+              
+              return {
+                ...r,
+                sp_full: `${r.gen || ''} ${r.sp || ''}`.trim(),
+                hasAnnotations: hasAnn,
+                length: r.length || r.len
+              };
+            });
+            allRecordings = allRecordings.concat(formatted);
+          }
+          
+          waitOverlayMsg.textContent = `Fetched page ${page} of ${totalPages}...`;
+          page++;
+        } while (page <= totalPages);
+        
+        table.setData(allRecordings);
+        statusEl.textContent = `Successfully loaded ${allRecordings.length} recordings.`;
+      } catch (err) {
+        statusEl.textContent = `Error: ${err.message}`;
+        console.error(err);
+      } finally {
+        waitOverlay.style.display = 'none';
+      }
+    });
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        document.getElementById('detailsModal').style.display = 'none';
+      }
+    });
+
+    // Instant Tooltip Logic
+    const tooltipEl = document.createElement('div');
+    tooltipEl.className = 'instant-tooltip';
+    document.body.appendChild(tooltipEl);
+
+    document.addEventListener('mouseover', function(e) {
+      const target = e.target.closest('.instant-tooltip-trigger');
+      if (target) {
+        tooltipEl.innerHTML = target.getAttribute('data-tooltip');
+        tooltipEl.style.display = 'block';
+        const rect = target.getBoundingClientRect();
+        // Position intelligently below the icon
+        tooltipEl.style.left = Math.min(rect.left, window.innerWidth - 260) + 'px';
+        tooltipEl.style.top = (rect.bottom + 8) + 'px';
+      } else {
+        tooltipEl.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
