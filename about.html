@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About | Spectrolipi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #141c2f;
+      --card-border: rgba(255, 255, 255, 0.05);
+      --accent-color: #3b82f6;
+      --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-family: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      height: 120px;
+      margin-bottom: 20px;
+      user-select: none;
+      pointer-events: none;
+      animation: pulse 3s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.2)); }
+      50% { transform: scale(1.03); filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.4)); }
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(to right, #60a5fa, #3b82f6, #1d4ed8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      font-weight: 400;
+    }
+
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #60a5fa;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    p {
+      color: var(--text-main);
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .meta-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .meta-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      transform: translateY(-2px);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .meta-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .meta-value {
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .meta-value a {
+      color: #3b82f6;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .meta-value a:hover {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+
+    .dependency-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .dependency-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 12px 16px;
+      border-radius: 8px;
+    }
+
+    .dependency-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .dependency-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .credits-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .credit-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 16px;
+      border-radius: 8px;
+    }
+
+    .credit-title {
+      font-weight: 600;
+      color: #93c5fd;
+      margin-bottom: 4px;
+      font-size: 0.95rem;
+    }
+
+    .credit-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .credit-desc a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+
+    .credit-desc a:hover {
+      text-decoration: underline;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 640px) {
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+      .container {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="001Logo%26name.png" alt="Spectrolipi Logo" class="logo">
+      <h1>Spectrolipi</h1>
+      <div class="tagline">Bioacoustics Visualization and Annotation Suite</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><i class="fa-solid fa-circle-info"></i> What is Spectrolipi?</div>
+      <p>
+        Spectrolipi is an open-source, privacy-focused bioacoustics annotation tool built for researchers, birders, and machine-learning practitioners. 
+        It supports full audio spectrogram playback, manual and template-assisted annotation, species labeling, metadata management, audio cutting/filtering, and automatic identification using the BirdNET AI classifier.
+      </p>
+      <p>
+        <strong>No installation is required.</strong> To protect data privacy, all audio processing and neural network calculations are executed locally in the browser. No audio data ever leaves your computer.
+      </p>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><i class="fa-solid fa-code"></i> Metadata & Links</div>
+      <div class="meta-grid">
+        <div class="meta-card">
+          <div class="meta-label">Author / Maintainer</div>
+          <div class="meta-value">Nishant Bhagwat (<a href="https://github.com/nishantnnb" target="_blank">nishantnnb</a>)</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">License Type</div>
+          <div class="meta-value">GNU General Public License v3.0 (GPL-3.0)</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">GitHub Repository</div>
+          <div class="meta-value"><a href="https://github.com/nishantnnb/spectrolipi" target="_blank">github.com/nishantnnb/spectrolipi</a></div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">Contact / Support</div>
+          <div class="meta-value">
+            <a href="https://github.com/nishantnnb/spectrolipi/issues" target="_blank">GitHub Issues</a><br>
+            spectrolipi@gmail.com
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><i class="fa-solid fa-cubes"></i> Dependencies & Software Libraries</div>
+      <ul class="dependency-list">
+        <li class="dependency-item">
+          <div>
+            <div class="dependency-name">TensorFlow.js</div>
+            <div class="dependency-desc">Google's open-source machine learning framework for Javascript. Used to run local BirdNET model inference inside the browser.</div>
+          </div>
+        </li>
+        <li class="dependency-item">
+          <div>
+            <div class="dependency-name">Tabulator</div>
+            <div class="dependency-desc">An interactive grid library used to manage, sort, edit, and filter bird annotations in real-time.</div>
+          </div>
+        </li>
+        <li class="dependency-item">
+          <div>
+            <div class="dependency-name">FontAwesome & Google Fonts</div>
+            <div class="dependency-desc">Provides UI icons and typography (Inter, JetBrains Mono) to ensure a clean, responsive layout.</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title"><i class="fa-solid fa-hands-praying"></i> Credits & Acknowledgements</div>
+      <div class="credits-list">
+        <div class="credit-item">
+          <div class="credit-title">BirdNET AI Model</div>
+          <div class="credit-desc">
+            Developed by the K. Lisa Yang Center for Conservation Bioacoustics at the Cornell Lab of Ornithology in collaboration with Chemnitz University of Technology. 
+            (Stefan Kahl, Connor Wood, Maximilian Eibl, Holger Klinck). Learn more at the <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank">BirdNET-Analyzer repository</a>.
+          </div>
+        </div>
+        <div class="credit-item">
+          <div class="credit-title">BirdNET Web Port</div>
+          <div class="credit-desc">
+            The TensorFlow.js local classifier implementation is adapted from <a href="https://github.com/georg95/birdnet-web" target="_blank">georg95/birdnet-web</a>.
+          </div>
+        </div>
+        <div class="credit-item">
+          <div class="credit-title">Xeno-canto Integration</div>
+          <div class="credit-desc">
+            Direct upload support and recordings browsing powered by Xeno-canto's public data sharing API.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <a href="https://github.com/nishantnnb/spectrolipi" target="_blank" class="btn btn-primary"><i class="fa-brands fa-github"></i> GitHub</a>
+    </div>
+  </div>
+</body>
+</html>
