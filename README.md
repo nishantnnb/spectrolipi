@@ -28,6 +28,15 @@ Link: https://spectrolipi.com
 			<a href="https://github.com/nishantnnb/spectrolipi/raw/main/Guide%20and%20FAQ/Spectrolipi%20-%20FAQ.docx" target="_blank">FAQ</a></p>
 
 <p>BirdNET AI model by the K. Lisa Yang Center for Conservation Bioacoustics at the Cornell Lab of Ornithology in collaboration with Chemnitz University of Technology. Stefan Kahl, Connor Wood, Maximilian Eibl, Holger Klinck. <a href="https://github.com/birdnet-team/BirdNET-Analyzer" target="_blank">Birdnet analyzer</a>, <a href="https://zenodo.org/records/15050749" target="_blank">Birdnet models</a> </p>
+@article{kahl2021birdnet,
+  title={BirdNET: A deep learning solution for avian diversity monitoring},
+  author={Kahl, Stefan and Wood, Connor M and Eibl, Maximilian and Klinck, Holger},
+  journal={Ecological Informatics},
+  volume={61},
+  pages={101236},
+  year={2021},
+  publisher={Elsevier}
+}
 
 <p>Code for analysis with Birdnet tfjs model was referred (& improvised) from: <a href="https://github.com/georg95/birdnet-web" target="_blank">https://github.com/georg95/birdnet-web</a></p>
 
