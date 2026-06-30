@@ -628,11 +628,39 @@
     }
     // ----------------------------------------------------------------------
 
-    const CtxClass = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!CtxClass) throw new Error('AudioContext not supported');
-    const audioCtx = new CtxClass();
+    const targetSr = globalThis._spectroOriginalNyquist ? globalThis._spectroOriginalNyquist * 2 : null;
+    let audioCtx;
     let decoded;
-    try { decoded = await audioCtx.decodeAudioData(arrayBuffer); } finally { if (audioCtx.close) audioCtx.close().catch(()=>{}); }
+
+    const OfflineCtxClass = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
+    const CtxClass = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!CtxClass && !OfflineCtxClass) throw new Error('AudioContext not supported');
+
+    // Attempt to use OfflineAudioContext with original sample rate to avoid downsampling
+    if (OfflineCtxClass && targetSr) {
+      try {
+        audioCtx = new OfflineCtxClass(1, 1, targetSr);
+      } catch (e) {
+        console.warn('[Spectrogram] OfflineAudioContext init failed with sr ' + targetSr + ', falling back...', e);
+      }
+    }
+    
+    if (!audioCtx) {
+      if (targetSr && CtxClass) {
+        try { audioCtx = new CtxClass({ sampleRate: targetSr }); } catch(e) {}
+      }
+      if (!audioCtx && CtxClass) {
+        audioCtx = new CtxClass(); // Last resort fallback
+      }
+    }
+
+    if (!audioCtx) throw new Error('Failed to create an AudioContext');
+
+    try { 
+      decoded = await audioCtx.decodeAudioData(arrayBuffer); 
+    } finally { 
+      if (audioCtx.close && audioCtx instanceof CtxClass) audioCtx.close().catch(()=>{}); 
+    }
 
     const sr = decoded.sampleRate;
     if (!globalThis._spectroOriginalNyquist) globalThis._spectroOriginalNyquist = sr / 2;
@@ -2365,18 +2393,30 @@
   const s2 = Math.max(s1, Math.min(len, Math.ceil(c2Sec * sr)));
   if (s2 <= s1) { globalThis._spectroDuration = len / Math.max(1,sr); return globalThis._spectroDuration; }
     const newLen = Math.max(0, len - (s2 - s1));
+    const getCtx = () => {
+      const OfflineCtx = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
+      if (OfflineCtx) {
+        try { return new OfflineCtx(1, 1, Math.max(1,sr)); } catch(e){}
+      }
+      const AcCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
+      if (AcCtx) {
+        try { return new AcCtx({ sampleRate: Math.max(1,sr) }); } catch(e){}
+        return new AcCtx();
+      }
+      return null;
+    };
+
     if (newLen <= 0) {
       // Edge: cutting entire buffer
-      const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext; if (!Ctx) { globalThis._spectroAudioBuffer = null; globalThis._spectroDuration = 0; return 0; }
-      const ctx = new Ctx(); const empty = ctx.createBuffer(Math.max(1,ch), 1, Math.max(1,sr)); if (ctx.close) try { await ctx.close(); } catch(e){}
+      const ctx = getCtx(); if (!ctx) { globalThis._spectroAudioBuffer = null; globalThis._spectroDuration = 0; return 0; }
+      const empty = ctx.createBuffer(Math.max(1,ch), 1, Math.max(1,sr)); if (ctx.close) try { await ctx.close(); } catch(e){}
       globalThis._spectroAudioBuffer = empty; globalThis._spectroDuration = empty.length / sr; return globalThis._spectroDuration;
     }
-    const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext; if (!Ctx) {
+    const ctx = getCtx(); if (!ctx) {
       // Fallback: store channel arrays only
       const chans = []; for (let c=0;c<ch;c++){ const data = buf.getChannelData(c); const out = new Float32Array(newLen); out.set(data.subarray(0, s1), 0); out.set(data.subarray(s2), s1); chans.push(out); }
       globalThis._spectroAudioChannelData = chans; globalThis._spectroAudioBuffer = null; globalThis._spectroDuration = newLen / Math.max(1,sr); return globalThis._spectroDuration;
     }
-    const ctx = new Ctx();
     const newBuf = ctx.createBuffer(Math.max(1,ch), Math.max(1,newLen), Math.max(1,sr));
     for (let c=0; c<ch; c++){
       const src = buf.getChannelData(c);
