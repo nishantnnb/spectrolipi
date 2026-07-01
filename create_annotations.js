@@ -567,7 +567,7 @@
         if (speciesVal) {
             window.alert('scientific name not found');
         } else {
-            window.alert('Please Select a species first and try again.');
+            window.alert('Please select species first. If species is not known then select common name: "Identity unknown" or scientific name: "Mystery mystery".');
         }
       } catch (e) {}
       // discard pending annotation
