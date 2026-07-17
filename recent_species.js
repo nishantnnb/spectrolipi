@@ -6,6 +6,7 @@
   let recentSpecies = [];
   let displayMode = 'common'; // 'common' or 'scientific'
   let isActive = true;
+  let isCollapsed = false;
   let isSpectrogramLoaded = !!(globalThis._spectroAudioBuffer || globalThis._spectroSpectra);
 
   // Initialize from settings and load saved recent species
@@ -63,7 +64,7 @@
     position: fixed;
     right: 14px;
     top: 80px;
-    width: 200px;
+    width: 240px;
     background: rgba(17, 17, 17, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
@@ -71,8 +72,47 @@
     backdrop-filter: blur(4px);
     display: none;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  `;
+
+  // Collapsed View
+  const collapsedView = document.createElement('div');
+  collapsedView.style.cssText = `
+    display: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 25px;
+    background: rgba(30, 30, 30, 0.85);
+    border: 2px solid #555;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    user-select: none;
+    line-height: 1.2;
+    box-sizing: border-box;
+  `;
+  collapsedView.innerHTML = `Smart<br>List`;
+  
+  collapsedView.addEventListener('mouseenter', () => {
+    collapsedView.style.background = 'rgba(50, 50, 50, 0.95)';
+    collapsedView.style.border = '2px solid #777';
+  });
+  collapsedView.addEventListener('mouseleave', () => {
+    collapsedView.style.background = 'rgba(30, 30, 30, 0.85)';
+    collapsedView.style.border = '2px solid #555';
+  });
+
+  // Expanded View
+  const expandedView = document.createElement('div');
+  expandedView.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    width: 100%;
   `;
 
   // Header with toggle button
@@ -128,51 +168,76 @@
   closeBtn.onpointerdown = (e) => e.stopPropagation();
   closeBtn.onclick = (e) => {
     e.stopPropagation();
-    container.style.display = 'none';
+    isCollapsed = true;
+    renderList();
   };
 
   titleGroup.appendChild(title);
   titleGroup.appendChild(toggleBtn);
   header.appendChild(titleGroup);
   header.appendChild(closeBtn);
-  container.appendChild(header);
+  expandedView.appendChild(header);
 
   // Dragging logic
   let isDragging = false;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
+  let dragMoved = false;
 
-  header.addEventListener('pointerdown', (e) => {
+  function onDragStart(e, target) {
     if (e.target.closest('button') || e.target === closeBtn) return;
     isDragging = true;
-    header.style.cursor = 'grabbing';
+    dragMoved = false;
+    target.style.cursor = 'grabbing';
     const rect = container.getBoundingClientRect();
-    
-    // offset relative to the container's position
     dragOffsetX = e.clientX - rect.left;
     dragOffsetY = e.clientY - rect.top;
-    
-    try { header.setPointerCapture(e.pointerId); } catch(err) {}
-  });
+    try { target.setPointerCapture(e.pointerId); } catch(err) {}
+  }
 
-  header.addEventListener('pointermove', (e) => {
+  function onDragMove(e) {
     if (!isDragging) return;
-    
+    dragMoved = true;
     let newLeft = e.clientX - dragOffsetX;
     let newTop = e.clientY - dragOffsetY;
     
-    const maxLeft = window.innerWidth - container.offsetWidth;
-    const maxTop = window.innerHeight - container.offsetHeight;
+    let maxLeft = window.innerWidth - container.offsetWidth;
+    let maxTop = window.innerHeight - container.offsetHeight;
+    let minLeft = 0;
+    let minTop = 0;
+    
+    const viewport = document.getElementById('viewportWrapper') || document.getElementById('spectrogramCanvas');
+    if (viewport) {
+       const vRect = viewport.getBoundingClientRect();
+       minLeft = vRect.left;
+       minTop = vRect.top;
+       maxLeft = vRect.right - container.offsetWidth;
+       maxTop = vRect.bottom - container.offsetHeight;
+    }
     
     container.style.right = 'auto'; // Disable 'right' so 'left' takes over
-    container.style.left = `${Math.max(0, Math.min(newLeft, maxLeft))}px`;
-    container.style.top = `${Math.max(0, Math.min(newTop, maxTop))}px`;
-  });
+    container.style.left = Math.max(minLeft, Math.min(newLeft, maxLeft)) + 'px';
+    container.style.top = Math.max(minTop, Math.min(newTop, maxTop)) + 'px';
+  }
 
-  header.addEventListener('pointerup', (e) => {
+  function onDragEnd(e, target) {
     isDragging = false;
-    header.style.cursor = 'grab';
-    try { header.releasePointerCapture(e.pointerId); } catch(err) {}
+    target.style.cursor = 'grab';
+    try { target.releasePointerCapture(e.pointerId); } catch(err) {}
+  }
+
+  header.addEventListener('pointerdown', (e) => onDragStart(e, header));
+  header.addEventListener('pointermove', onDragMove);
+  header.addEventListener('pointerup', (e) => onDragEnd(e, header));
+
+  collapsedView.addEventListener('pointerdown', (e) => onDragStart(e, collapsedView));
+  collapsedView.addEventListener('pointermove', onDragMove);
+  collapsedView.addEventListener('pointerup', (e) => {
+    onDragEnd(e, collapsedView);
+    if (!dragMoved) {
+      isCollapsed = false;
+      renderList();
+    }
   });
 
   // List container
@@ -180,21 +245,51 @@
   listContainer.style.cssText = `
     display: flex;
     flex-direction: column;
-    max-height: none;
+    max-height: 420px;
+    overflow-y: auto;
   `;
-  container.appendChild(listContainer);
+  expandedView.appendChild(listContainer);
+  
+  container.appendChild(collapsedView);
+  container.appendChild(expandedView);
 
   function renderList() {
     // Dynamic fallback: if the spectrogram-generated event was missed, check globals directly
     if (!isSpectrogramLoaded) {
       isSpectrogramLoaded = !!(globalThis._spectroAudioBuffer || globalThis._spectroSpectra);
     }
-    if (recentSpecies.length === 0 || !isActive || !isSpectrogramLoaded) {
+    if (!isActive || !isSpectrogramLoaded) {
       container.style.display = 'none';
       return;
     }
     
     container.style.display = 'flex';
+    
+    if (isCollapsed) {
+      expandedView.style.display = 'none';
+      collapsedView.style.display = 'flex';
+      container.style.width = '50px';
+      container.style.height = '50px';
+      container.style.borderRadius = '25px';
+      container.style.background = 'transparent';
+      container.style.border = 'none';
+      container.style.boxShadow = 'none';
+      container.style.overflow = 'visible';
+      container.style.backdropFilter = 'none';
+      return; // Nothing else to render when collapsed
+    } else {
+      collapsedView.style.display = 'none';
+      expandedView.style.display = 'flex';
+      container.style.width = '240px';
+      container.style.height = 'auto';
+      container.style.borderRadius = '6px';
+      container.style.background = 'rgba(17, 17, 17, 0.85)';
+      container.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+      container.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+      container.style.overflow = 'hidden';
+      container.style.backdropFilter = 'blur(4px)';
+    }
+
     listContainer.innerHTML = '';
     const elHidden = document.getElementById('selectedSpeciesKey');
     const elResult = document.getElementById('speciesResult');
