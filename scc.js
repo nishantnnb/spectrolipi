@@ -107,6 +107,8 @@
     let bb0 = Math.min(b0, b1), bb1 = Math.max(b0, b1);
     const padBins = 1;
     bb0 = Math.max(0, bb0 - padBins);
+    // Phase align to multiple of 4 so downsampling (sx=4, sy=2) takes exact same pixels
+    bb0 = Math.floor(bb0 / 4) * 4;
     bb1 = Math.min(bins - 1, bb1 + padBins);
     const h = Math.max(1, bb1 - bb0 + 1);
 
@@ -116,6 +118,8 @@
     let ff0 = Math.min(f0, f1), ff1 = Math.max(f0, f1);
     const padFrames = 1;
     ff0 = Math.max(0, ff0 - padFrames);
+    // Phase align to multiple of 4
+    ff0 = Math.floor(ff0 / 4) * 4;
     ff1 = Math.min(totalFrames - 1, ff1 + padFrames);
     const w = Math.max(1, ff1 - ff0 + 1);
 
@@ -272,17 +276,21 @@
     const n = tw * th;
 
     let iter = 0;
-    for (let y = 0; y < outH; y++){
-      const sy = y + 1;
-      for (let x = 0; x < outW; x++){
-        const sx = x + 1;
+    
+    // Column-major traversal
+    for (let x = 0; x < outW; x++){
+      const sx = x + 1;
+      
+      for (let y = 0; y < outH; y++){
+        const sy = y + 1;
         const sumI = rectSum(S.data, S.width, S.height, sx, sy, tw, th);
         const sumI2 = rectSum(S2.data, S2.width, S2.height, sx, sy, tw, th);
         const muI = sumI / n;
         const varI = Math.max(0, sumI2 / n - muI * muI);
         const sI = Math.sqrt(varI + 1e-12);
-        // dot(I - muI, Tz)
+        
         let dot = 0;
+        // dot(I - muI, Tz) naive nested loop
         for (let yy = 0; yy < th; yy++){
           const iOff = (y + yy) * iw + x;
           const tOff = yy * tw;
@@ -290,10 +298,11 @@
             dot += (image[iOff + xx] - muI) * templZ[tOff + xx];
           }
         }
+        
         const denom = (sI * tStd * n) || 1e-9;
         const score = clamp(dot / denom, -1, 1);
         out[y * outW + x] = score;
-
+        
         iter++;
         if ((iter % yieldEvery) === 0) await new Promise(r => setTimeout(r, 0));
       }
@@ -350,7 +359,7 @@
     return inter / uni;
   }
 
-  function nms(boxes, iouThresh = 0.3) {
+  function nms(boxes, iouThresh = 0.3, minDistSec = 0) {
     // boxes sorted by score desc prior to call
     const kept = [];
     for (const b of boxes) {
@@ -365,6 +374,14 @@
           } catch (e) {}
           mergedInto = k;
           break;
+        }
+        // Strict timeline gap enforcement
+        if (minDistSec > 0) {
+          const gap = Math.max(0, Math.max(b.t1, k.t1) - Math.min(b.t2, k.t2));
+          if (gap < minDistSec) {
+            mergedInto = k;
+            break;
+          }
         }
       }
       if (!mergedInto) kept.push(b);
@@ -446,8 +463,8 @@
 
         <div class="grid">
           <div class="row">
-            <label for="scc-mindur">Min duration (ms)</label>
-            <input id="scc-mindur" type="number" min="0" max="10000" step="10" value="50">
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="scc-mindist-enable"> Min distance (sec)</label>
+            <input id="scc-mindist" type="number" min="0" step="any" disabled placeholder="e.g. 0.5" style="background:#071722;border:1px solid #1f2937;color:#9ca3af;padding:4px 8px;border-radius:4px;width:100%;">
           </div>
           <div class="row">
             <label for="scc-minfreq">Frequency include: Min (Hz)</label>
@@ -459,6 +476,7 @@
           </div>
         </div>
   <div class="progress" id="scc-progress" aria-live="polite"></div>
+  <div class="progress" id="scc-timer" style="margin-top:2px; font-weight:bold; color:#10b981;"></div>
   <div id="scc-presets-area" style="margin-top:8px;margin-bottom:8px;display:none;background:#071018;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"></div>
   <div class="actions" style="align-items:center;">
           <label id="scc-merge-label" title="This combines the annotations with distance less than the input duration." style="display:flex;align-items:center;gap:8px;margin-right:auto;font-size:13px;color:#cbd5e1;white-space:nowrap">
@@ -584,36 +602,45 @@
     let coarse = 0, rawc = 0;
     let variantsTried = 0, skippedLowVar = 0, skippedTooLarge = 0;
     const qualityStrides = computeQualityStrides(localOpts.quality);
-    // Force a coarse downsample for scanning to bound runtime even when quality='accurate'
-    const coarseSX = Math.max(1, Number(localOpts.coarseSX) || Math.max(2, qualityStrides.sx));
-    const coarseSY = Math.max(1, Number(localOpts.coarseSY) || Math.max(2, qualityStrides.sy));
-    const localSearch = downsample2D(extractSearch.data, extractSearch.width, extractSearch.height, coarseSX, coarseSY);
-    // Precompute integrals for localSearch so template variants reuse them
-    const __precomp = (function(){
-      try {
-        const imageSq = new Float32Array(localSearch.data.length);
-        for (let i = 0; i < localSearch.data.length; i++) { const v = localSearch.data[i]; imageSq[i] = v * v; }
-        const S = integralImage(localSearch.data, localSearch.width, localSearch.height);
-        const S2 = integralImage(imageSq, localSearch.width, localSearch.height);
-        return { S, S2 };
-      } catch(e) { return null; }
-    })();
+      // Force a coarse downsample for scanning to bound runtime even when quality='accurate'
+      const coarseSX = Math.max(1, Number(localOpts.coarseSX) || Math.max(2, qualityStrides.sx));
+      const coarseSY = Math.max(1, Number(localOpts.coarseSY) || Math.max(2, qualityStrides.sy));
+      const localSearch = downsample2D(extractSearch.data, extractSearch.width, extractSearch.height, coarseSX, coarseSY);
+      // Precompute integrals for localSearch so template variants reuse them
+      const __precomp = (function(){
+        try {
+          const imageSq = new Float32Array(localSearch.data.length);
+          for (let i = 0; i < localSearch.data.length; i++) { const v = localSearch.data[i]; imageSq[i] = v * v; }
+          const S = integralImage(localSearch.data, localSearch.width, localSearch.height);
+          const S2 = integralImage(imageSq, localSearch.width, localSearch.height);
+          return { S, S2 };
+        } catch(e) { return null; }
+      })();
     const localEnergyThresh = percentile(localSearch.data, localOpts.energyPct);
     const localPitchScales = buildScales(localOpts.pitchTolPct, localOpts.pitchSteps);
     const localTimeScales = buildScales(localOpts.timeTolPct, localOpts.timeSteps);
 
-    for (let ti = 0; ti < templatesToUse.length; ti++){
-      if (abortToken && abortToken.cancelled) {
-        const elapsedMs = Date.now() - tStart;
-        return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, aborted: true };
+    let jumpDistX = 0;
+    try {
+      const enableEl = document.getElementById('scc-mindist-enable');
+      const distEl = document.getElementById('scc-mindist');
+      if (enableEl && enableEl.checked && distEl && distEl.value) {
+        const sec = parseFloat(distEl.value) || 0;
+        if (sec > 0 && meta && meta.framesPerSec) {
+           const originalPixels = sec * meta.framesPerSec;
+           jumpDistX = Math.floor(originalPixels / coarseSX);
+        }
       }
+    } catch (e) {}
+
+
+
+    const tasks = [];
+    for (let ti = 0; ti < templatesToUse.length; ti++){
+      if (abortToken && abortToken.cancelled) break;
       const Tbase = templatesToUse[ti];
       for (let ps = 0; ps < localPitchScales.length; ps++){
         for (let ts = 0; ts < localTimeScales.length; ts++){
-          if (abortToken && abortToken.cancelled) {
-            const elapsedMs = Date.now() - tStart;
-            return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, aborted: true };
-          }
           const sF = localPitchScales[ps];
           const sT = localTimeScales[ts];
           const newH = Math.max(3, Math.round(Tbase.height * sF));
@@ -621,9 +648,7 @@
           const Tscaled = resize2D(Tbase.data, Tbase.width, Tbase.height, newW, newH);
           const preStat = meanStd(Tscaled.data);
           variantsTried++;
-          // During trial scans we may want to avoid rejecting low-variance variants so the
-          // user can see counts based purely on other parameters. Only enforce the
-          // low-variance skip when allowLowVar is false.
+          
           if (!allowLowVar) {
             const varThresh = 1e-3;
             if (preStat.std < varThresh) { skippedLowVar++; continue; }
@@ -633,83 +658,113 @@
           const Tnorm = zeroMeanUnit(Tds.data);
           const TfullZ = zeroMeanUnit(Tscaled.data);
 
-          // NCC over downsampled search image
-          const corr = await nccMap(localSearch.data, localSearch.width, localSearch.height, Tnorm.data, Tds.width, Tds.height, 2000, __precomp);
-
-          // Peak picking
           const guardX = Math.max(2, Math.floor(Tds.width * 0.9));
           const guardY = Math.max(2, Math.floor(Tds.height * 0.7));
-          // Allow a preset-configurable cap on how many coarse peaks to consider for refinement.
-          // This prevents extremely large peak lists from causing long-running fine NCC passes.
           const maxPeaks = (localOpts && Number(localOpts.maxCandidates)) ? Math.max(1, Number(localOpts.maxCandidates)) : 50000;
-          // Non-negative coarse threshold prunes weak matches early (default 0)
           const coarseThresh = (typeof localOpts.coarseThresh === 'number') ? Math.max(-1, Math.min(1, localOpts.coarseThresh)) : 0;
-          const peaks = pickPeaks(corr.data, corr.width, corr.height, coarseThresh, guardX, guardY, maxPeaks);
-          coarse += peaks.length;
 
-          // refine only the top-N peaks to avoid expensive full-resolution NCC on every coarse peak
-          // peaks is already sorted by coarse score desc from pickPeaks; choose topN based on localOpts.maxRefine
-          const defaultRefineCount = Math.max(200, Math.floor(peaks.length * 0.05)); // at least 200 or 5%
-          const maxRefine = (localOpts && Number(localOpts.maxRefine)) ? Math.max(1, Number(localOpts.maxRefine)) : Math.min(peaks.length, defaultRefineCount);
-          for (let pi = 0; pi < peaks.length && pi < maxRefine; pi++) {
-            const p = peaks[pi];
-            const x_ds = p.x; const y_ds = p.y;
-            const w_ds = Tds.width; const h_ds = Tds.height;
-            const x0_img = x_ds * coarseSX;
-            const y0_img = y_ds * coarseSY;
-
-            const frameStart = extractSearch.frameStart + x0_img;
-            const frameEnd = frameStart + (w_ds * coarseSX) - 1;
-            const binStart = extractSearch.binStart + y0_img;
-            const binEnd = binStart + (h_ds * coarseSY) - 1;
-
-            const tStart = frameStart / Math.max(1e-9, meta.framesPerSec);
-            const tEnd = (frameEnd + 1) / Math.max(1e-9, meta.framesPerSec);
-            const nyq = meta.sampleRate / 2;
-            const fLow = (binStart / Math.max(1, meta.bins - 1)) * nyq;
-            const fHigh = (binEnd / Math.max(1, meta.bins - 1)) * nyq;
-
-            const durMs = Math.max(0, (tEnd - tStart) * 1000);
-            if (durMs < localOpts.minDurMs) continue;
-            // frequency include range: skip if outside
-            if (typeof localOpts.minFreq === 'number' && typeof localOpts.maxFreq === 'number') {
-              if (fHigh < localOpts.minFreq || fLow > localOpts.maxFreq) continue;
-            }
-
-            // Energy filter
-            let eSum = 0, eCount = 0;
-            for (let yy = 0; yy < h_ds; yy++){
-              const imgOff = (y_ds + yy) * localSearch.width + x_ds;
-              for (let xx = 0; xx < w_ds; xx++){ eSum += localSearch.data[imgOff + xx] || 0; eCount++; }
-            }
-            const eMean = eSum / Math.max(1, eCount);
-            if (eMean < localEnergyThresh) continue;
-
-            const fineScore = nccScorePatch(
-              extractSearch.data,
-              extractSearch.width,
-              extractSearch.height,
-              x0_img,
-              y0_img,
-              Tscaled.width,
-              Tscaled.height,
-              TfullZ.data
-            );
-            if (!(fineScore > -0.999)) continue;
-
-            rawc++;
-            found.push({ t1: tStart, t2: tEnd, f1: fLow, f2: fHigh, score: fineScore, variant: { pitchScale: sF, timeScale: sT }, templateIds: Tbase.srcIdList.slice() });
-          }
-          await new Promise(r => setTimeout(r, 0));
-          if (abortToken && abortToken.cancelled) {
-            const elapsedMs = Date.now() - tStart;
-            return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, aborted: true };
-          }
+          tasks.push({
+            Tbase, sF, sT, Tscaled, TfullZ, Tds, Tnorm,
+            guardX, guardY, maxPeaks, coarseThresh,
+            jumpDistX, threshold: localOpts.threshold || 0
+          });
         }
       }
     }
+
+    let coresUsed = 1;
+
+    if (abortToken && abortToken.cancelled) {
+      const elapsedMs = Date.now() - tStart;
+      return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, aborted: true, coresUsed };
+    }
+
+
+      const maxWorkers = Math.max(1, (navigator.hardwareConcurrency || 4) - 1);
+      coresUsed = Math.min(maxWorkers, tasks.length);
+      const workerPool = Array.from({length: coresUsed}, () => new Worker(getWorkerUrl()));
+      
+      await new Promise((resolve) => {
+        let completed = 0;
+        let nextIdx = 0;
+        function dispatchNext(worker) {
+          if (abortToken && abortToken.cancelled) { resolve(); return; }
+          if (nextIdx >= tasks.length) {
+            if (completed === tasks.length) resolve();
+            return;
+          }
+          const tIdx = nextIdx++;
+          const t = tasks[tIdx];
+          worker.onmessage = (e) => {
+            t.peaks = e.data.success ? e.data.peaks : [];
+            completed++;
+            dispatchNext(worker);
+          };
+          worker.postMessage({
+            id: tIdx,
+            image: localSearch.data, iw: localSearch.width, ih: localSearch.height,
+            templZ: t.Tnorm.data, tw: t.Tds.width, th: t.Tds.height,
+            yieldEvery: 50000, precomputed: __precomp,
+            jumpDistX: t.jumpDistX, threshold: t.threshold,
+            guardX: t.guardX, guardY: t.guardY, maxPeaks: t.maxPeaks, coarseThresh: t.coarseThresh
+          });
+        }
+        workerPool.forEach(w => dispatchNext(w));
+      });
+      workerPool.forEach(w => w.terminate());
+
+
+    for (const t of tasks) {
+      if (abortToken && abortToken.cancelled) break;
+      const peaks = t.peaks || [];
+      coarse += peaks.length;
+
+      const defaultRefineCount = Math.max(200, Math.floor(peaks.length * 0.05));
+      const maxRefine = (localOpts && Number(localOpts.maxRefine)) ? Math.max(1, Number(localOpts.maxRefine)) : Math.min(peaks.length, defaultRefineCount);
+      for (let pi = 0; pi < peaks.length && pi < maxRefine; pi++) {
+        const p = peaks[pi];
+        const x_ds = p.x; const y_ds = p.y;
+        const w_ds = t.Tds.width; const h_ds = t.Tds.height;
+        const x0_img = x_ds * coarseSX;
+        const y0_img = y_ds * coarseSY;
+
+        const frameStart = extractSearch.frameStart + x0_img;
+        const frameEnd = frameStart + (w_ds * coarseSX) - 1;
+        const binStart = extractSearch.binStart + y0_img;
+        const binEnd = binStart + (h_ds * coarseSY) - 1;
+
+        const tStartPeak = frameStart / Math.max(1e-9, meta.framesPerSec);
+        const tEndPeak = (frameEnd + 1) / Math.max(1e-9, meta.framesPerSec);
+        const nyq = meta.sampleRate / 2;
+        const fLow = (binStart / Math.max(1, meta.bins - 1)) * nyq;
+        const fHigh = (binEnd / Math.max(1, meta.bins - 1)) * nyq;
+
+        const durMs = Math.max(0, (tEndPeak - tStartPeak) * 1000);
+        if (durMs < (localOpts.minDurMs || 0)) continue;
+        if (typeof localOpts.minFreq === 'number' && typeof localOpts.maxFreq === 'number') {
+          if (fHigh < localOpts.minFreq || fLow > localOpts.maxFreq) continue;
+        }
+
+        let eSum = 0, eCount = 0;
+        for (let yy = 0; yy < h_ds; yy++){
+          const imgOff = (y_ds + yy) * localSearch.width + x_ds;
+          for (let xx = 0; xx < w_ds; xx++){ eSum += localSearch.data[imgOff + xx] || 0; eCount++; }
+        }
+        const eMean = eSum / Math.max(1, eCount);
+        if (eMean < localEnergyThresh) continue;
+
+        const fineScore = nccScorePatch(
+          extractSearch.data, extractSearch.width, extractSearch.height,
+          x0_img, y0_img, t.Tscaled.width, t.Tscaled.height, t.TfullZ.data
+        );
+        if (!(fineScore > -0.999)) continue;
+
+        rawc++;
+        found.push({ t1: tStartPeak, t2: tEndPeak, f1: fLow, f2: fHigh, score: fineScore, variant: { pitchScale: t.sF, timeScale: t.sT }, templateIds: t.Tbase.srcIdList.slice() });
+      }
+    }
     const elapsedMs = Date.now() - tStart;
-    return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs };
+    return { detections: found, coarsePeaks: coarse, rawCandidates: rawc, variantsTried, skippedLowVar, skippedTooLarge, elapsedMs, coresUsed };
   }
 
   function buildScales(tolPct, stepsOdd){
@@ -753,6 +808,33 @@
     return a[idx];
   }
 
+  let __workerUrlCache = null;
+  function getWorkerUrl() {
+    if (__workerUrlCache) return __workerUrlCache;
+    const workerScriptCode = `
+      const clamp = ${clamp.toString()};
+      const integralImage = ${integralImage.toString()};
+      const rectSum = ${rectSum.toString()};
+      const meanStd = ${meanStd.toString()};
+      const nccMap = ${nccMap.toString()};
+      const pickPeaks = ${pickPeaks.toString()};
+
+      self.onmessage = async function(e) {
+        const { id, image, iw, ih, templZ, tw, th, yieldEvery, precomputed, jumpDistX, threshold, guardX, guardY, maxPeaks, coarseThresh } = e.data;
+        try {
+          const res = await nccMap(image, iw, ih, templZ, tw, th, yieldEvery, precomputed, jumpDistX, threshold);
+          const peaks = pickPeaks(res.data, res.width, res.height, coarseThresh, guardX, guardY, maxPeaks);
+          self.postMessage({ id, success: true, peaks });
+        } catch(err) {
+          self.postMessage({ id, success: false, error: err.toString() });
+        }
+      };
+    `;
+    const blob = new Blob([workerScriptCode], { type: 'application/javascript' });
+    __workerUrlCache = URL.createObjectURL(blob);
+    return __workerUrlCache;
+  }
+
   // Small UI: create a circular 5-segment overlay to show preset scan progress
   function createScanOverlay(parentEl, totalSegments) {
     try {
@@ -770,8 +852,8 @@
   const box = document.createElement('div');
   box.className = 'scc-scan-box';
   box.style.pointerEvents = 'auto';
-  // make a horizontal rectangle: spinner left, logo+text right
-  box.style.width = '460px';
+  // make a horizontal rectangle: spinner left, logo middle, tip right
+  box.style.width = '580px';
   box.style.height = '120px';
   box.style.display = 'flex';
   box.style.flexDirection = 'row';
@@ -863,11 +945,26 @@
         logoImg.style.objectFit = 'contain';
         rightCol.appendChild(logoImg);
       } catch (e) {}
-
-      // Append left and right columns
-      box.appendChild(leftCol);
-      box.appendChild(rightCol);
-      wrap.appendChild(box);
+  
+        // Tip column: rightmost area
+        const tipCol = document.createElement('div');
+        tipCol.style.display = 'flex';
+        tipCol.style.flexDirection = 'column';
+        tipCol.style.justifyContent = 'center';
+        tipCol.style.paddingLeft = '12px';
+        tipCol.style.borderLeft = '1px solid rgba(255,255,255,0.06)';
+        tipCol.style.marginLeft = '4px';
+        tipCol.style.color = '#9ca3af';
+        tipCol.style.fontSize = '13px';
+        tipCol.style.lineHeight = '1.4';
+        tipCol.style.flex = '1';
+        tipCol.innerHTML = '💡 <b>Tip:</b> Keep tab in foreground for max speed.';
+  
+        // Append left, right, and tip columns
+        box.appendChild(leftCol);
+        box.appendChild(rightCol);
+        box.appendChild(tipCol);
+        wrap.appendChild(box);
 
       // attach overlay to document root so fixed positioning works cleanly
       document.documentElement.appendChild(wrap);
@@ -954,17 +1051,28 @@
   detections.sort((a,b) => (b.score - a.score) || (a.t1 - b.t1) || (a.f1 - b.f1));
   // debug logs removed
 
-  setProgress(`Deduplicating (${detections.length} raw detections)...`);
-  const dedupAll = nms(detections, 0.5);
-
+    setProgress(`Deduplicating (${detections.length} raw detections)...`);
+    
+    let globalMinDistSec = 0;
+    try {
+      const enableEl = document.getElementById('scc-mindist-enable');
+      const distEl = document.getElementById('scc-mindist');
+      if (enableEl && enableEl.checked && distEl && distEl.value) {
+        globalMinDistSec = parseFloat(distEl.value) || 0;
+      }
+    } catch(e) {}
+    
   // Apply user threshold after deduplication so threshold only filters final detections
   const dedup = dedupAll.filter(d => (d.score || -1) >= opts.threshold);
   // debug logs removed
 
     // Insert into grid
-    // Use the species and scientificName from the selected template row directly.
+    // Use the species and other metadata from the selected template row directly.
     const speciesGuess = sel.length > 0 ? (sel[0].species || '') : '';
     const speciesScientificGuess = sel.length > 0 ? (sel[0].scientificName || '') : '';
+    const sexGuess = sel.length > 0 ? (sel[0].sex || '') : '';
+    const lifeStageGuess = sel.length > 0 ? (sel[0].lifeStage || '') : '';
+    const soundTypeGuess = sel.length > 0 ? (sel[0].soundType || '') : '';
 
     // Optionally merge by gap < 1s, based on checkbox
     let finalDetections = dedup;
@@ -980,12 +1088,16 @@
         lowFreq: d.f1,
         highFreq: d.f2,
         species: speciesGuess,
-        scientificName: speciesScientificGuess
+        scientificName: speciesScientificGuess,
+        sex: sexGuess,
+        lifeStage: lifeStageGuess,
+        soundType: soundTypeGuess
     }));
 
     let addedRows = [];
     if (rowsToCreate.length) {
       try { 
+        try { if (window.annotationUndo) window.annotationUndo.saveState(); } catch(e) {} // Undo: save state before SCC create
         addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-create');
       } catch (e) {}
       // Deselect previously-selected template rows and select newly added rows for convenience
@@ -1008,6 +1120,7 @@
           try {
             if (typeof grid.selectRow === 'function') {
               for (const id of addedIds) { try { grid.selectRow(id); } catch(e){} }
+              try { window.dispatchEvent(new Event('edit-selection-changed')); } catch(e){}
             } else if (typeof grid.getRow === 'function') {
               for (const id of addedIds) { try { const r = grid.getRow(id); if (r && typeof r.select === 'function') r.select(); } catch(e){} }
             }
@@ -1045,22 +1158,19 @@
       if (!__scc_lastScanParams) { scanBtn.disabled = false; return; }
       const sel = getGridSelectedTemplates();
       const currentId = sel && sel.length === 1 ? sel[0].id : null;
-      const mdEl = document.getElementById('scc-mindur');
       const mfEl = document.getElementById('scc-minfreq');
       const xfEl = document.getElementById('scc-maxfreq');
-      const currentMinDurMs = Math.max(0, Number(mdEl ? mdEl.value : '0')) || 0;
       const minFreq = Number(mfEl ? mfEl.value : '0') || 0;
       const maxFreq = Number(xfEl ? xfEl.value : '0') || 0;
 
       if (String(currentId) !== String(__scc_lastScanParams.id) ||
-          currentMinDurMs !== __scc_lastScanParams.minDur ||
           minFreq !== __scc_lastScanParams.minFreq ||
           maxFreq !== __scc_lastScanParams.maxFreq) {
           scanBtn.disabled = false;
           const presetsArea = document.getElementById('scc-presets-area');
           if (presetsArea) presetsArea.style.display = 'none';
       } else {
-          scanBtn.disabled = true;
+          scanBtn.disabled = false;
           const presetsArea = document.getElementById('scc-presets-area');
           if (presetsArea && __scc_lastScanRows) presetsArea.style.display = 'block';
       }
@@ -1089,63 +1199,55 @@
       const $ = (id) => document.getElementById(id);
 
       setTimeout(() => {
-        const firstInput = $('scc-mindur');
+        const firstInput = $('scc-minfreq');
         if (firstInput) firstInput.focus();
       }, 50);
 
-      let shouldPrefill = true;
       try {
         const selRows = getGridSelectedTemplates() || [];
-        const currentId = selRows.length === 1 ? selRows[0].id : null;
-        if (__scc_lastScanParams && currentId && String(__scc_lastScanParams.id) === String(currentId)) {
-            const presetsArea = document.getElementById('scc-presets-area');
-            if (presetsArea && __scc_lastScanRows) {
-                presetsArea.style.display = 'block';
-            }
-            
-            const minDurEl = $('scc-mindur');
-            const minFreqEl = $('scc-minfreq');
-            const maxFreqEl = $('scc-maxfreq');
-            if (minDurEl) minDurEl.value = String(__scc_lastScanParams.minDur);
-            if (minFreqEl) minFreqEl.value = String(__scc_lastScanParams.minFreq);
-            if (maxFreqEl) maxFreqEl.value = String(__scc_lastScanParams.maxFreq);
-            
-            const scanBtn = document.getElementById('scc-scan');
-            if (scanBtn) scanBtn.disabled = true;
-            shouldPrefill = false;
-        } else {
-            const presetsArea = document.getElementById('scc-presets-area');
-            if (presetsArea) {
-                presetsArea.style.display = 'none';
-            }
-            const scanBtn = document.getElementById('scc-scan');
-            if (scanBtn) scanBtn.disabled = false;
-        }
-      } catch(e) {}
-
-      if (shouldPrefill) {
-        // Prefill frequency include defaults based on selected templates
         try {
-        const selRows = getGridSelectedTemplates();
-        if (selRows && selRows.length) {
-          const minF = Math.max(0, Math.min(...selRows.map(r => Number(r.lowFreq)||0)) - 100);
-          const maxF = Math.min((globalThis._spectroSampleRate||44100)/2, Math.max(...selRows.map(r => Number(r.highFreq)||0)) + 100);
-          const minEl = $('scc-minfreq'); const maxEl = $('scc-maxfreq');
-          if (minEl) minEl.value = String(Math.max(0, Math.floor(minF)));
-          if (maxEl) maxEl.value = String(Math.max(0, Math.ceil(maxF)));
-          // Default min duration: 25% of the longest selected template duration (ms), floor 10ms
-          try {
-            const durations = selRows.map(r => {
-              const b = Number(r.beginTime) || 0; const e = Number(r.endTime) || 0; return Math.max(0, e - b);
-            });
-            const maxDur = durations.length ? Math.max(...durations) : 0; // seconds
-            const defaultMinDurMs = Math.max(10, Math.round(maxDur * 1000 * 0.25));
-            const minDurEl = $('scc-mindur');
-            if (minDurEl) minDurEl.value = String(defaultMinDurMs);
-          } catch (e) {}
-        }
+          const selRows = getGridSelectedTemplates() || [];
+          const presetsArea = document.getElementById('scc-presets-area');
+          const scanBtn = document.getElementById('scc-scan');
+          
+          let calcMinF = 0;
+          let calcMaxF = (globalThis._spectroSampleRate||44100)/2;
+
+          // Always calculate optimal bounds from the current box coordinates
+          if (selRows && selRows.length) {
+            const minF = Math.max(0, Math.min(...selRows.map(r => Number(r.lowFreq)||0)) - 100);
+            const maxF = Math.min((globalThis._spectroSampleRate||44100)/2, Math.max(...selRows.map(r => Number(r.highFreq)||0)) + 100);
+            calcMinF = Math.max(0, Math.floor(minF));
+            calcMaxF = Math.max(0, Math.ceil(maxF));
+          }
+
+          // Populate form fields with these tightly calculated values
+          const minFreqEl = $('scc-minfreq');
+          const maxFreqEl = $('scc-maxfreq');
+          if (minFreqEl) minFreqEl.value = String(calcMinF);
+          if (maxFreqEl) maxFreqEl.value = String(calcMaxF);
+
+          // Now determine if we can restore old scan results
+          const currentId = selRows.length === 1 ? selRows[0].id : null;
+          let canRestore = false;
+          if (__scc_lastScanParams && currentId && String(__scc_lastScanParams.id) === String(currentId)) {
+             // To restore, the newly calculated bounds MUST match the old parameters exactly!
+             if (calcMinF === __scc_lastScanParams.minFreq && 
+                 calcMaxF === __scc_lastScanParams.maxFreq) {
+                 canRestore = true;
+             }
+          }
+
+          if (canRestore) {
+              if (presetsArea && __scc_lastScanRows) presetsArea.style.display = 'block';
+              if (scanBtn) scanBtn.disabled = false;
+          } else {
+              if (presetsArea) presetsArea.style.display = 'none';
+              if (scanBtn) scanBtn.disabled = false;
+          }
+        } catch(e) {}
       } catch (e) {}
-      }
+
   const run = $('scc-run');
   const cancel = $('scc-cancel');
   const close = () => _hideModal();
@@ -1157,12 +1259,20 @@
     if (closeX && !closeX.__wired) { closeX.addEventListener('click', close); closeX.__wired = true; }
   } catch(e) {}
 
-      const minDurEl = $('scc-mindur');
       const minFreqEl = $('scc-minfreq');
       const maxFreqEl = $('scc-maxfreq');
-      if (minDurEl && !minDurEl.__sccWired) { minDurEl.addEventListener('input', checkScanBtnState); minDurEl.__sccWired = true; }
       if (minFreqEl && !minFreqEl.__sccWired) { minFreqEl.addEventListener('input', checkScanBtnState); minFreqEl.__sccWired = true; }
       if (maxFreqEl && !maxFreqEl.__sccWired) { maxFreqEl.addEventListener('input', checkScanBtnState); maxFreqEl.__sccWired = true; }
+      
+      const minDistEnable = document.getElementById('scc-mindist-enable');
+      const minDistInput = document.getElementById('scc-mindist');
+      if (minDistEnable && minDistInput && !minDistEnable.__sccWired) {
+        minDistEnable.addEventListener('change', () => {
+          minDistInput.disabled = !minDistEnable.checked;
+          if (minDistEnable.checked) minDistInput.focus();
+        });
+        minDistEnable.__sccWired = true;
+      }
 
       // Wire the preset scan and stop buttons
       const scanBtn = $('scc-scan');
@@ -1177,6 +1287,10 @@
       if (scanBtn && !scanBtn.__scanned) {
         scanBtn.addEventListener('click', async () => {
           if (!presetsArea) return;
+          const __scanStartTime = performance.now();
+          const timerEl = document.getElementById('scc-timer');
+          if (timerEl) timerEl.textContent = 'Running...';
+          
               // validate selection first; do not clear existing presets area on invalid selection
               const sel = getGridSelectedTemplates();
               if (!sel || sel.length === 0) { alert('Please select a row first.'); return; }
@@ -1201,11 +1315,9 @@
             const maxFreq = Number(($('scc-maxfreq').value||String(Math.max(1000, (meta.sampleRate||44100)/2)))) || Math.max(1000, (meta.sampleRate||44100)/2);
             const fullDuration = (typeof globalThis._spectroDuration === 'number' && isFinite(globalThis._spectroDuration)) ? globalThis._spectroDuration : Math.max(...sel.map(r => Number(r.endTime)||0));
             const extractSearch = extractTemplate2D(meta.spectra, meta.bins, meta.framesPerSec, meta.sampleRate, 0, fullDuration, minFreq, maxFreq);
-            const currentMinDurMs = Math.max(0, Number(($('scc-mindur').value||'0')) || 0);
 
             __scc_lastScanParams = {
               id: sel[0].id,
-              minDur: currentMinDurMs,
               minFreq: minFreq,
               maxFreq: maxFreq
             };
@@ -1215,39 +1327,50 @@
 
             // Preset definitions
             const presets = [
-              { name: 'Quick Scan', opts: { threshold: 0.30, quality: 'fast', pitchTolPct:5, pitchSteps:3, timeTolPct:0, timeSteps:1, composite:'none', energyPct:20, minDurMs:30 } },
-              { name: 'Balanced Accurate', opts: { threshold: 0.55, quality: 'balanced', pitchTolPct:10, pitchSteps:7, timeTolPct:5, timeSteps:1, composite:'mean', energyPct:8, minDurMs:50 } },
-              { name: 'High Recall', opts: { threshold: 0.30, quality: 'balanced', pitchTolPct:20, pitchSteps:11, timeTolPct:10, timeSteps:3, composite:'none', energyPct:0, minDurMs:20 } }
+              { name: 'Quick Scan', opts: { threshold: 0.30, quality: 'balanced', pitchTolPct:5, pitchSteps:3, timeTolPct:0, timeSteps:1, composite:'none', energyPct:20, minDurMs:30 } },
+              { name: 'Balanced Accurate', opts: { threshold: 0.55, quality: 'balanced', pitchTolPct:10, pitchSteps:7, timeTolPct:5, timeSteps:1, composite:'none', energyPct:8, minDurMs:50 } },
+              { name: 'High Recall', opts: { threshold: 0.30, quality: 'balanced', pitchTolPct:20, pitchSteps:5, timeTolPct:10, timeSteps:3, composite:'none', energyPct:0, minDurMs:20 } }
             ];
-
-            const rows = [];
-            let stoppedEarly = false;
-            // create scan overlay (5 segments) and attach to presets area
-            let __overlay = null;
-            try { __overlay = createScanOverlay(presetsArea, presets.length); if (__scc_currentScan) __scc_currentScan.overlay = __overlay; } catch (e) { __overlay = null; }
-            for (let i=0;i<presets.length;i++){
-              const p = presets[i];
-              // prepare opts with frequency include and the current Min duration input
-              const currentMinDurMs = Math.max(0, Number(($('scc-mindur').value||'0')) || 0);
-              const pOpts = Object.assign({}, p.opts, { minFreq, maxFreq, minDurMs: currentMinDurMs });
-              // prepare templatesToUse according to composite
-              const templatesToUse = (pOpts.composite && pOpts.composite !== 'none') ? [{ ...composeTemplates(templates, pOpts.composite), srcIdList: sel.map(r => r.id) }] : templates.map((t,idx)=> ({ ...t, srcIdList: [sel[idx].id] }));
-                // For preset scanning we want counts based on the parameter values only —
-                // allow low-variance templates during trial runs so the scan reports numbers
-                // even if the template would normally be skipped in a strict run.
-                const res = await detectCandidatesForParams(meta, extractSearch, templatesToUse, pOpts, true, __scc_currentScan);
+              const rows = [];
+              let stoppedEarly = false;
+              // create scan overlay (5 segments) and attach to presets area
+              let __overlay = null;
+              try { __overlay = createScanOverlay(presetsArea, presets.length); if (__scc_currentScan) __scc_currentScan.overlay = __overlay; } catch (e) { __overlay = null; }
+              for (let i=0;i<presets.length;i++){
+                const p = presets[i];
+                // prepare opts with frequency include
+                const pOpts = Object.assign({}, p.opts, { minFreq, maxFreq });
+                // prepare templatesToUse according to composite
+                const templatesToUse = (pOpts.composite && pOpts.composite !== 'none') ? [{ ...composeTemplates(templates, pOpts.composite), srcIdList: sel.map(r => r.id) }] : templates.map((t,idx)=> ({ ...t, srcIdList: [sel[idx].id] }));
+                
+                try {
+                  const res = await detectCandidatesForParams(meta, extractSearch, templatesToUse, pOpts, true, __scc_currentScan);
+                  if (__scc_currentScan && __scc_currentScan.cancelled) { stoppedEarly = true; break; }
+                    // compute final dedup+threshold count
+                  let dets = res.detections || [];
+                  dets.sort((a,b) => (b.score - a.score) || (a.t1 - b.t1) || (a.f1 - b.f1));
+                  
+                  let globalMinDistSec = 0;
+                  try {
+                    const enableEl = document.getElementById('scc-mindist-enable');
+                    const valEl = document.getElementById('scc-mindist');
+                    if (enableEl && enableEl.checked && valEl) {
+                      const v = parseFloat(valEl.value);
+                      if (!isNaN(v) && v >= 0) globalMinDistSec = v;
+                    }
+                  } catch(e) {}
+                  
+                  const dedupAll = nms(dets, 0.2, globalMinDistSec);
+                  const final = dedupAll.filter(d => (d.score || -1) >= pOpts.threshold);
+                  rows.push({ name: p.name, count: final.length, opts: pOpts, detections: final });
+                  try { if (__overlay) __overlay.markDone(i); if (__overlay) __overlay.setStatus(`${p.name}: ${final.length} detections`); } catch (e) {}
+                } catch (e) {
+                  try { if (__overlay) __overlay.markDone(i); } catch(ex){}
+                }
+                // small yield to keep UI responsive
+                await new Promise(r=>setTimeout(r,0));
                 if (__scc_currentScan && __scc_currentScan.cancelled) { stoppedEarly = true; break; }
-                // compute final dedup+threshold count
-                let dets = res.detections || [];
-                dets.sort((a,b) => (b.score - a.score) || (a.t1 - b.t1) || (a.f1 - b.f1));
-                const dedupAll = nms(dets, 0.5);
-                const final = dedupAll.filter(d => (d.score || -1) >= pOpts.threshold);
-                rows.push({ name: p.name, count: final.length, opts: pOpts, detections: final, stats: { coarse: res.coarsePeaks, raw: res.rawCandidates, variantsTried: res.variantsTried, skippedLowVar: res.skippedLowVar, skippedTooLarge: res.skippedTooLarge, elapsedMs: res.elapsedMs || 0 } });
-                try { if (__overlay) __overlay.markDone(i); if (__overlay) __overlay.setStatus(`${p.name}: ${final.length} detections`); } catch (e) {}
-              // small yield to keep UI responsive
-              await new Promise(r=>setTimeout(r,0));
-              if (__scc_currentScan && __scc_currentScan.cancelled) { stoppedEarly = true; break; }
-            }
+              }
 
             // store scan rows for later comparison
             __scc_lastScanRows = rows;
@@ -1264,7 +1387,7 @@
             let html = `<div style="color:#cbd5e1;margin-bottom:6px;font-size:13px">${introText}</div>`;
             html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
             for (let i=0;i<rows.length;i++){ const r=rows[i];
-              html += `<label style="display:flex;align-items:flex-start;padding:8px;background:#071722;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"><input type=radio name=scc-preset value=${i} style="margin-right:10px;margin-top:6px"><div style="flex:1"><div style="font-weight:600">${r.name}</div><div style="color:#9ca3af;font-size:12px;margin-top:4px">variants:${r.stats.variantsTried} skippedLow:${r.stats.skippedLowVar} skippedSize:${r.stats.skippedTooLarge}</div></div><div style="text-align:right;font-weight:600;margin-left:8px">${r.count}<div style="color:#9ca3af;font-size:12px;margin-top:4px">coarse:${r.stats.coarse} raw:${r.stats.raw} time:${r.stats.elapsedMs}ms</div></div></label>`;
+              html += `<label style="display:flex;align-items:flex-start;padding:8px;background:#071722;border-radius:6px;border:1px solid rgba(255,255,255,0.03)"><input type=radio name=scc-preset value=${i} style="margin-right:10px;margin-top:6px"><div style="flex:1"><div style="font-weight:600">${r.name}</div></div><div style="text-align:right;font-weight:600;margin-left:8px">${r.count}</div></label>`;
             }
         html += '</div>';
           // Apply selected preset button (use main merge controls; do not duplicate inside presets)
@@ -1322,10 +1445,13 @@
                   try { await new Promise(r=>setTimeout(r,20)); } catch(e){}
 
                   // species guess (match run behavior)
-                  // Use the species and scientificName from the selected template row directly.
+                  // Use the species and other metadata from the selected template row directly.
                   const selRows = getGridSelectedTemplates();
                   const speciesGuess = selRows.length > 0 ? (selRows[0].species || '') : '';
                   const speciesScientificGuess = selRows.length > 0 ? (selRows[0].scientificName || '') : '';
+                  const sexGuess = selRows.length > 0 ? (selRows[0].sex || '') : '';
+                  const lifeStageGuess = selRows.length > 0 ? (selRows[0].lifeStage || '') : '';
+                  const soundTypeGuess = selRows.length > 0 ? (selRows[0].soundType || '') : '';
 
                   // Optionally merge by gap < 1s
                   let toInsert = dets;
@@ -1347,12 +1473,16 @@
                     highFreq: Number(round4(d.f2)),
                     species: speciesGuess,
                     scientificName: speciesScientificGuess,
+                    sex: sexGuess,
+                    lifeStage: lifeStageGuess,
+                    soundType: soundTypeGuess,
                     notes: ''
                   }));
 
                 if (rowsToCreate.length) {
                   let addedRows = [];
                   try {
+                    try { if (window.annotationUndo) window.annotationUndo.saveState(); } catch(e) {} // Undo: save state before SCC apply
                     addedRows = globalThis._annotations.addMany(rowsToCreate, 'scc-apply');
                       // Deselect previous, select newly-added
                       const grid = window.annotationGrid;
@@ -1362,9 +1492,11 @@
                       }
                       if (grid && typeof grid.selectRow === 'function') {
                         for (const r of addedRows) { try { grid.selectRow(r.id); } catch(e){} }
+                        try { window.dispatchEvent(new Event('edit-selection-changed')); } catch(e){}
                       }
                     } catch(e){}
                   if (addedRows && addedRows.length > 0) applyBtn.disabled = true;
+                  try { _hideModal(); } catch(e){}
                   }
 
                 } catch (e) {
@@ -1383,6 +1515,13 @@
               presetsArea.innerHTML = '<div style="color:#f97316">Search failed: ' + (e && e.message ? e.message : String(e)) + '</div>';
             }
           } finally {
+            try { 
+              const timerEl = document.getElementById('scc-timer');
+              if (timerEl) {
+                const __scanEndTime = performance.now();
+                timerEl.textContent = `Completed in: ${((__scanEndTime - __scanStartTime)/1000).toFixed(2)}s`;
+              }
+            } catch(e) {}
             try { scanBtn.disabled = false; } catch (e) {}
             try { if (run) run.disabled = false; } catch (e) {}
             if (stopBtn) { stopBtn.style.display = 'none'; }
