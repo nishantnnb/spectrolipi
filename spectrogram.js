@@ -680,13 +680,80 @@
     const spectra = new Float32Array(numFrames * bins);
 
     let minDB = Infinity, maxDB = -Infinity;
-    const re = new Float32Array(N), im = new Float32Array(N);
-    for (let fIdx = 0; fIdx < numFrames; fIdx++){
-      const off = fIdx * hop;
-      for (let n=0;n<N;n++){ const s = mono[off+n] || 0; re[n] = s * window[n]; im[n] = 0; }
-      fft(re, im);
-      for (let b=0;b<bins;b++){ const r=re[b], i=im[b]; const mag=Math.sqrt(r*r+i*i)/N; const db=20*log10(mag+1e-12); if(db<minDB) minDB=db; if(db>maxDB) maxDB=db; spectra[fIdx*bins + b] = mag; }
-      if ((fIdx & 127) === 0) await globalThis.fastYield();
+    
+    // Detect CPU cores, limit to 8 to avoid overwhelming low-memory systems, fallback to 4
+    const numCores = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 8) : 4;
+    
+    // Only use workers if we have a reasonable amount of frames to justify the overhead
+    if (numFrames > 100) {
+      let workers = [];
+      try {
+        const promises = [];
+        const framesPerWorker = Math.ceil(numFrames / numCores);
+        
+        for (let i = 0; i < numCores; i++) {
+          const startFrame = i * framesPerWorker;
+          if (startFrame >= numFrames) break;
+          
+          const endFrame = Math.min(startFrame + framesPerWorker, numFrames);
+          const numWorkerFrames = endFrame - startFrame;
+          
+          // The worker needs audio from (startFrame * hop) up to (endFrame * hop - hop + N)
+          const startSample = startFrame * hop;
+          const endSample = Math.min(mono.length, (endFrame - 1) * hop + N);
+          const monoSlice = mono.slice(startSample, endSample);
+          
+          const worker = new Worker('spectro_worker.js');
+          workers.push(worker);
+          
+          promises.push(new Promise((resolve, reject) => {
+            worker.onmessage = (e) => resolve({ data: e.data, startFrame, numWorkerFrames });
+            worker.onerror = reject;
+            worker.postMessage({
+              mono: monoSlice,
+              fftSize: N,
+              hop: hop,
+              startFrame: startFrame,
+              numFrames: numWorkerFrames
+            }, [monoSlice.buffer]);
+          }));
+        }
+        
+        const results = await Promise.all(promises);
+        results.forEach(res => {
+          const { spectra: workerSpectra, minDB: wMin, maxDB: wMax } = res.data;
+          
+          if (wMin < minDB) minDB = wMin;
+          if (wMax > maxDB) maxDB = wMax;
+          
+          // Copy worker spectra into main spectra array
+          spectra.set(workerSpectra, res.startFrame * bins);
+        });
+      } catch (err) {
+        console.warn("[Spectrogram] Worker failed (likely file:// protocol), falling back to single thread");
+        // Fallback to single thread
+        minDB = Infinity; maxDB = -Infinity;
+        const re = new Float32Array(N), im = new Float32Array(N);
+        for (let fIdx = 0; fIdx < numFrames; fIdx++){
+          const off = fIdx * hop;
+          for (let n=0;n<N;n++){ const s = mono[off+n] || 0; re[n] = s * window[n]; im[n] = 0; }
+          fft(re, im);
+          for (let b=0;b<bins;b++){ const r=re[b], i=im[b]; const mag=Math.sqrt(r*r+i*i)/N; const db=20*log10(mag+1e-12); if(db<minDB) minDB=db; if(db>maxDB) maxDB=db; spectra[fIdx*bins + b] = mag; }
+          if ((fIdx & 127) === 0) await globalThis.fastYield();
+        }
+      } finally {
+        workers.forEach(w => w.terminate());
+      }
+    } else {
+      // Fallback to single thread for very short clips
+      const re = new Float32Array(N), im = new Float32Array(N);
+      for (let fIdx = 0; fIdx < numFrames; fIdx++){
+        const off = fIdx * hop;
+        for (let n=0;n<N;n++){ const s = mono[off+n] || 0; re[n] = s * window[n]; im[n] = 0; }
+        fft(re, im);
+        for (let b=0;b<bins;b++){ const r=re[b], i=im[b]; const mag=Math.sqrt(r*r+i*i)/N; const db=20*log10(mag+1e-12); if(db<minDB) minDB=db; if(db>maxDB) maxDB=db; spectra[fIdx*bins + b] = mag; }
+        if ((fIdx & 127) === 0) await globalThis.fastYield();
+      }
     }
 
   const DR = 80, top = maxDB, bottom = Math.max(minDB, maxDB - DR);
@@ -1643,7 +1710,7 @@
             // Ensure UI defaults to Create mode when a new file is selected
             try { const wrap = document.getElementById('createEditToggle'); if (wrap) wrap.dispatchEvent(new CustomEvent('mode-change', { detail: { mode: 'create' }, bubbles: true })); } catch(e){}
             
-            // Smart List Restoration Logic
+            // Smart List Restoration & Coordinate Clearing Logic
             if (!window.__isXcLoad) {
               const backup = localStorage.getItem('spectrolipi.smartListBackup.v1');
               if (backup) {
@@ -1651,8 +1718,29 @@
                 localStorage.removeItem('spectrolipi.smartListBackup.v1');
                 if (typeof window.__reloadSmartList === 'function') window.__reloadSmartList();
               }
+              if (window.__lastMetadata) {
+                window.__lastMetadata.latitude = '';
+                window.__lastMetadata.longitude = '';
+                window.__lastMetadata.xcfileno = '';
+              }
+              if (typeof window.__setBirdnetCoordinates === 'function') {
+                window.__setBirdnetCoordinates('', '');
+              } else {
+                const bnLat = document.getElementById('bn-lat');
+                const bnLon = document.getElementById('bn-lon');
+                if (bnLat) bnLat.value = '';
+                if (bnLon) bnLon.value = '';
+              }
+              if (typeof window.__setMetadataCoordinates === 'function') {
+                window.__setMetadataCoordinates('', '');
+              } else {
+                const metaLat = document.getElementById('meta-lat');
+                const metaLon = document.getElementById('meta-lon');
+                if (metaLat) metaLat.value = '';
+                if (metaLon) metaLon.value = '';
+              }
             } else {
-              window.__isXcLoad = false;
+              setTimeout(() => { window.__isXcLoad = false; }, 200);
             }
 
             // Strict backup lifecycle on file open: combined prompt for annotations + metadata, then restore/purge accordingly
@@ -3098,6 +3186,8 @@
       // Fetch metadata from XC API v3
       let finalFilename = `XC${cleanId}.mp3`;
       let newSmartList = [];
+      let extractedLat = '';
+      let extractedLon = '';
       try {
         let xcApiKey = '';
         try {
@@ -3135,6 +3225,23 @@
             const rec = metadata.recordings[0];
             if (rec['file-name']) {
               finalFilename = rec['file-name'];
+            }
+
+            // Extract coordinates
+            const rawLat = (rec.lat !== undefined && rec.lat !== null) ? String(rec.lat).trim() : ((rec.latitude !== undefined && rec.latitude !== null) ? String(rec.latitude).trim() : '');
+            const rawLon = (rec.lon !== undefined && rec.lon !== null) ? String(rec.lon).trim() : ((rec.lng !== undefined && rec.lng !== null) ? String(rec.lng).trim() : ((rec.longitude !== undefined && rec.longitude !== null) ? String(rec.longitude).trim() : ''));
+
+            if (rawLat !== '') {
+              const pLat = parseFloat(rawLat);
+              if (!isNaN(pLat) && isFinite(pLat) && pLat >= -90 && pLat <= 90) {
+                extractedLat = String(pLat);
+              }
+            }
+            if (rawLon !== '') {
+              const pLon = parseFloat(rawLon);
+              if (!isNaN(pLon) && isFinite(pLon) && pLon >= -180 && pLon <= 180) {
+                extractedLon = String(pLon);
+              }
             }
             
             function resolveSp(sciName) {
@@ -3248,14 +3355,35 @@
           localStorage.setItem('spectrolipi.smartListBackup.v1', currentList);
         }
         localStorage.setItem('spectrolipi.recentSpecies.v1', JSON.stringify(newSmartList));
-        window.__isXcLoad = true;
         if (typeof window.__reloadSmartList === 'function') window.__reloadSmartList();
       }
 
-      const mockFile = new File([arrayBuffer], finalFilename, { type: 'audio/mpeg' });
+      window.__isXcLoad = true;
       window.__lastMetadata = Object.assign({}, window.__lastMetadata || {}, {
-        xcfileno: cleanId
+        xcfileno: cleanId,
+        latitude: extractedLat,
+        longitude: extractedLon
       });
+
+      if (typeof window.__setBirdnetCoordinates === 'function') {
+        window.__setBirdnetCoordinates(extractedLat, extractedLon);
+      } else {
+        const bnLat = document.getElementById('bn-lat');
+        const bnLon = document.getElementById('bn-lon');
+        if (bnLat) bnLat.value = extractedLat;
+        if (bnLon) bnLon.value = extractedLon;
+      }
+
+      if (typeof window.__setMetadataCoordinates === 'function') {
+        window.__setMetadataCoordinates(extractedLat, extractedLon);
+      } else {
+        const metaLat = document.getElementById('meta-lat');
+        const metaLon = document.getElementById('meta-lon');
+        if (metaLat) metaLat.value = extractedLat;
+        if (metaLon) metaLon.value = extractedLon;
+      }
+
+      const mockFile = new File([arrayBuffer], finalFilename, { type: 'audio/mpeg' });
 
       const fileInput = document.getElementById('file');
       if (fileInput) {

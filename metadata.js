@@ -1,1 +1,1055 @@
-!function(){if(window.__metadataInit)return;window.__metadataInit=!0,window.__lastMetadata=window.__lastMetadata||null;const e="metadata_backup::",t="metadata_backup::tmp::";let n=0;function a(e){if(null==e)return"";if("object"==typeof e)try{return JSON.stringify(e)}catch(t){return String(e)}return String(e)}function r(e){if(null==e)return"";try{return String(e).replace(/\r\n|\r|\n/g," ").replace(/\s+/g," ").trim()}catch(t){return String(e).replace(/\r\n|\r|\n/g," ")}}function o(e,t,...n){const a=document.createElement(e);if(t)for(const e in t)"cls"===e?a.className=t[e]:"html"===e?a.innerHTML=t[e]:e&&e.startsWith&&e.startsWith("aria-")?a.setAttribute(e,t[e]):a[e]=t[e];return n.forEach(e=>{null!=e&&("string"==typeof e?a.appendChild(document.createTextNode(e)):a.appendChild(e))}),a}function l(e,t){try{const n=document.getElementById(e);n&&(n.value=null==t?"":t)}catch(e){}}function i(n){try{const a=function(){try{const e=document.getElementById("file")&&document.getElementById("file").files&&document.getElementById("file").files[0];return e?`${e.name}|${e.size||0}|${e.lastModified||0}`:null}catch(e){return null}}();if(!a)return!1;const r=e+a,o=t+a+"::"+String(Date.now()),l=JSON.stringify(n||{});try{const e=n||{},o=[e.latitude,e.longitude,e.datetime,e.rating,e.type,e.species,e.recorder,e.microphone,e.accessories,e.xcfileno,e.set_license,e.annname,e.project,e.contributors,e.comments];if(o.every(function(e){return null==e||"string"==typeof e&&""===e.trim()||Array.isArray(e)&&0===e.length})){try{localStorage.removeItem(r)}catch(e){}try{Object.keys(localStorage).forEach(e=>{if("string"==typeof e&&e.startsWith(t+a))try{localStorage.removeItem(e)}catch(e){}})}catch(e){}return!1}}catch(e){}if(l.length>3145728)return console.warn("[meta-backup] payload too large, skipping"),!1;try{localStorage.setItem(o,l)}catch(e){console.warn("[meta-backup] tmp write failed",e)}try{localStorage.getItem(o)!==l&&console.warn("[meta-backup] verify mismatch")}catch(e){}try{localStorage.setItem(r,l)}catch(e){console.warn("[meta-backup] final write failed",e)}try{localStorage.removeItem(o)}catch(e){}return!0}catch(e){return!1}}function c(e,t){e.__speciesWired||(e.__speciesWired=!0,function(e,t){const n=2,a=120,r=10;function o(e){return(e||"").toString().normalize().toLowerCase()}function l(e){return(e||"").replace(/[&<>"']/g,e=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[e]||"&amp;"))}function i(e,t){const n=o(t),a=o(e.common||""),r=o(e.scientific||"");let l=0;return a.startsWith(n)?l+=60:a.includes(n)&&(l+=30),r.startsWith(n)?l+=60:r.includes(n)&&(l+=30),l+=Math.max(0,10-Math.min(9,((e.common||"").length||0)/10)),l}function c(e,t){if(!t)return l(e||"");const n=e||"",a=o(n),r=o(t),i=a.indexOf(r);if(i<0)return l(n);const c=n.slice(0,i),s=n.slice(i,i+t.length),m=n.slice(i+t.length);return l(c)+'<span class="species-mark">'+l(s)+"</span>"+l(m)}let s=null,m="",u=-1;function d(){t.innerHTML="",t.style.display="none",u=-1}function p(e){if(m=e,u=-1,t.innerHTML="",t.style.display="none",!e||e.length<n)return;const a=(Array.isArray(window.__speciesRecords)?window.__speciesRecords:[]).map(t=>({r:t,s:i(t,e)})).filter(e=>e.s>0).sort((e,t)=>t.s-e.s).slice(0,r);a.length&&(a.forEach((n,a)=>{const r=n.r,o=document.createElement("div");o.className="item",o.dataset.idx=a,o.innerHTML='<div class="common">'+(r.common?c(r.common,e):c(r.scientific,e))+(r.scientific&&r.common?' <small style="color:#666">('+l(r.scientific)+")</small>":"")+"</div>",o.addEventListener("mousedown",e=>{e.preventDefault(),g(a)}),t.appendChild(o)}),t.style.display="block")}function y(t){if(t){e.value=t.common||t.scientific||"",d(),e.focus();try{e.dispatchEvent(new CustomEvent("species-chosen",{detail:{common:t.common,scientific:t.scientific},bubbles:!0}))}catch(e){}}}function g(t){const n=m||e.value||"",a=(Array.isArray(window.__speciesRecords)?window.__speciesRecords:[]).map(e=>({r:e,s:i(e,n)})).filter(e=>e.s>0).sort((e,t)=>t.s-e.s).slice(0,r),o=a[t]&&a[t].r||null;o&&y(o)}function f(){const t=e.value.trim();if(!t)return;const n=(Array.isArray(window.__speciesRecords)?window.__speciesRecords:[]).map(e=>({r:e,s:i(e,t)})).filter(e=>e.s>0).sort((e,t)=>t.s-e.s)[0];n&&y(n.r)}function v(e){e.forEach((e,t)=>{e.classList.toggle("active",t===u),t===u&&e.scrollIntoView({block:"nearest"})})}e.addEventListener("input",function(){const t=e.value.trim();clearTimeout(s),s=setTimeout(()=>p(t),a)}),e.addEventListener("keydown",function(e){const n=t.querySelectorAll(".item");if("block"===t.style.display&&n.length){if("ArrowDown"===e.key)return e.preventDefault(),u=Math.min(n.length-1,u+1),void v(n);if("ArrowUp"===e.key)return e.preventDefault(),u=Math.max(0,u-1),void v(n);if("Enter"===e.key)return u>=0&&u<n.length?(e.preventDefault(),void g(u)):(e.preventDefault(),void f());if("Escape"===e.key)return void d()}else if("Enter"===e.key)return e.preventDefault(),void f()}),document.addEventListener("click",function(t){try{const e=t.composedPath&&t.composedPath()||t.path||[];e.some(e=>{try{return e&&e.classList&&e.classList.contains&&e.classList.contains("species-autocomplete")}catch(e){return!1}})||d()}catch(n){try{e.closest(".species-autocomplete")||document.querySelector(".species-autocomplete").contains(t.target)||d()}catch(e){}}},!1),t.style.zIndex=t.style.zIndex||"999999"}(e,t))}function s(e){const t=document.getElementById("metaOverlay");if(t)return e&&"object"==typeof e&&Object.keys(e).length?u(t,e):u(t,window.__lastMetadata||{}),{close:()=>{const e=document.getElementById("metaOverlay");e&&e.remove()},set:e=>{const t=document.getElementById("metaOverlay");t&&u(t,e)},getValues:()=>({latitude:document.getElementById("meta-lat")?document.getElementById("meta-lat").value:null,longitude:document.getElementById("meta-lon")?document.getElementById("meta-lon").value:null,datetime:document.getElementById("meta-datetime")?document.getElementById("meta-datetime").value:null,rating:document.getElementById("meta-rating")&&document.getElementById("meta-rating").value?Number(document.getElementById("meta-rating").value):null,type:document.getElementById("meta-type")?document.getElementById("meta-type").value:null,species:document.getElementById("meta-species")?document.getElementById("meta-species").value:null,recorder:document.getElementById("meta-recorder")?document.getElementById("meta-recorder").value:null,microphone:document.getElementById("meta-mic")?document.getElementById("meta-mic").value:null,accessories:document.getElementById("meta-accessories")?document.getElementById("meta-accessories").value:null,xcfileno:document.getElementById("meta-xcfileno")?document.getElementById("meta-xcfileno").value:null,xcannid:document.getElementById("meta-xcannid")?document.getElementById("meta-xcannid").value:null,annname:document.getElementById("meta-annname")?document.getElementById("meta-annname").value:null,project:document.getElementById("meta-project")?document.getElementById("meta-project").value:null,contributors:function(){const e=document.getElementById("meta-contrib-wrap");if(!e)return[];const t=Array.from(e.querySelectorAll(".meta-chip")).map(e=>e.childNodes[0].textContent.trim()),n=e.querySelector("#meta-contrib-input");return t.concat(n&&n.value?[n.value.trim()]:[]).filter(Boolean)}(),comments:document.getElementById("meta-comments")?document.getElementById("meta-comments").value:null})};const l=function(){const e=document.createElement("style");e.id="metadata-modal-styles",e.textContent='\n#metaOverlay { position:fixed; inset:0; background: rgba(18,22,26,0.45); display:flex; align-items:center; justify-content:center; z-index:2147483646; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }\n#metaCard { width:96%; max-width:920px; background:#fff; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,0.25); padding:18px; color:#111; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; max-height:88vh; overflow:auto; }\n#metaCard h4 { margin:0 0 6px 0; font-size:16px; }\n#metaFilename { font-size:13px; color:#555; margin:0 0 12px 0; display:block; }\n.meta-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; align-items:center; margin-bottom:10px; }\n.meta-row-full { grid-column:1 / -1; }\n.meta-label { font-size:13px; color:#333; margin-bottom:6px; display:block; }\n.meta-input, .meta-select, .meta-textarea { width:75%; box-sizing:border-box; padding:8px 10px; border:1px solid #d0d4d7; border-radius:6px; font-size:14px; background:#fff; color:#111; }\n.meta-input.small { padding:8px 10px; font-size:14px; }\n.meta-textarea { min-height:82px; resize:vertical; width:75%; }\n.meta-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }\n.btn { padding:8px 12px; border-radius:8px; border:1px solid transparent; font-size:14px; cursor:pointer; }\n.btn-muted { background:#f6f7f8; color:#222; border-color:#e0e3e6; }\n.btn-primary { background:#0b66ff; color:#fff; border-color:#075be0; box-shadow: 0 6px 18px rgba(11,102,255,0.12); }\n.small-note { font-size:12px; color:#666; margin-top:6px; }\n.meta-chip-wrap { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }\n.meta-span-2 { grid-column: span 2; }\n.meta-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:#f3f6ff; color:#08306b; border-radius:999px; font-size:13px; }\n.meta-chip button { background:transparent; border:0; cursor:pointer; color:#08306b; padding:0 4px; }\n.species-autocomplete { position:relative; }\n.species-suggestions {\n  position: absolute;\n  left: 0;\n  right: 0;\n  top: calc(100% + 6px);\n  background: #111;\n  border: 1px solid #2196F3;\n  box-shadow: 0 6px 20px rgba(20,24,28,0.18);\n  border-radius: 6px;\n  max-height: 260px;\n  overflow: auto;\n  z-index: 999999;\n}\n.species-suggestions .item {\n  padding: 8px 10px;\n  cursor: pointer;\n  font-size: 13px;\n  color: #fff;\n  border-bottom: 1px solid rgba(0,0,0,0.03);\n  background: transparent;\n  transition: background 0.15s, color 0.15s;\n}\n.species-suggestions .item:last-child { border-bottom: none; }\n.species-suggestions .item.active {\n  background: #2196F3;\n  color: #fff;\n}\n.species-suggestions .item:not(.active):hover {\n  background: #1565c0;\n  color: #fff;\n}\n.species-mark { background:transparent; font-weight:600; color:#0b66ff; }\n@media (max-width:940px) { .meta-grid { grid-template-columns:1fr 1fr; } }\n@media (max-width:640px) { .meta-grid { grid-template-columns:1fr; } .meta-actions { justify-content:stretch; } }\n',document.head.appendChild(e);const t=o("div",{id:"metaOverlay",role:"dialog","aria-modal":"true","aria-label":"Recording metadata entry"}),n=o("div",{id:"metaCard"});n.appendChild(o("h4",null,"Recording metadata")),n.appendChild(o("div",{id:"metaFilename",role:"status","aria-live":"polite"},""));const a=o("div",{cls:"meta-grid"}),r=o("div",null,o("label",{cls:"meta-label",html:"Latitude"}),o("input",{type:"text",className:"meta-input small",id:"meta-lat",placeholder:"e.g. 19.391234"})),l=o("div",null,o("label",{cls:"meta-label",html:"Longitude"}),o("input",{type:"text",className:"meta-input small",id:"meta-lon",placeholder:"e.g. 72.817654"})),i=o("div",null,o("label",{cls:"meta-label",html:"Recording date & time"}),o("input",{type:"datetime-local",className:"meta-input small",id:"meta-datetime"})),c=o("div",null,o("label",{cls:"meta-label",html:"Rating"}),o("select",{className:"meta-select",id:"meta-rating"},o("option",{value:""},""),o("option",{value:"1"},"1: Very Weak target sound, High noise"),o("option",{value:"2"},"2: Weak target sound, significant noise"),o("option",{value:"3"},"3: Good target sound, moderate noise"),o("option",{value:"4"},"4: Strong target sound, limited noise"),o("option",{value:"5"},"5: Very Strong target sound, little or no noise"))),s=o("div",null,o("label",{cls:"meta-label",html:"Type of recording"}),o("select",{className:"meta-select",id:"meta-type"},o("option",{value:""},""),o("option",{value:"focal"},"Focal"),o("option",{value:"passive"},"Passive"))),m=o("input",{type:"text",className:"meta-input",id:"meta-species",placeholder:"Common name",autocomplete:"off","aria-label":"Target species"}),u=o("div",null,o("label",{cls:"meta-label",html:"Target species"}),o("div",{cls:"species-autocomplete"},m,o("div",{cls:"species-suggestions",id:"meta-species-suggest",style:"display:none"}))),d=o("div",null,o("label",{cls:"meta-label",html:"Recorder"}),o("input",{type:"text",className:"meta-input",id:"meta-recorder",placeholder:"Make / model / Smartphone"})),p=o("div",null,o("label",{cls:"meta-label",html:"Microphone"}),o("input",{type:"text",className:"meta-input",id:"meta-mic",placeholder:"Make / model"})),y=o("div",null,o("label",{cls:"meta-label",html:"Accessories"}),o("input",{type:"text",className:"meta-input",id:"meta-accessories",placeholder:"e.g. windscreen, preamp, parabola"})),g=o("div",null,o("label",{cls:"meta-label",html:"Sound record Contributor(s)"}),function(){const e=o("div",{cls:"meta-chip-wrap",id:"meta-contrib-wrap"}),t=o("input",{type:"text",className:"meta-input",id:"meta-contrib-input",placeholder:"Type a name and press Enter or , or Tab"});return e.appendChild(t),e}()),f=o("div",{cls:"meta-row-full"},o("label",{cls:"meta-label",html:"Overall comments"}),o("textarea",{className:"meta-textarea",id:"meta-comments",placeholder:"Any notes about environment, behaviour, or recording conditions"}));a.appendChild(r),a.appendChild(l),a.appendChild(i),a.appendChild(c),a.appendChild(s),a.appendChild(u),a.appendChild(d),a.appendChild(p),a.appendChild(y),a.appendChild(g),a.appendChild(o("div",null)),a.appendChild(o("div",null)),a.appendChild(f);const v=o("div",{cls:"meta-actions"}),b=o("button",{type:"button",className:"btn btn-primary",id:"meta-save-file",style:"margin-right: auto;"},"Save to file"),h=o("button",{type:"button",className:"btn btn-primary",id:"meta-ok"},"OK"),w=o("button",{type:"button",className:"btn btn-muted",id:"meta-cancel"},"Cancel");return v.appendChild(b),v.appendChild(h),v.appendChild(w),n.appendChild(a),n.appendChild(v),t.appendChild(n),{overlay:t,speciesInput:m,speciesSuggest:t.querySelector("#meta-species-suggest")}}();document.body.appendChild(l.overlay);const s=l.overlay,p={filenameLabel:s.querySelector("#metaFilename"),lat:s.querySelector("#meta-lat"),lon:s.querySelector("#meta-lon"),datetime:s.querySelector("#meta-datetime"),rating:s.querySelector("#meta-rating"),type:s.querySelector("#meta-type"),species:s.querySelector("#meta-species"),speciesSuggest:s.querySelector("#meta-species-suggest"),recorder:s.querySelector("#meta-recorder"),mic:s.querySelector("#meta-mic"),accessories:s.querySelector("#meta-accessories"),contributorsWrap:s.querySelector("#meta-contrib-wrap"),comments:s.querySelector("#meta-comments"),saveFile:s.querySelector("#meta-save-file"),ok:s.querySelector("#meta-ok"),cancel:s.querySelector("#meta-cancel")},y=document.getElementById("file");y&&y.files&&y.files.length>0?p.filenameLabel.textContent="File: "+(y.files[0].name||"(selected file)"):p.filenameLabel.textContent="File: (no file)";try{!function(e){if(!e)return;if(e.__contribAPI)return e.__contribAPI;const t=e.querySelector("#meta-contrib-input"),n={contributors:[]};function a(r){Array.from(e.querySelectorAll(".meta-chip")).forEach(e=>e.remove()),r.forEach(r=>{const l=String(r).trim();if(!l)return;const i=o("span",{cls:"meta-chip"},l,o("button",{type:"button",title:"Remove","aria-label":"Remove contributor"},"✕"));i.querySelector("button").addEventListener("click",()=>{const e=n.contributors.indexOf(l);e>=0&&(n.contributors.splice(e,1),a(n.contributors))}),e.insertBefore(i,t)})}t&&(t.addEventListener("keydown",e=>{if("Enter"===e.key||","===e.key){e.preventDefault();const r=t.value.trim().replace(/,$/,"");r&&(n.contributors.push(r),t.value="",a(n.contributors))}else if("Backspace"===e.key&&""===t.value)n.contributors.pop(),a(n.contributors);else if("Tab"===e.key&&t.value.trim()){const e=t.value.trim().replace(/,$/,"");e&&(n.contributors.push(e),t.value="",a(n.contributors))}}),t.addEventListener("blur",()=>{const e=t.value.trim().replace(/,$/,"");e&&(n.contributors.push(e),t.value="",a(n.contributors))})),e.__contribAPI={get:()=>n.contributors.slice(),set:e=>{n.contributors=Array.isArray(e)?e.map(String).map(e=>e.trim()).filter(Boolean):[],a(n.contributors)}},e.__contribAPI}(p.contributorsWrap)}catch(e){}m(e&&Object.keys(e).length?e:window.__lastMetadata||null);try{!function(e,t){if(!e||!t)return;let n=0;!function a(){const r=Array.isArray(window.__speciesRecords)?window.__speciesRecords:null;return null!==r?(window.__speciesRecords=Array.isArray(r)?r:[],void c(e,t)):(n++,n>=60?(window.__speciesRecords=window.__speciesRecords||[],void c(e,t)):void setTimeout(a,80))}()}(p.species,p.speciesSuggest)}catch(e){}p.saveFile.addEventListener("click",()=>{const e=p.rating&&p.rating.value?Number(p.rating.value):null,t={latitude:p.lat.value?p.lat.value.trim():null,longitude:p.lon.value?p.lon.value.trim():null,datetime:p.datetime.value?new Date(p.datetime.value).toISOString():null,rating:null===e||isNaN(e)?null:e,type:p.type.value||null,species:p.species.value?p.species.value.trim():null,recorder:p.recorder.value?p.recorder.value.trim():null,microphone:p.mic.value?p.mic.value.trim():null,accessories:p.accessories.value?p.accessories.value.trim():null,contributors:p.contributorsWrap&&p.contributorsWrap.__contribAPI?p.contributorsWrap.__contribAPI.get().map(e=>String(e).trim()).filter(Boolean):[],comments:p.comments.value?p.comments.value.trim():null};let n="";try{const e=Array.isArray(window.__speciesRecords)?window.__speciesRecords:[];if(t.species){const a=e.find(e=>String(e.common||"").trim()===t.species);a&&(n=a.scientific||"")}}catch(e){}const o=function(e){if(!e)return{date:"",time:""};try{const t=String(e).trim();if(""===t)return{date:"",time:""};const n=new Date(t);if(isNaN(n))return{date:"",time:""};const a=e=>String(e).padStart(2,"0");return{date:`${a(n.getDate())}-${a(n.getMonth()+1)}-${n.getFullYear()}`,time:`${a(n.getHours())}:${a(n.getMinutes())}`}}catch(e){return{date:"",time:""}}}(t.datetime),l=document.getElementById("file"),i=l&&l.files&&l.files.length>0&&l.files[0]&&l.files[0].name?String(l.files[0].name):"",c=[i,a(t.latitude),a(t.longitude),o.date,o.time,a(t.rating),a(t.type),a(t.species),a(n),a(t.recorder),a(t.microphone),a(t.accessories),a(t.contributors?t.contributors.join(", "):""),r(t.comments)],s=["File","Latitude","Longitude","Recording date","Recording time","Rating","Type of recording","Target species","Scientific name","Recorder","Microphone","Accessories","Contributor(s)","Overall comments"].join("\t")+"\n"+c.join("\t")+"\n",m=new Blob([s],{type:"text/plain;charset=utf-8"});let u="export";if(i){const e=i.lastIndexOf(".");u=e>0?i.slice(0,e):i}const d=URL.createObjectURL(m),y=document.createElement("a");y.href=d,y.download=`${u}_Matadata.txt`,document.body.appendChild(y),y.click(),y.remove(),setTimeout(()=>URL.revokeObjectURL(d),5e3)}),p.ok.addEventListener("click",()=>{const e=p.rating&&p.rating.value?Number(p.rating.value):null,t={latitude:p.lat.value?p.lat.value.trim():null,longitude:p.lon.value?p.lon.value.trim():null,datetime:p.datetime.value?new Date(p.datetime.value).toISOString():null,rating:null===e||isNaN(e)?null:e,type:p.type.value||null,species:p.species.value?p.species.value.trim():null,recorder:p.recorder.value?p.recorder.value.trim():null,microphone:p.mic.value?p.mic.value.trim():null,accessories:p.accessories.value?p.accessories.value.trim():null,contributors:p.contributorsWrap&&p.contributorsWrap.__contribAPI?p.contributorsWrap.__contribAPI.get().map(e=>String(e).trim()).filter(Boolean):[],comments:p.comments.value?p.comments.value.trim():null,savedAt:(new Date).toISOString()};window.__lastMetadata=t;try{i(t)}catch(e){}document.dispatchEvent(new CustomEvent("metadata-saved",{detail:t})),d()}),p.cancel.addEventListener("click",()=>{document.dispatchEvent(new CustomEvent("metadata-cancelled",{})),d()}),document.addEventListener("keydown",function(e){"Escape"===e.key&&(document.dispatchEvent(new CustomEvent("metadata-cancelled",{})),d())}),setTimeout(()=>{const e=s.querySelector("#meta-lat")||s.querySelector("#meta-lon")||s.querySelector("#meta-datetime")||s.querySelector("#meta-species");try{e&&e.focus()}catch(e){}},40);try{["meta-lat","meta-lon","meta-datetime","meta-rating","meta-type","meta-species","meta-recorder","meta-mic","meta-accessories","meta-comments","meta-contrib-input"].forEach(e=>{const t=s.querySelector("#"+e);t&&t.addEventListener("input",function(){try{!function(e){try{n&&clearTimeout(n),n=setTimeout(()=>{n=0;try{i(e||window.__lastMetadata||{})}catch(e){}},900)}catch(e){}}({latitude:s.querySelector("#meta-lat")?s.querySelector("#meta-lat").value:null,longitude:s.querySelector("#meta-lon")?s.querySelector("#meta-lon").value:null,datetime:s.querySelector("#meta-datetime")?s.querySelector("#meta-datetime").value:null,rating:s.querySelector("#meta-rating")&&s.querySelector("#meta-rating").value?Number(s.querySelector("#meta-rating").value):null,type:s.querySelector("#meta-type")?s.querySelector("#meta-type").value:null,species:s.querySelector("#meta-species")?s.querySelector("#meta-species").value:null,recorder:s.querySelector("#meta-recorder")?s.querySelector("#meta-recorder").value:null,microphone:s.querySelector("#meta-mic")?s.querySelector("#meta-mic").value:null,accessories:s.querySelector("#meta-accessories")?s.querySelector("#meta-accessories").value:null,contributors:function(){const e=s.querySelector("#meta-contrib-wrap");if(!e)return[];const t=Array.from(e.querySelectorAll(".meta-chip")).map(e=>e.childNodes[0].textContent.trim()),n=e.querySelector("#meta-contrib-input");return t.concat(n&&n.value?[n.value.trim()]:[]).filter(Boolean)}(),comments:s.querySelector("#meta-comments")?s.querySelector("#meta-comments").value:null,savedAt:(new Date).toISOString()})}catch(e){}})})}catch(e){}return{close:()=>{const e=document.getElementById("metaOverlay");e&&e.remove()},set:e=>m(e),getValues:()=>({latitude:document.getElementById("meta-lat")?document.getElementById("meta-lat").value:null,longitude:document.getElementById("meta-lon")?document.getElementById("meta-lon").value:null,datetime:document.getElementById("meta-datetime")?document.getElementById("meta-datetime").value:null,rating:document.getElementById("meta-rating")&&document.getElementById("meta-rating").value?Number(document.getElementById("meta-rating").value):null,type:document.getElementById("meta-type")?document.getElementById("meta-type").value:null,species:document.getElementById("meta-species")?document.getElementById("meta-species").value:null,recorder:document.getElementById("meta-recorder")?document.getElementById("meta-recorder").value:null,microphone:document.getElementById("meta-mic")?document.getElementById("meta-mic").value:null,accessories:document.getElementById("meta-accessories")?document.getElementById("meta-accessories").value:null,contributors:function(){const e=document.getElementById("meta-contrib-wrap");if(!e)return[];const t=Array.from(e.querySelectorAll(".meta-chip")).map(e=>e.childNodes[0].textContent.trim()),n=e.querySelector("#meta-contrib-input");return t.concat(n&&n.value?[n.value.trim()]:[]).filter(Boolean)}(),comments:document.getElementById("meta-comments")?document.getElementById("meta-comments").value:null})}}function m(e){const t=Object.assign({},window.__lastMetadata||{},e||{});if(l("meta-lat",void 0!==t.latitude&&null!==t.latitude?t.latitude:""),l("meta-lon",void 0!==t.longitude&&null!==t.longitude?t.longitude:""),t.datetime)try{const e=new Date(t.datetime);if(isNaN(e))l("meta-datetime","");else{const t=e=>e.toString().padStart(2,"0"),n=e.getFullYear(),a=t(e.getMonth()+1),r=t(e.getDate()),o=t(e.getHours());l("meta-datetime",`${n}-${a}-${r}T${o}:${t(e.getMinutes())}`)}}catch(e){l("meta-datetime","")}else l("meta-datetime","");if(l("meta-type",t.type||""),l("meta-species",t.species||""),l("meta-recorder",t.recorder||""),l("meta-mic",t.microphone||""),l("meta-accessories",t.accessories||""),Array.isArray(t.contributors)){const e=document.getElementById("meta-contrib-wrap");try{e&&e.__contribAPI&&e.__contribAPI.set(t.contributors)}catch(e){}}l("meta-comments",t.comments||"");try{const e=document.getElementById("meta-rating"),n=void 0===t.rating||null===t.rating?"":String(t.rating);e&&(e.value="null"===n||"undefined"===n?"":n)}catch(e){}}function u(e,t){const n={lat:e.querySelector("#meta-lat"),lon:e.querySelector("#meta-lon"),datetime:e.querySelector("#meta-datetime"),rating:e.querySelector("#meta-rating"),type:e.querySelector("#meta-type"),species:e.querySelector("#meta-species"),recorder:e.querySelector("#meta-recorder"),mic:e.querySelector("#meta-mic"),accessories:e.querySelector("#meta-accessories"),contributorsWrap:e.querySelector("#meta-contrib-wrap"),comments:e.querySelector("#meta-comments"),filenameLabel:e.querySelector("#metaFilename")};if(!n.lat)return;const a=Object.assign({},window.__lastMetadata||{},t&&Object.keys(t).length?t:{});try{void 0!==a.latitude&&null!==a.latitude?n.lat.value=a.latitude:n.lat.value=""}catch(e){n.lat&&(n.lat.value="")}try{void 0!==a.longitude&&null!==a.longitude?n.lon.value=a.longitude:n.lon.value=""}catch(e){n.lon&&(n.lon.value="")}if(a.datetime)try{const e=new Date(a.datetime);if(isNaN(e))n.datetime.value="";else{const t=e=>e.toString().padStart(2,"0"),a=e.getFullYear(),r=t(e.getMonth()+1),o=t(e.getDate()),l=t(e.getHours()),i=t(e.getMinutes());n.datetime.value=`${a}-${r}-${o}T${l}:${i}`}}catch(e){n.datetime.value=""}else n.datetime.value="";if(n.type.value=a.type||"",n.species.value=a.species||"",n.recorder.value=a.recorder||"",n.mic.value=a.microphone||"",n.accessories.value=a.accessories||"",n.comments.value=a.comments||"",Array.isArray(a.contributors)&&a.contributors.length&&n.contributorsWrap){const e=n.contributorsWrap.querySelector("#meta-contrib-input");e&&(Array.from(n.contributorsWrap.querySelectorAll(".meta-chip")).forEach(e=>n.contributorsWrap.removeChild(e)),a.contributors.forEach(t=>{const a=String(t).trim();if(!a)return;const r=o("span",{cls:"meta-chip"},a,o("button",{type:"button",title:"Remove","aria-label":"Remove contributor"},"✕"));r.querySelector("button").addEventListener("click",()=>{r.remove()}),n.contributorsWrap.insertBefore(r,e)}))}else n.contributorsWrap&&Array.from(n.contributorsWrap.querySelectorAll(".meta-chip")).forEach(e=>n.contributorsWrap.removeChild(e));const r=document.getElementById("file");r&&r.files&&r.files.length>0?n.filenameLabel&&(n.filenameLabel.textContent="File: "+(r.files[0].name||"(selected file)")):n.filenameLabel&&(n.filenameLabel.textContent="File: (no file)");try{const e=void 0===a.rating||null===a.rating?"":String(a.rating);n.rating&&(n.rating.value="null"===e||"undefined"===e?"":e)}catch(e){}}function d(){const e=document.getElementById("metaOverlay");e&&e.remove();const t=document.getElementById("metadata-modal-styles");t&&t.remove()}window.__openMetadataModal=function(e){return s(e)},window.__applyPendingMetadataRestore=window.__applyPendingMetadataRestore||function(){try{const e=window.__pendingMetadataRestore||null;if(!e||!e.raw)return!1;let t=null;try{t=JSON.parse(e.raw)}catch(e){t=null}if(!t){try{window.__pendingMetadataRestore=null}catch(e){}return!1}window.__lastMetadata=Object.assign({},window.__lastMetadata||{},t);const n=document.getElementById("metaOverlay");if(n)try{u(n,t)}catch(e){}try{document.dispatchEvent(new CustomEvent("metadata-restored",{detail:t}))}catch(e){}try{window.__pendingMetadataRestore=null}catch(e){}return!0}catch(e){return!1}}}();
+// metadata.js — modal only (index.html wires the metaOpenBtn)
+// Features:
+// - Focuses Latitude on open
+// - Inline Target species autocomplete (dropdown) that writes selection into the species input
+// - Waits briefly for window.__speciesRecords, falls back to [] if not present
+// - Contributors input (chips) same as before
+// - Exposes window.__openMetadataModal() API consistent with existing usage
+// - Recording date & time is placed in left column (same width as Latitude)
+// - Adds a fixed Rating dropdown (1-5) that persists like other fields
+
+(function () {
+  if (window.__metadataInit) return;
+  window.__metadataInit = true;
+
+  window.__lastMetadata = window.__lastMetadata || null;
+  // Backup configuration (per-file, single slot)
+  const META_BACKUP_PREFIX = 'metadata_backup::';
+  const META_BACKUP_TMP = 'metadata_backup::tmp::';
+  const META_BACKUP_DEBOUNCE_MS = 900;
+  const META_BACKUP_SIZE_LIMIT = 1024 * 1024 * 3; // 3MB soft guard
+  let __metaBackupTimer = 0;
+
+  // Formatting helpers for TSV export
+  function cellString(v) {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'object') {
+      try { return JSON.stringify(v); } catch (e) { return String(v); }
+    }
+    return String(v);
+  }
+
+  function formatDateAndTimeFromISO(iso) {
+    if (!iso) return { date: '', time: '' };
+    try {
+      const s = String(iso).trim();
+      if (s === '') return { date: '', time: '' };
+      const d = new Date(s);
+      if (isNaN(d)) return { date: '', time: '' };
+      const pad = (n) => String(n).padStart(2, '0');
+      return { date: `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+    } catch (e) { return { date: '', time: '' }; }
+  }
+
+  function normalizeComments(s) {
+    if (s === null || s === undefined) return '';
+    try { return String(s).replace(/\r\n|\r|\n/g, ' ').replace(/\s+/g, ' ').trim(); }
+    catch (e) { return String(s).replace(/\r\n|\r|\n/g, ' '); }
+  }
+
+  // DOM builder helper
+  function el(tag, props, ...children) {
+    const node = document.createElement(tag);
+    if (props) {
+      for (const k in props) {
+        if (k === 'cls') node.className = props[k];
+        else if (k === 'html') node.innerHTML = props[k];
+        else if (k && k.startsWith && k.startsWith('aria-')) node.setAttribute(k, props[k]);
+        else node[k] = props[k];
+      }
+    }
+    children.forEach(c => {
+      if (c == null) return;
+      if (typeof c === 'string') node.appendChild(document.createTextNode(c));
+      else node.appendChild(c);
+    });
+    return node;
+  }
+
+  function buildModalDom() {
+    const style = document.createElement('style');
+    style.id = 'metadata-modal-styles';
+  style.textContent = `
+#metaOverlay { position:fixed; inset:0; background: rgba(18,22,26,0.45); display:flex; align-items:center; justify-content:center; z-index:2147483646; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+#metaCard { width:96%; max-width:920px; background:#fff; border-radius:10px; box-shadow:0 10px 40px rgba(0,0,0,0.25); padding:18px; color:#111; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; max-height:88vh; overflow:auto; }
+#metaCard h4 { margin:0 0 6px 0; font-size:16px; }
+#metaFilename { font-size:13px; color:#555; margin:0 0 12px 0; display:block; }
+.meta-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; align-items:center; margin-bottom:10px; }
+.meta-row-full { grid-column:1 / -1; }
+.meta-label { font-size:13px; color:#333; margin-bottom:6px; display:block; }
+.meta-input, .meta-select, .meta-textarea { width:75%; box-sizing:border-box; padding:8px 10px; border:1px solid #d0d4d7; border-radius:6px; font-size:14px; background:#fff; color:#111; }
+.meta-input.small { padding:8px 10px; font-size:14px; }
+.meta-textarea { min-height:82px; resize:vertical; width:75%; }
+.meta-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
+.btn { padding:8px 12px; border-radius:8px; border:1px solid transparent; font-size:14px; cursor:pointer; }
+.btn-muted { background:#f6f7f8; color:#222; border-color:#e0e3e6; }
+.btn-primary { background:#0b66ff; color:#fff; border-color:#075be0; box-shadow: 0 6px 18px rgba(11,102,255,0.12); }
+.small-note { font-size:12px; color:#666; margin-top:6px; }
+.meta-chip-wrap { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.meta-span-2 { grid-column: span 2; }
+.meta-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:#f3f6ff; color:#08306b; border-radius:999px; font-size:13px; }
+.meta-chip button { background:transparent; border:0; cursor:pointer; color:#08306b; padding:0 4px; }
+.species-autocomplete { position:relative; }
+.species-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #111;
+  border: 1px solid #2196F3;
+  box-shadow: 0 6px 20px rgba(20,24,28,0.18);
+  border-radius: 6px;
+  max-height: 260px;
+  overflow: auto;
+  z-index: 999999;
+}
+.species-suggestions .item {
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #fff;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.species-suggestions .item:last-child { border-bottom: none; }
+.species-suggestions .item.active {
+  background: #2196F3;
+  color: #fff;
+}
+.species-suggestions .item:not(.active):hover {
+  background: #1565c0;
+  color: #fff;
+}
+.species-mark { background:transparent; font-weight:600; color:#0b66ff; }
+@media (max-width:940px) { .meta-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width:640px) { .meta-grid { grid-template-columns:1fr; } .meta-actions { justify-content:stretch; } }
+`;
+    document.head.appendChild(style);
+
+    const overlay = el('div', { id: 'metaOverlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Recording metadata entry' });
+    const card = el('div', { id: 'metaCard' });
+    card.appendChild(el('h4', null, 'Recording metadata'));
+    card.appendChild(el('div', { id: 'metaFilename', role: 'status', 'aria-live': 'polite' }, ''));
+    const grid = el('div', { cls: 'meta-grid' });
+
+    // Left column: Latitude (small input)
+    const latWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Latitude' }),
+      el('input', { type: 'text', className: 'meta-input small', id: 'meta-lat', placeholder: 'e.g. 19.391234' })
+    );
+
+    // Right column: Longitude (small input)
+    const lonWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Longitude' }),
+      el('input', { type: 'text', className: 'meta-input small', id: 'meta-lon', placeholder: 'e.g. 72.817654' })
+    );
+
+    // Recording date & time in left column (small to match Latitude)
+    const dtWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Recording date & time' }),
+      el('input', { type: 'datetime-local', className: 'meta-input small', id: 'meta-datetime' })
+    );
+
+    // NEW: Rating dropdown (right column) fixed values 1..5
+    const ratingWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Rating' }),
+      el('select', { className: 'meta-select', id: 'meta-rating' },
+	    el('option', { value: '' }, ''),
+        el('option', { value: '1' }, '1: Very Weak target sound, High noise'),
+        el('option', { value: '2' }, '2: Weak target sound, significant noise'),
+        el('option', { value: '3' }, '3: Good target sound, moderate noise'),
+        el('option', { value: '4' }, '4: Strong target sound, limited noise'),
+        el('option', { value: '5' }, '5: Very Strong target sound, little or no noise')
+      )
+    );
+
+    const typeWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Type of recording' }),
+      el('select', { className: 'meta-select', id: 'meta-type' }, el('option', { value: '' }, ''), el('option', { value: 'focal' }, 'Focal'), el('option', { value: 'passive' }, 'Passive'))
+    );
+
+    const speciesInput = el('input', { type: 'text', className: 'meta-input', id: 'meta-species', placeholder: 'Common name', autocomplete: 'off', 'aria-label': 'Target species' });
+    const speciesWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Target species' }),
+      el('div', { cls: 'species-autocomplete' },
+        speciesInput,
+        el('div', { cls: 'species-suggestions', id: 'meta-species-suggest', style: 'display:none' })
+      )
+    );
+
+    const recorderWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Recorder' }),
+      el('input', { type: 'text', className: 'meta-input', id: 'meta-recorder', placeholder: 'Make / model / Smartphone' })
+    );
+    const micWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Microphone' }),
+      el('input', { type: 'text', className: 'meta-input', id: 'meta-mic', placeholder: 'Make / model' })
+    );
+    const accWrap = el('div', null,
+      el('label', { cls: 'meta-label', html: 'Accessories' }),
+      el('input', { type: 'text', className: 'meta-input', id: 'meta-accessories', placeholder: 'e.g. windscreen, preamp, parabola' })
+    );
+
+    const contribWrap = el('div', null, // Removed 'meta-span-2' for adjustable length
+      el('label', { cls: 'meta-label', html: 'Sound record Contributor(s)' }),
+      (function () {
+        const container = el('div', { cls: 'meta-chip-wrap', id: 'meta-contrib-wrap' });
+        const input = el('input', { type: 'text', className: 'meta-input', id: 'meta-contrib-input', placeholder: "Type a name and press Enter or , or Tab" });
+        container.appendChild(input);
+        return container;
+      })()
+    );
+
+    const commentsWrap = el('div', { cls: 'meta-row-full' },
+      el('label', { cls: 'meta-label', html: 'Overall comments' }),
+      el('textarea', { className: 'meta-textarea', id: 'meta-comments', placeholder: 'Any notes about environment, behaviour, or recording conditions' })
+    );
+
+  // Grid (3 columns):
+  // Row 1: Latitude | Longitude | Recording date & time
+  // Row 2: Rating   | Type      | Target species
+  // Row 3: Recorder | Microphone| Accessories
+  // Row 4: Contributors (left) | (spacer) | (spacer)
+    // Row 5: Comments (full width)
+  grid.appendChild(latWrap);
+  grid.appendChild(lonWrap);
+  grid.appendChild(dtWrap);
+
+  grid.appendChild(ratingWrap);
+  grid.appendChild(typeWrap);
+  grid.appendChild(speciesWrap);
+
+  grid.appendChild(recorderWrap);
+  grid.appendChild(micWrap);
+  grid.appendChild(accWrap);
+
+  // Place contributors in the first column of the next row; leave two empty cells then comments full-width
+  grid.appendChild(contribWrap);
+  grid.appendChild(el('div', null));
+  grid.appendChild(el('div', null));
+
+  grid.appendChild(commentsWrap);
+
+    const actions = el('div', { cls: 'meta-actions' });
+    const saveFileBtn = el('button', { type: 'button', className: 'btn btn-primary', id: 'meta-save-file', style: 'margin-right: auto;' }, 'Save to file');
+    const okBtn = el('button', { type: 'button', className: 'btn btn-primary', id: 'meta-ok' }, 'OK');
+    const cancelBtn = el('button', { type: 'button', className: 'btn btn-muted', id: 'meta-cancel' }, 'Cancel');
+    actions.appendChild(saveFileBtn);
+    actions.appendChild(okBtn);
+    actions.appendChild(cancelBtn);
+
+
+    card.appendChild(grid);
+    card.appendChild(actions);
+    overlay.appendChild(card);
+
+    return { overlay, speciesInput, speciesSuggest: overlay.querySelector('#meta-species-suggest') };
+  }
+
+  // utility to safely set node value by id
+  function nodesSafeSet(id, val) {
+    try {
+      const n = document.getElementById(id);
+      if (n) n.value = val === undefined || val === null ? '' : val;
+    } catch (e) {}
+  }
+
+  // Compute current file id matching annotation logic
+  function currentFileIdForBackup() {
+    try {
+      const f = document.getElementById('file') && document.getElementById('file').files && document.getElementById('file').files[0];
+      if (!f) return null;
+      return `${f.name}|${f.size||0}|${f.lastModified||0}`;
+    } catch (e) { return null; }
+  }
+
+  // Atomic write: write tmp key then finalize
+  function writeMetadataBackupNow(obj) {
+    try {
+      const fid = currentFileIdForBackup();
+      if (!fid) return false;
+      const finalKey = META_BACKUP_PREFIX + fid;
+      const tmpKey = META_BACKUP_TMP + fid + '::' + String(Date.now());
+      const raw = JSON.stringify(obj || {});
+      // If all visible metadata fields are empty/null, remove any existing backup for this file
+      try {
+        function isEmptyVal(v) { return v === null || v === undefined || (typeof v === 'string' && v.trim() === '') || (Array.isArray(v) && v.length === 0); }
+        const parsed = obj || {};
+        const visualFields = [
+          parsed.latitude,
+          parsed.longitude,
+          parsed.datetime,
+          parsed.rating,
+          parsed.type,
+          parsed.species,
+          parsed.recorder,
+          parsed.microphone,
+          parsed.accessories,
+          parsed.xcfileno,
+          parsed.set_license, // NEW
+          parsed.annname,
+          parsed.project,
+          parsed.contributors,
+          parsed.comments
+        ];
+        const allEmpty = visualFields.every(isEmptyVal);
+        if (allEmpty) {
+          try { localStorage.removeItem(finalKey); } catch (e) {}
+          // also try to remove any tmp keys that might match prefix
+          try { Object.keys(localStorage).forEach(k => { if (typeof k === 'string' && k.startsWith(META_BACKUP_TMP + fid)) { try { localStorage.removeItem(k); } catch(e){} } }); } catch (e) {}
+          return false;
+        }
+      } catch (e) {}
+      if (raw.length > META_BACKUP_SIZE_LIMIT) {
+        console.warn('[meta-backup] payload too large, skipping');
+        return false;
+      }
+      try { localStorage.setItem(tmpKey, raw); } catch (e) { console.warn('[meta-backup] tmp write failed', e); }
+      try { const verify = localStorage.getItem(tmpKey); if (verify !== raw) { console.warn('[meta-backup] verify mismatch'); } } catch (e) {}
+      try { localStorage.setItem(finalKey, raw); } catch (e) { console.warn('[meta-backup] final write failed', e); }
+      try { localStorage.removeItem(tmpKey); } catch (e) {}
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function purgeAllMetadataBackups() {
+    try {
+      Object.keys(localStorage).forEach(k => { if (typeof k === 'string' && k.startsWith(META_BACKUP_PREFIX)) { try { localStorage.removeItem(k); } catch(e){} } });
+    } catch (e) {}
+  }
+
+  function scheduleMetadataBackup(obj) {
+    try {
+      if (__metaBackupTimer) clearTimeout(__metaBackupTimer);
+      __metaBackupTimer = setTimeout(() => { __metaBackupTimer = 0; try { writeMetadataBackupNow(obj || window.__lastMetadata || {}); } catch(e){} }, META_BACKUP_DEBOUNCE_MS);
+    } catch (e) {}
+  }
+
+  // Contributors chip logic (used when modal created)
+  function initContribWrap(wrap) {
+    if (!wrap) return;
+    if (wrap.__contribAPI) return wrap.__contribAPI;
+    const input = wrap.querySelector('#meta-contrib-input');
+    const state = { contributors: [] };
+    function renderChips(names) {
+      Array.from(wrap.querySelectorAll('.meta-chip')).forEach(c => c.remove());
+      names.forEach(nm => {
+        const display = String(nm).trim();
+        if (!display) return;
+        const chip = el('span', { cls: 'meta-chip' }, display, el('button', { type: 'button', title: 'Remove', 'aria-label': 'Remove contributor' }, '✕'));
+        chip.querySelector('button').addEventListener('click', () => {
+          const idx = state.contributors.indexOf(display);
+          if (idx >= 0) { state.contributors.splice(idx, 1); renderChips(state.contributors); }
+        });
+        wrap.insertBefore(chip, input);
+      });
+    }
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          const v = input.value.trim().replace(/,$/, '');
+          if (v) { state.contributors.push(v); input.value = ''; renderChips(state.contributors); }
+        } else if (e.key === 'Backspace' && input.value === '') {
+          state.contributors.pop(); renderChips(state.contributors);
+        } else if (e.key === 'Tab' && input.value.trim()) {
+          const v2 = input.value.trim().replace(/,$/, '');
+          if (v2) { state.contributors.push(v2); input.value = ''; renderChips(state.contributors); }
+        }
+      });
+      input.addEventListener('blur', () => {
+        const v = input.value.trim().replace(/,$/, '');
+        if (v) { state.contributors.push(v); input.value = ''; renderChips(state.contributors); }
+      });
+    }
+    wrap.__contribAPI = {
+      get: () => state.contributors.slice(),
+      set: (arr) => { state.contributors = Array.isArray(arr) ? arr.map(String).map(s => s.trim()).filter(Boolean) : []; renderChips(state.contributors); }
+    };
+    return wrap.__contribAPI;
+  }
+
+  // Species autocomplete implementation (dropdown inside modal). Waits for window.__speciesRecords.
+  function wireSpeciesAutocompleteWithWait(inputEl, suggestEl) {
+    if (!inputEl || !suggestEl) return;
+
+    const MIN_CHARS = 2;
+    const DEBOUNCE_MS = 120;
+    const MAX_RESULTS = 10;
+
+    function norm(s) { return (s || '').toString().normalize().toLowerCase(); }
+    function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || '&amp;'); }
+    function score(rec, q) {
+      const nq = norm(q);
+      const k = norm(rec.key || '');
+      const c = norm(rec.common || '');
+      let s = 0;
+      if (k.startsWith(nq)) s += 120;
+      else if (k.includes(nq)) s += 80;
+      if (c.startsWith(nq)) s += 60;
+      else if (c.includes(nq)) s += 30;
+      s += Math.max(0, 10 - Math.min(9, (k.length || 0) / 10));
+      return s;
+    }
+    function highlight(orig, q) {
+      if (!q) return escapeHtml(orig || '');
+      const o = orig || '';
+      const lower = norm(o);
+      const nq = norm(q);
+      const idx = lower.indexOf(nq);
+      if (idx < 0) return escapeHtml(o);
+      const before = o.slice(0, idx), match = o.slice(idx, idx + q.length), after = o.slice(idx + q.length);
+      return escapeHtml(before) + '<span class="species-mark">' + escapeHtml(match) + '</span>' + escapeHtml(after);
+    }
+
+    let debounceTimer = null;
+    let lastQuery = '';
+    let activeIdx = -1;
+
+    function closeList() {
+      suggestEl.innerHTML = '';
+      suggestEl.style.display = 'none';
+      activeIdx = -1;
+    }
+
+    function renderList(records, q) {
+      lastQuery = q;
+      activeIdx = -1;
+      suggestEl.innerHTML = '';
+      suggestEl.style.display = 'none';
+      if (!q || q.length < MIN_CHARS) return;
+      const cand = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, MAX_RESULTS);
+      if (!cand.length) return;
+      cand.forEach((cobj, i) => {
+        const r = cobj.r;
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.dataset.idx = i;
+        // Only show common name in dropdown
+        div.innerHTML = '<div class="common">' + (r.common ? highlight(r.common, q) : escapeHtml(r.key)) + '</div>';
+        // mousedown to capture selection before blur
+        div.addEventListener('mousedown', (ev) => { ev.preventDefault(); pick(records, i); });
+        suggestEl.appendChild(div);
+      });
+      suggestEl.style.display = 'block';
+    }
+
+    function applySelection(rec) {
+      if (!rec) return;
+      inputEl.value = rec.common || rec.key || '';
+      try { inputEl.dataset.speciesKey = rec.key || ''; } catch (e) {}
+      closeList();
+      inputEl.focus();
+      try { inputEl.dispatchEvent(new CustomEvent('species-chosen', { detail: { key: rec.key, common: rec.common, scientific: rec.scientific }, bubbles: true })); } catch (e) {}
+    }
+
+    function pick(records, idx) {
+      const q = lastQuery || inputEl.value || '';
+      const cand = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, MAX_RESULTS);
+      const chosen = (cand[idx] && cand[idx].r) || null;
+      if (!chosen) return;
+      applySelection(chosen);
+    }
+
+    function acceptTop(records) {
+      const q = inputEl.value.trim();
+      if (!q) return;
+      const best = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s)[0];
+      if (!best) return;
+      applySelection(best.r);
+    }
+
+    inputEl.addEventListener('input', function () {
+      const q = inputEl.value.trim();
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        renderList(recs, q);
+      }, DEBOUNCE_MS);
+    });
+
+    inputEl.addEventListener('keydown', function (e) {
+      const items = suggestEl.querySelectorAll('.item');
+      if (suggestEl.style.display === 'block' && items.length) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(items.length - 1, activeIdx + 1); updateActive(items); return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(0, activeIdx - 1); updateActive(items); return; }
+        if (e.key === 'Enter') {
+          if (activeIdx >= 0 && activeIdx < items.length) { e.preventDefault(); pick(Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [], activeIdx); return; }
+          e.preventDefault(); acceptTop(Array.isArray(window.__speciesRecords) ? window.__speciesRecords : []); return;
+        }
+        if (e.key === 'Escape') { closeList(); return; }
+      } else {
+        if (e.key === 'Enter') { e.preventDefault(); acceptTop(Array.isArray(window.__speciesRecords) ? window.__speciesRecords : []); return; }
+      }
+    });
+
+    function updateActive(items) {
+      items.forEach((it, i) => {
+        it.classList.toggle('active', i === activeIdx);
+        if (i === activeIdx) it.scrollIntoView({ block: 'nearest' });
+      });
+    }
+
+    // outside click closes the list; suggestions clicks handled by mousedown above
+    document.addEventListener('click', function (ev) {
+      try {
+        const path = (ev.composedPath && ev.composedPath()) || ev.path || [];
+        const inside = path.some(node => {
+          try { return node && node.classList && node.classList.contains && node.classList.contains('species-autocomplete'); } catch (e) { return false; }
+        });
+        if (!inside) closeList();
+      } catch (err) {
+        try {
+          if (!inputEl.closest('.species-autocomplete') && !document.querySelector('.species-autocomplete').contains(ev.target)) closeList();
+        } catch (e) {}
+      }
+    }, false);
+
+    // defensive: z-index
+    suggestEl.style.zIndex = suggestEl.style.zIndex || '999999';
+  }
+
+  // Wait short period for species-data; if not present install with empty dataset
+  function wireSpeciesAutocompleteWithWait(inputEl, suggestEl) {
+    if (!inputEl || !suggestEl) return;
+    const MAX_TRIES = 60;
+    let tries = 0;
+    (function waitForRecords() {
+      const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : null;
+      if (recs !== null) {
+        // make sure global exists (may be already set)
+        window.__speciesRecords = Array.isArray(recs) ? recs : [];
+        wireSpeciesAutocompleteWithRecords(inputEl, suggestEl);
+        return;
+      }
+      tries++;
+      if (tries >= MAX_TRIES) {
+        window.__speciesRecords = window.__speciesRecords || [];
+        wireSpeciesAutocompleteWithRecords(inputEl, suggestEl);
+        return;
+      }
+      setTimeout(waitForRecords, 80);
+    })();
+  }
+
+  function wireSpeciesAutocompleteWithRecords(inputEl, suggestEl) {
+    if (inputEl.__speciesWired) return;
+    inputEl.__speciesWired = true;
+    wireSpeciesAutocompleteWithWait_INTERNAL(inputEl, suggestEl);
+  }
+
+  function wireSpeciesAutocompleteWithWait_INTERNAL(inputEl, suggestEl) {
+    const MIN_CHARS = 2;
+    const DEBOUNCE_MS = 120;
+    const MAX_RESULTS = 10;
+
+    function norm(s) { return (s || '').toString().normalize().toLowerCase(); }
+    function escapeHtml(s) { return (s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || '&amp;'); }
+    function score(rec, q) {
+      const nq = norm(q);
+      const c = norm(rec.common || '');
+      const s_sci = norm(rec.scientific || '');
+      let s = 0;
+      if (c.startsWith(nq)) s += 60;
+      else if (c.includes(nq)) s += 30;
+      if (s_sci.startsWith(nq)) s += 60;
+      else if (s_sci.includes(nq)) s += 30;
+      s += Math.max(0, 10 - Math.min(9, ((rec.common || '').length || 0) / 10));
+      return s;
+    }
+    function highlight(orig, q) {
+      if (!q) return escapeHtml(orig || '');
+      const o = orig || '';
+      const lower = norm(o);
+      const nq = norm(q);
+      const idx = lower.indexOf(nq);
+      if (idx < 0) return escapeHtml(o);
+      const before = o.slice(0, idx), match = o.slice(idx, idx + q.length), after = o.slice(idx + q.length);
+      return escapeHtml(before) + '<span class="species-mark">' + escapeHtml(match) + '</span>' + escapeHtml(after);
+    }
+
+    let debounceTimer = null;
+    let lastQuery = '';
+    let activeIdx = -1;
+
+    function closeList() {
+      suggestEl.innerHTML = '';
+      suggestEl.style.display = 'none';
+      activeIdx = -1;
+    }
+
+    function renderList(q) {
+      lastQuery = q;
+      activeIdx = -1;
+      suggestEl.innerHTML = '';
+      suggestEl.style.display = 'none';
+      if (!q || q.length < MIN_CHARS) return;
+      const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+      const cand = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, MAX_RESULTS);
+      if (!cand.length) return;
+      cand.forEach((cobj, i) => {
+        const r = cobj.r;
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.dataset.idx = i;
+        div.innerHTML = '<div class="common">' + (r.common ? highlight(r.common, q) : highlight(r.scientific, q)) + (r.scientific && r.common ? ' <small style="color:#666">(' + escapeHtml(r.scientific) + ')</small>' : '') + '</div>';
+        div.addEventListener('mousedown', (ev) => { ev.preventDefault(); pick(i); });
+        suggestEl.appendChild(div);
+      });
+      suggestEl.style.display = 'block';
+    }
+
+    function applySelection(rec) {
+      if (!rec) return;
+      inputEl.value = rec.common || rec.scientific || '';
+      closeList();
+      inputEl.focus();
+      try { inputEl.dispatchEvent(new CustomEvent('species-chosen', { detail: { common: rec.common, scientific: rec.scientific }, bubbles: true })); } catch (e) {}
+    }
+
+    function pick(idx) {
+      const q = lastQuery || inputEl.value || '';
+      const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+      const cand = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, MAX_RESULTS);
+      const chosen = (cand[idx] && cand[idx].r) || null;
+      if (!chosen) return;
+      applySelection(chosen);
+    }
+
+    function acceptTop() {
+      const q = inputEl.value.trim();
+      if (!q) return;
+      const records = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+      const best = records.map(r => ({ r, s: score(r, q) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s)[0];
+      if (!best) return;
+      applySelection(best.r);
+    }
+
+    inputEl.addEventListener('input', function () {
+      const q = inputEl.value.trim();
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => renderList(q), DEBOUNCE_MS);
+    });
+
+    inputEl.addEventListener('keydown', function (e) {
+      const items = suggestEl.querySelectorAll('.item');
+      if (suggestEl.style.display === 'block' && items.length) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(items.length - 1, activeIdx + 1); updateActive(items); return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(0, activeIdx - 1); updateActive(items); return; }
+        if (e.key === 'Enter') {
+          if (activeIdx >= 0 && activeIdx < items.length) { e.preventDefault(); pick(activeIdx); return; }
+          e.preventDefault(); acceptTop(); return;
+        }
+        if (e.key === 'Escape') { closeList(); return; }
+      } else {
+        if (e.key === 'Enter') { e.preventDefault(); acceptTop(); return; }
+      }
+    });
+
+    function updateActive(items) {
+      items.forEach((it, i) => {
+        it.classList.toggle('active', i === activeIdx);
+        if (i === activeIdx) it.scrollIntoView({ block: 'nearest' });
+      });
+    }
+
+    document.addEventListener('click', function (ev) {
+      try {
+        const path = (ev.composedPath && ev.composedPath()) || ev.path || [];
+        const inside = path.some(node => {
+          try { return node && node.classList && node.classList.contains && node.classList.contains('species-autocomplete'); } catch (e) { return false; }
+        });
+        if (!inside) closeList();
+      } catch (err) {
+        try {
+          if (!inputEl.closest('.species-autocomplete') && !document.querySelector('.species-autocomplete').contains(ev.target)) closeList();
+        } catch (e) {}
+      }
+    }, false);
+
+    suggestEl.style.zIndex = suggestEl.style.zIndex || '999999';
+  }
+
+  // Core modal open implementation (public)
+  function openMetadataModal(initial) {
+    const existing = document.getElementById('metaOverlay');
+    if (existing) {
+      if (initial && typeof initial === 'object' && Object.keys(initial).length) applyInitialToOpen(existing, initial);
+      else applyInitialToOpen(existing, window.__lastMetadata || {});
+      return {
+        close: () => { const ov = document.getElementById('metaOverlay'); if (ov) ov.remove(); },
+        set: (obj) => { const ex = document.getElementById('metaOverlay'); if (ex) applyInitialToOpen(ex, obj); },
+        getValues: () => ({
+          latitude: document.getElementById('meta-lat') ? document.getElementById('meta-lat').value : null,
+          longitude: document.getElementById('meta-lon') ? document.getElementById('meta-lon').value : null,
+          datetime: document.getElementById('meta-datetime') ? document.getElementById('meta-datetime').value : null,
+          rating: document.getElementById('meta-rating') ? (document.getElementById('meta-rating').value ? Number(document.getElementById('meta-rating').value) : null) : null,
+          type: document.getElementById('meta-type') ? document.getElementById('meta-type').value : null,
+          species: document.getElementById('meta-species') ? document.getElementById('meta-species').value : null,
+          recorder: document.getElementById('meta-recorder') ? document.getElementById('meta-recorder').value : null,
+          microphone: document.getElementById('meta-mic') ? document.getElementById('meta-mic').value : null,
+          accessories: document.getElementById('meta-accessories') ? document.getElementById('meta-accessories').value : null,
+          xcfileno: document.getElementById('meta-xcfileno') ? document.getElementById('meta-xcfileno').value : null,
+          xcannid: document.getElementById('meta-xcannid') ? document.getElementById('meta-xcannid').value : null,
+          annname: document.getElementById('meta-annname') ? document.getElementById('meta-annname').value : null,
+          project: document.getElementById('meta-project') ? document.getElementById('meta-project').value : null,
+          contributors: (function () {
+            const wrap = document.getElementById('meta-contrib-wrap'); if (!wrap) return [];
+            const chips = Array.from(wrap.querySelectorAll('.meta-chip')).map(ch => ch.childNodes[0].textContent.trim());
+            const input = wrap.querySelector('#meta-contrib-input');
+            return chips.concat(input && input.value ? [input.value.trim()] : []).filter(Boolean);
+          })(),
+          comments: document.getElementById('meta-comments') ? document.getElementById('meta-comments').value : null
+        })
+      };
+    }
+
+    const meta = buildModalDom();
+    document.body.appendChild(meta.overlay);
+
+    const overlayScope = meta.overlay;
+    const nodes = {
+      filenameLabel: overlayScope.querySelector('#metaFilename'),
+      lat: overlayScope.querySelector('#meta-lat'),
+      lon: overlayScope.querySelector('#meta-lon'),
+      datetime: overlayScope.querySelector('#meta-datetime'),
+      rating: overlayScope.querySelector('#meta-rating'),
+      type: overlayScope.querySelector('#meta-type'),
+      species: overlayScope.querySelector('#meta-species'),
+      speciesSuggest: overlayScope.querySelector('#meta-species-suggest'),
+      recorder: overlayScope.querySelector('#meta-recorder'),
+      mic: overlayScope.querySelector('#meta-mic'),
+      accessories: overlayScope.querySelector('#meta-accessories'),
+      contributorsWrap: overlayScope.querySelector('#meta-contrib-wrap'),
+      comments: overlayScope.querySelector('#meta-comments'),
+      saveFile: overlayScope.querySelector('#meta-save-file'),
+      ok: overlayScope.querySelector('#meta-ok'),
+      cancel: overlayScope.querySelector('#meta-cancel')
+    };
+
+    // filename label
+    const fileInput = document.getElementById('file');
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      nodes.filenameLabel.textContent = 'File: ' + (fileInput.files[0].name || '(selected file)');
+    } else {
+      nodes.filenameLabel.textContent = 'File: (no file)';
+    }
+
+    // contributors init
+    try { initContribWrap(nodes.contributorsWrap); } catch (e) {}
+
+    // apply initial values
+    applyInitial(initial && Object.keys(initial).length ? initial : window.__lastMetadata || null);
+
+    // wire species autocomplete (waits for species-data)
+    try { wireSpeciesAutocompleteWithWait(nodes.species, nodes.speciesSuggest); } catch (e) {}
+
+    // Save to file handler (exports current modal data to TSV)
+    nodes.saveFile.addEventListener('click', () => {
+      const ratingVal = (nodes.rating && nodes.rating.value) ? Number(nodes.rating.value) : null;
+      const current = {
+        latitude: nodes.lat.value ? nodes.lat.value.trim() : null,
+        longitude: nodes.lon.value ? nodes.lon.value.trim() : null,
+        datetime: nodes.datetime.value ? new Date(nodes.datetime.value).toISOString() : null,
+        rating: (ratingVal === null || isNaN(ratingVal)) ? null : ratingVal,
+        type: nodes.type.value || null,
+        species: nodes.species.value ? nodes.species.value.trim() : null,
+        recorder: nodes.recorder.value ? nodes.recorder.value.trim() : null,
+        microphone: nodes.mic.value ? nodes.mic.value.trim() : null,
+        accessories: nodes.accessories.value ? nodes.accessories.value.trim() : null,
+        contributors: (nodes.contributorsWrap && nodes.contributorsWrap.__contribAPI) ? nodes.contributorsWrap.__contribAPI.get().map(s => String(s).trim()).filter(Boolean) : [],
+        comments: nodes.comments.value ? nodes.comments.value.trim() : null
+      };
+
+      // Determine scientific name based on species input
+      let scientificName = '';
+      try {
+        const recs = Array.isArray(window.__speciesRecords) ? window.__speciesRecords : [];
+        if (current.species) {
+          const rec2 = recs.find(r => String((r.common||'')).trim() === current.species);
+          if (rec2) scientificName = rec2.scientific || '';
+        }
+      } catch (e) {}
+
+      const dt = formatDateAndTimeFromISO(current.datetime);
+      const fileInputEl = document.getElementById('file');
+      const exportFileName = (fileInputEl && fileInputEl.files && fileInputEl.files.length > 0 && fileInputEl.files[0] && fileInputEl.files[0].name) ? String(fileInputEl.files[0].name) : '';
+
+      const headers = ['File', 'Latitude', 'Longitude', 'Recording date', 'Recording time', 'Rating', 'Type of recording', 'Target species', 'Scientific name', 'Recorder', 'Microphone', 'Accessories', 'Contributor(s)', 'Overall comments'];
+      const row = [
+        exportFileName, cellString(current.latitude), cellString(current.longitude),
+        dt.date, dt.time, cellString(current.rating), cellString(current.type),
+        cellString(current.species), cellString(scientificName), cellString(current.recorder),
+        cellString(current.microphone), cellString(current.accessories),
+        cellString(current.contributors ? current.contributors.join(', ') : ''),
+        normalizeComments(current.comments)
+      ];
+
+      const content = headers.join('\t') + '\n' + row.join('\t') + '\n';
+      const mdBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      
+      let base = 'export';
+      if (exportFileName) {
+        const idx = exportFileName.lastIndexOf('.');
+        base = idx > 0 ? exportFileName.slice(0, idx) : exportFileName;
+      }
+      
+      const url = URL.createObjectURL(mdBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${base}_Matadata.txt`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    });
+
+    // OK handler (reads rating dropdown and persists)
+    nodes.ok.addEventListener('click', () => {
+      const ratingVal = (nodes.rating && nodes.rating.value) ? Number(nodes.rating.value) : null;
+      const out = {
+        latitude: nodes.lat.value ? nodes.lat.value.trim() : null,
+        longitude: nodes.lon.value ? nodes.lon.value.trim() : null,
+        datetime: nodes.datetime.value ? new Date(nodes.datetime.value).toISOString() : null,
+        rating: (ratingVal === null || isNaN(ratingVal)) ? null : ratingVal,
+        type: nodes.type.value || null,
+        species: nodes.species.value ? nodes.species.value.trim() : null,
+        recorder: nodes.recorder.value ? nodes.recorder.value.trim() : null,
+        microphone: nodes.mic.value ? nodes.mic.value.trim() : null,
+        accessories: nodes.accessories.value ? nodes.accessories.value.trim() : null,
+        contributors: (nodes.contributorsWrap && nodes.contributorsWrap.__contribAPI) ? nodes.contributorsWrap.__contribAPI.get().map(s => String(s).trim()).filter(Boolean) : [],
+        comments: nodes.comments.value ? nodes.comments.value.trim() : null,
+        savedAt: new Date().toISOString()
+      };
+      window.__lastMetadata = out;
+      // Persist a backup for this file immediately and dispatch save
+      try { writeMetadataBackupNow(out); } catch (e) {}
+      document.dispatchEvent(new CustomEvent('metadata-saved', { detail: out }));
+      closeModal();
+    });
+
+    nodes.cancel.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('metadata-cancelled', {}));
+      closeModal();
+    });
+
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        document.dispatchEvent(new CustomEvent('metadata-cancelled', {}));
+        closeModal();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+
+    // focus order: lat -> lon -> datetime -> species
+    setTimeout(() => {
+      const first = overlayScope.querySelector('#meta-lat') || overlayScope.querySelector('#meta-lon') || overlayScope.querySelector('#meta-datetime') || overlayScope.querySelector('#meta-species');
+      try { if (first) first.focus(); } catch (e) {}
+    }, 40);
+
+    // Wire live-change backups: schedule a backup on user edits inside the modal
+    try {
+      const inputNodeIds = ['meta-lat','meta-lon','meta-datetime','meta-rating','meta-type','meta-species','meta-recorder','meta-mic','meta-accessories','meta-comments','meta-contrib-input'];
+      inputNodeIds.forEach(id => {
+        const n = overlayScope.querySelector('#' + id);
+        if (!n) return;
+        n.addEventListener('input', function () {
+          try {
+            // gather current modal values (similar to getValues)
+            const current = {
+              latitude: overlayScope.querySelector('#meta-lat') ? overlayScope.querySelector('#meta-lat').value : null,
+              longitude: overlayScope.querySelector('#meta-lon') ? overlayScope.querySelector('#meta-lon').value : null,
+              datetime: overlayScope.querySelector('#meta-datetime') ? overlayScope.querySelector('#meta-datetime').value : null,
+              rating: overlayScope.querySelector('#meta-rating') ? (overlayScope.querySelector('#meta-rating').value ? Number(overlayScope.querySelector('#meta-rating').value) : null) : null,
+              type: overlayScope.querySelector('#meta-type') ? overlayScope.querySelector('#meta-type').value : null,
+              species: overlayScope.querySelector('#meta-species') ? overlayScope.querySelector('#meta-species').value : null,
+              recorder: overlayScope.querySelector('#meta-recorder') ? overlayScope.querySelector('#meta-recorder').value : null,
+              microphone: overlayScope.querySelector('#meta-mic') ? overlayScope.querySelector('#meta-mic').value : null,
+              accessories: overlayScope.querySelector('#meta-accessories') ? overlayScope.querySelector('#meta-accessories').value : null,
+              contributors: (function () { const wrap = overlayScope.querySelector('#meta-contrib-wrap'); if (!wrap) return []; const chips = Array.from(wrap.querySelectorAll('.meta-chip')).map(ch => ch.childNodes[0].textContent.trim()); const input = wrap.querySelector('#meta-contrib-input'); return chips.concat(input && input.value ? [input.value.trim()] : []).filter(Boolean); })(),
+              comments: overlayScope.querySelector('#meta-comments') ? overlayScope.querySelector('#meta-comments').value : null,
+              savedAt: new Date().toISOString()
+            };
+            scheduleMetadataBackup(current);
+          } catch (e) {}
+        });
+      });
+    } catch (e) {}
+
+    return {
+      close: () => { const ov = document.getElementById('metaOverlay'); if (ov) ov.remove(); },
+      set: (obj) => applyInitial(obj),
+      getValues: () => ({
+        latitude: document.getElementById('meta-lat') ? document.getElementById('meta-lat').value : null,
+        longitude: document.getElementById('meta-lon') ? document.getElementById('meta-lon').value : null,
+        datetime: document.getElementById('meta-datetime') ? document.getElementById('meta-datetime').value : null,
+        rating: document.getElementById('meta-rating') ? (document.getElementById('meta-rating').value ? Number(document.getElementById('meta-rating').value) : null) : null,
+        type: document.getElementById('meta-type') ? document.getElementById('meta-type').value : null,
+        species: document.getElementById('meta-species') ? document.getElementById('meta-species').value : null,
+        recorder: document.getElementById('meta-recorder') ? document.getElementById('meta-recorder').value : null,
+        microphone: document.getElementById('meta-mic') ? document.getElementById('meta-mic').value : null,
+        accessories: document.getElementById('meta-accessories') ? document.getElementById('meta-accessories').value : null,
+        contributors: (function () {
+          const wrap = document.getElementById('meta-contrib-wrap'); if (!wrap) return [];
+          const chips = Array.from(wrap.querySelectorAll('.meta-chip')).map(ch => ch.childNodes[0].textContent.trim());
+          const input = wrap.querySelector('#meta-contrib-input');
+          return chips.concat(input && input.value ? [input.value.trim()] : []).filter(Boolean);
+        })(),
+        comments: document.getElementById('meta-comments') ? document.getElementById('meta-comments').value : null
+      })
+    };
+  }
+
+  // applyInitial helpers
+  function applyInitial(init) {
+    const source = Object.assign({}, window.__lastMetadata || {}, init || {});
+    const latVal = (source.latitude !== undefined && source.latitude !== null && String(source.latitude).trim() !== '') ? source.latitude : ((source.lat !== undefined && source.lat !== null) ? source.lat : '');
+    const lonVal = (source.longitude !== undefined && source.longitude !== null && String(source.longitude).trim() !== '') ? source.longitude : ((source.lon !== undefined && source.lon !== null) ? source.lon : '');
+    nodesSafeSet('meta-lat', (latVal !== undefined && latVal !== null) ? latVal : '');
+    nodesSafeSet('meta-lon', (lonVal !== undefined && lonVal !== null) ? lonVal : '');
+    if (source.datetime) {
+      try {
+        const d = new Date(source.datetime);
+        if (!isNaN(d)) {
+          const pad = (n) => n.toString().padStart(2, '0');
+          const yyyy = d.getFullYear();
+          const mm = pad(d.getMonth() + 1);
+          const dd = pad(d.getDate());
+          const hh = pad(d.getHours());
+          const mi = pad(d.getMinutes());
+          nodesSafeSet('meta-datetime', `${yyyy}-${mm}-${dd}T${hh}:${mi}`);
+        } else nodesSafeSet('meta-datetime', '');
+      } catch (e) { nodesSafeSet('meta-datetime', ''); }
+    } else nodesSafeSet('meta-datetime', '');
+    nodesSafeSet('meta-type', source.type || '');
+    nodesSafeSet('meta-species', source.species || '');
+    nodesSafeSet('meta-recorder', source.recorder || '');
+    nodesSafeSet('meta-mic', source.microphone || '');
+    nodesSafeSet('meta-accessories', source.accessories || '');
+    if (Array.isArray(source.contributors)) {
+      const wrap = document.getElementById('meta-contrib-wrap');
+      try { wrap && wrap.__contribAPI && wrap.__contribAPI.set(source.contributors); } catch (e) {}
+    }
+    nodesSafeSet('meta-comments', source.comments || '');
+
+    // set rating dropdown if present
+    try {
+      const rnode = document.getElementById('meta-rating');
+      const val = (source.rating === undefined || source.rating === null) ? '' : String(source.rating);
+      if (rnode) rnode.value = (val === 'null' || val === 'undefined') ? '' : val;
+    } catch (e) {}
+  }
+
+  function applyInitialToOpen(existingOverlay, init) {
+    const n = {
+      lat: existingOverlay.querySelector('#meta-lat'),
+      lon: existingOverlay.querySelector('#meta-lon'),
+      datetime: existingOverlay.querySelector('#meta-datetime'),
+      rating: existingOverlay.querySelector('#meta-rating'),
+      type: existingOverlay.querySelector('#meta-type'),
+      species: existingOverlay.querySelector('#meta-species'),
+      recorder: existingOverlay.querySelector('#meta-recorder'),
+      mic: existingOverlay.querySelector('#meta-mic'),
+      accessories: existingOverlay.querySelector('#meta-accessories'),
+      contributorsWrap: existingOverlay.querySelector('#meta-contrib-wrap'),
+      comments: existingOverlay.querySelector('#meta-comments'),
+      filenameLabel: existingOverlay.querySelector('#metaFilename')
+    };
+    if (!n.lat) return;
+    const source = Object.assign({}, window.__lastMetadata || {}, init && Object.keys(init).length ? init : {});
+    const latVal = (source.latitude !== undefined && source.latitude !== null && String(source.latitude).trim() !== '') ? source.latitude : ((source.lat !== undefined && source.lat !== null) ? source.lat : '');
+    const lonVal = (source.longitude !== undefined && source.longitude !== null && String(source.longitude).trim() !== '') ? source.longitude : ((source.lon !== undefined && source.lon !== null) ? source.lon : '');
+    try { n.lat.value = (latVal !== undefined && latVal !== null) ? String(latVal) : ''; } catch (e) { n.lat && (n.lat.value = ''); }
+    try { n.lon.value = (lonVal !== undefined && lonVal !== null) ? String(lonVal) : ''; } catch (e) { n.lon && (n.lon.value = ''); }
+    if (source.datetime) {
+      try {
+        const d = new Date(source.datetime);
+        if (!isNaN(d)) {
+          const pad = (x) => x.toString().padStart(2, '0');
+          const yyyy = d.getFullYear();
+          const mm = pad(d.getMonth() + 1);
+          const dd = pad(d.getDate());
+          const hh = pad(d.getHours());
+          const mi = pad(d.getMinutes());
+          n.datetime.value = `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+        } else n.datetime.value = '';
+      } catch (e) { n.datetime.value = ''; }
+    } else n.datetime.value = '';
+    n.type.value = source.type || '';
+    n.species.value = source.species || '';
+    n.recorder.value = source.recorder || '';
+    n.mic.value = source.microphone || '';
+    n.accessories.value = source.accessories || '';
+    n.comments.value = source.comments || '';
+    if (Array.isArray(source.contributors) && source.contributors.length && n.contributorsWrap) {
+      const input = n.contributorsWrap.querySelector('#meta-contrib-input');
+      if (input) {
+        Array.from(n.contributorsWrap.querySelectorAll('.meta-chip')).forEach(c => n.contributorsWrap.removeChild(c));
+        source.contributors.forEach(name => {
+          const safeName = String(name).trim();
+          if (!safeName) return;
+          const chip = el('span', { cls: 'meta-chip' }, safeName, el('button', { type: 'button', title: 'Remove', 'aria-label': 'Remove contributor' }, '✕'));
+          chip.querySelector('button').addEventListener('click', () => { chip.remove(); });
+          n.contributorsWrap.insertBefore(chip, input);
+        });
+      }
+    } else {
+      if (n.contributorsWrap) Array.from(n.contributorsWrap.querySelectorAll('.meta-chip')).forEach(c => n.contributorsWrap.removeChild(c));
+    }
+    const fileInput2 = document.getElementById('file');
+    if (fileInput2 && fileInput2.files && fileInput2.files.length > 0) {
+      n.filenameLabel && (n.filenameLabel.textContent = 'File: ' + (fileInput2.files[0].name || '(selected file)'));
+    } else {
+      n.filenameLabel && (n.filenameLabel.textContent = 'File: (no file)');
+    }
+
+    // rating
+    try {
+      const rv = (source.rating === undefined || source.rating === null) ? '' : String(source.rating);
+      if (n.rating) n.rating.value = (rv === 'null' || rv === 'undefined') ? '' : rv;
+    } catch (e) {}
+  }
+
+  function closeModal() {
+    const ov = document.getElementById('metaOverlay'); if (ov) ov.remove();
+    const st = document.getElementById('metadata-modal-styles'); if (st) st.remove();
+  }
+
+  // Public API
+  window.__openMetadataModal = function (initial) { return openMetadataModal(initial); };
+  window.__setMetadataCoordinates = function (lat, lon) {
+    const latStr = (lat !== undefined && lat !== null) ? String(lat) : '';
+    const lonStr = (lon !== undefined && lon !== null) ? String(lon) : '';
+    const latInput = document.getElementById('meta-lat');
+    const lonInput = document.getElementById('meta-lon');
+    if (latInput) latInput.value = latStr;
+    if (lonInput) lonInput.value = lonStr;
+  };
+  // Apply pending metadata restore (called by spectrogram.js or manually)
+  window.__applyPendingMetadataRestore = window.__applyPendingMetadataRestore || function () {
+    try {
+      const p = window.__pendingMetadataRestore || null;
+      if (!p || !p.raw) return false;
+      let parsed = null;
+      try { parsed = JSON.parse(p.raw); } catch (e) { parsed = null; }
+      if (!parsed) {
+        // nothing to apply
+        try { window.__pendingMetadataRestore = null; } catch (e) {}
+        return false;
+      }
+      // Save into last metadata so modal picks it up when opened
+      window.__lastMetadata = Object.assign({}, window.__lastMetadata || {}, parsed);
+
+      // If modal is open, populate it immediately
+      const existing = document.getElementById('metaOverlay');
+      if (existing) {
+        try { applyInitialToOpen(existing, parsed); } catch (e) {}
+      }
+
+  try { document.dispatchEvent(new CustomEvent('metadata-restored', { detail: parsed })); } catch (e) {}
+
+  // Do NOT purge metadata backups here — keep backups until user explicitly exports or clears them.
+  try { window.__pendingMetadataRestore = null; } catch (e) {}
+      return true;
+    } catch (e) { return false; }
+  };
+
+})();
