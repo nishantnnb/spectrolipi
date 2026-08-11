@@ -73,17 +73,15 @@
     return map;
   }
 
-  function annotationToRectPx(ann) {
-    const scrollArea = document.getElementById('scrollArea');
-    if (!scrollArea) return null;
-  const { pxPerSec, imageHeight, ymaxHz, yminHz } = getMapping();
+  function annotationToRectPx(ann, map, scrollLeft) {
+  const { pxPerSec, imageHeight, ymaxHz, yminHz } = map;
   // Use Tabulator grid columns for coordinates
   const begin = (typeof ann.beginTime !== 'undefined') ? ann.beginTime : (typeof ann['Begin Time (s)'] !== 'undefined' ? ann['Begin Time (s)'] : 0);
   const end = (typeof ann.endTime !== 'undefined') ? ann.endTime : (typeof ann['End Time (s)'] !== 'undefined' ? ann['End Time (s)'] : 0);
   const low = (typeof ann.lowFreq !== 'undefined') ? ann.lowFreq : (typeof ann['Low Freq (Hz)'] !== 'undefined' ? ann['Low Freq (Hz)'] : 0);
   const high = (typeof ann.highFreq !== 'undefined') ? ann.highFreq : (typeof ann['High Freq (Hz)'] !== 'undefined' ? ann['High Freq (Hz)'] : 0);
-  const left = begin * pxPerSec - (scrollArea.scrollLeft || 0);
-  const right = end * pxPerSec - (scrollArea.scrollLeft || 0);
+  const left = begin * pxPerSec - scrollLeft;
+  const right = end * pxPerSec - scrollLeft;
   const top = imageHeight * ((ymaxHz - high) / Math.max(1, ymaxHz - yminHz));
   const bottom = imageHeight * ((ymaxHz - low) / Math.max(1, ymaxHz - yminHz));
   const topPercent = ((ymaxHz - high) / Math.max(1, ymaxHz - yminHz)) * 100;
@@ -109,7 +107,7 @@
     return container;
   }
 
-  function createOrUpdateLabel(container, aidStr, rectPx, rowInfo) {
+  function createOrUpdateLabel(container, aidStr, rectPx, rowInfo, map) {
     if (!rectPx) return;
     const id = 'ann_label_' + aidStr;
     let el = document.getElementById(id);
@@ -161,7 +159,7 @@
       el.textContent = labelText;
     }
   // Always subtract scrollArea.scrollLeft from left coordinate
-  const axisLeft = getMapping().axisLeft || 70;
+  const axisLeft = map.axisLeft || 70;
   const leftPx = Math.round(axisLeft + (rectPx.left || 0));
   el.style.left = leftPx + 'px';
   if (typeof rectPx.topPercent === 'number') {
@@ -214,15 +212,29 @@
 
   function syncAllLabels() {
     try {
+      const scrollArea = document.getElementById('scrollArea');
+      const scrollLeft = scrollArea ? (scrollArea.scrollLeft || 0) : 0;
+      const clientWidth = scrollArea ? (scrollArea.clientWidth || 0) : 0;
+      const map = getMapping();
+
       const container = ensureLabelContainer();
       const anns = getAnnotations();
       const rowMap = buildAnnotationRowMap();
-      const currentIds = new Set(anns.map(a => String(a.id)));
+      const currentIds = new Set();
+
+      const pxPerSec = map.pxPerSec || 1;
+      const vStartSec = Math.max(0, scrollLeft / pxPerSec - 0.5);
+      const vEndSec = (scrollLeft + clientWidth) / pxPerSec + 0.5;
 
       for (const a of anns) {
+        const beginTime = Number(a.beginTime || 0);
+        const endTime = Number(a.endTime || beginTime);
+        if (endTime < vStartSec || beginTime > vEndSec) continue; // Culling
+        
         const aidStr = String(a.id);
-        const rect = annotationToRectPx(a);
-        createOrUpdateLabel(container, aidStr, rect, rowMap.get(aidStr) || { index: '?', species: '', scientificName: '' });
+        currentIds.add(aidStr);
+        const rect = annotationToRectPx(a, map, scrollLeft);
+        createOrUpdateLabel(container, aidStr, rect, rowMap.get(aidStr) || { index: '?', species: '', scientificName: '' }, map);
       }
 
       const children = Array.from(container.children || []);
