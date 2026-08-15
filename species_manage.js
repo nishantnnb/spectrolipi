@@ -1,1 +1,414 @@
-!function(){if(window.__speciesManageInit)return;window.__speciesManageInit=!0;const e="species_records",t="manageSpeciesBtn";function n(e){return document.getElementById(e)}function o(){try{const t=localStorage.getItem(e);if(t){const e=JSON.parse(t);if(Array.isArray(e))return e}}catch(e){console.warn("species_manage: failed to load from storage",e)}try{return Array.isArray(window.__speciesRecords)?window.__speciesRecords.slice():[]}catch(e){return[]}}function i(t){try{localStorage.setItem(e,JSON.stringify(t))}catch(e){console.warn("species_manage: failed to persist to localStorage",e)}try{window.__speciesRecords=Array.isArray(t)?t.slice():[]}catch(e){}try{document.dispatchEvent(new CustomEvent("species-updated",{detail:{count:(t||[]).length}}))}catch(e){}}function c(e){return String(e||"").trim().toLowerCase()}function s(){const e=document.createElement("div");e.id="__species_manage_overlay",e.setAttribute("role","dialog"),e.setAttribute("aria-modal","true"),e.style.position="fixed",e.style.inset="0",e.style.display="flex",e.style.alignItems="center",e.style.justifyContent="center",e.style.zIndex="2147483650",e.style.background="rgba(10,10,12,0.6)";const t=document.createElement("div");t.style.width="50vw",t.style.maxWidth="96%",t.style.height="80vh",t.style.maxHeight="96%",t.style.overflow="auto",t.style.background="#0f0f10",t.style.color="#fff",t.style.borderRadius="8px",t.style.padding="12px",t.style.boxShadow="0 8px 30px rgba(0,0,0,0.6)",t.style.fontFamily='system-ui, -apple-system, "Segoe UI", Roboto, Arial';const n=document.createElement("div");n.style.display="flex",n.style.justifyContent="space-between",n.style.alignItems="center",n.style.marginBottom="8px";const s=document.createElement("div");s.textContent="Manage Species",s.style.fontSize="16px",s.style.fontWeight="600",n.appendChild(s);const l=document.createElement("button");l.type="button",l.textContent="✕",l.style.background="transparent",l.style.border="0",l.style.color="#fff",l.style.fontSize="18px",l.style.cursor="pointer",l.setAttribute("aria-label","Close species manager"),n.appendChild(l),t.appendChild(n);const a=document.createElement("div");a.style.display="grid",a.style.gridTemplateColumns="1fr 1fr",a.style.gap="10px";const d=document.createElement("div"),r=document.createElement("div");r.style.marginBottom="8px";const p=document.createElement("label");p.textContent="Search (common or scientific)",p.style.fontSize="12px",p.style.display="block",p.style.marginBottom="4px";const m=document.createElement("input");m.type="search",m.className="meta-input",m.style.width="100%",m.style.padding="8px",m.style.borderRadius="6px",m.style.border="1px solid rgba(255,255,255,0.06)",m.style.background="#111",m.style.color="#fff",r.appendChild(p),r.appendChild(m),d.appendChild(r);const u=document.createElement("div");function f(e,t,n){const o=document.createElement("div"),i=document.createElement("label");i.textContent=t,i.style.fontSize="12px",i.style.display="block",i.style.marginBottom="4px";const c=document.createElement("input");return c.type="text",c.id=e,c.placeholder=n,c.style.width="100%",c.style.padding="8px",c.style.borderRadius="6px",c.style.border="1px solid rgba(255,255,255,0.06)",c.style.background="#111",c.style.color="#fff",o.appendChild(i),o.appendChild(c),o}u.style.display="grid",u.style.gridTemplateColumns="1fr 1fr",u.style.gap="8px";const y=f("__sp_common","Common name","Common name"),g=f("__sp_scientific","Scientific name","Scientific name"),b=document.createElement("div");b.style.display="grid",b.style.gridTemplateColumns="1fr 1fr",b.style.gap="8px",b.appendChild(y),u.appendChild(b);const h=document.createElement("div");h.appendChild(g),u.appendChild(h),d.appendChild(u);const v=y.querySelector("input"),x=g.querySelector("input");v.style.width="100%",v.style.padding="10px",x.style.width="100%",x.style.padding="10px";const C=document.createElement("div");C.style.display="flex",C.style.gap="8px",C.style.marginTop="8px",C.style.flexWrap="wrap";const _=document.createElement("button");_.type="button",_.textContent="Update",_.className="btn",_.style.background="#1565c0",_.style.border="1px solid rgba(0,0,0,0.15)",_.style.color="#fff",_.disabled=!0;const E=document.createElement("button");E.type="button",E.textContent="Create new",E.className="btn",E.style.background="#2196F3",E.style.color="#fff",E.disabled=!1;const w=document.createElement("button");w.type="button",w.textContent="Delete",w.className="btn",w.style.background="#b43a3a",w.style.color="#fff",w.disabled=!1,C.appendChild(_),C.appendChild(E),C.appendChild(w),d.appendChild(C);const S=document.createElement("div");S.id="__sp_manage_status",S.style.marginTop="8px",S.style.fontSize="13px",S.style.color="#cde",d.appendChild(S);const k=document.createElement("div"),L=document.createElement("label");L.textContent="Bulk upload (CSV/TSV)",L.style.display="block",L.style.fontSize="12px",L.style.marginBottom="6px";const R=document.createElement("input");R.type="file",R.accept=".csv,.txt,.tsv,text/csv,text/tab-separated-values,text/plain",R.id="__sp_bulk_file",R.style.display="block",k.appendChild(L),k.appendChild(R);const B=document.createElement("div");B.style.marginTop="8px",B.style.display="flex",B.style.gap="8px";const T=document.createElement("label"),N=document.createElement("input");N.type="radio",N.name="__sp_bulk_mode",N.value="merge",N.checked=!0,T.appendChild(N),T.appendChild(document.createTextNode(" Merge (update existing by key, add new)"));const U=document.createElement("label"),I=document.createElement("input");I.type="radio",I.name="__sp_bulk_mode",I.value="replace",U.appendChild(I),U.appendChild(document.createTextNode(" Replace (replace all with uploaded)")),B.appendChild(T),B.appendChild(U),k.appendChild(B);const j=document.createElement("div");j.style.display="flex",j.style.gap="8px",j.style.marginTop="8px";const A=document.createElement("button");A.type="button",A.textContent="Bulk upload",A.className="btn",A.style.background="#2a2f36",A.style.color="#fff";const O=document.createElement("button");O.type="button",O.textContent="Download species",O.className="btn",O.style.background="#2196F3",O.style.color="#fff";const z=document.createElement("button");z.type="button",z.textContent="Export to species-data.js",z.className="btn",z.style.background="#0b66ff",z.style.color="#fff",j.appendChild(A),j.appendChild(O),j.appendChild(z),k.appendChild(j);const q=document.createElement("div");function D(e,t){S.textContent=e||"",S.style.color=t?"#fbb":"#bfe"}function M(e,t){const n=c(t);return(e||[]).find(e=>c(e.scientific)===n)}q.style.marginTop="10px",q.style.fontSize="12px",q.style.color="#cbd",q.textContent="Upload format: key,common,scientific (header optional). Keys are case-insensitive and must be unique.",k.appendChild(q),a.appendChild(d),a.appendChild(k),t.appendChild(a),e.appendChild(t),m.addEventListener("input",function(e,t){let n=null;return function(...o){clearTimeout(n),n=setTimeout(()=>e.apply(this,o),t)}}(function(){const e=(m.value||"").trim().toLowerCase();if(!e)return v.value="",x.value="",_.disabled=!0,void(F={common:"",scientific:""});const t=o().find(t=>t.scientific&&t.scientific.toLowerCase().includes(e)||t.common&&t.common.toLowerCase().includes(e));t?(v.value=t.common||"",x.value=t.scientific||"",D("Loaded matching species: "+(t.common||t.scientific)),F={common:t.common||"",scientific:t.scientific||""},_.disabled=!0):(v.value="",x.value=e,F={common:"",scientific:""},D("No matching species. You may create a new one."),_.disabled=!0)},160));let F={common:"",scientific:""};function J(e){const t=M(o(),e)||{common:"",scientific:""};F={common:t.common||"",scientific:t.scientific||""}}function W(e){return'"'+String(e||"").replace(/"/g,'""')+'"'}return[v,x].forEach(e=>{e&&e.addEventListener("input",()=>{const e=function(){const e=v&&v.value?v.value:"",t=x&&x.value?x.value:"";return e!==(F.common||"")||t!==(F.scientific||"")}();_.disabled=!e})}),_.addEventListener("click",()=>{try{const e=(x.value||"").trim();if(!e)return void D("Scientific name is required for update.",!0);const t=o(),n=M(t,F.scientific);if(!n)return void D("Species not found for update. Use Create new to add.",!0);const s=c(e);if((t||[]).find(e=>c(e.scientific)===s&&e!==n))return void D("Species already exists.",!0);n.common=(v.value||"").trim(),n.scientific=e,i(t),J(e),_.disabled=!0,D("Species updates successfully.")}catch(e){console.error(e),D("Update failed: "+String(e),!0)}}),E.addEventListener("click",()=>{try{const e=(x.value||"").trim();if(!e)return void D("Scientific name is required to create new species.",!0);const t=o();if(M(t,e))return void D("Species with this scientific name already exists.",!0);const n={common:(v.value||"").trim(),scientific:e,group_id:"0"};t.push(n),i(t),J(e),_.disabled=!0,D("Species created successfully.")}catch(e){console.error(e),D("Create failed: "+String(e),!0)}}),w.addEventListener("click",()=>{try{const e=(x.value||"").trim();if(!e)return void D("Scientific name is required to delete species.",!0);let t=o();const n=c(e),s=t.findIndex(e=>c(e.scientific)===n);if(-1===s)return void D("Species not available.",!0);t.splice(s,1),i(t),v.value="",x.value="",J(""),_.disabled=!0,D("Species deleted successfully.")}catch(e){console.error(e),D("Delete failed: "+String(e),!0)}}),A.addEventListener("click",async()=>{try{const t=R.files&&R.files[0];if(!t)return void D("No file selected for bulk upload.",!0);const n=function(e){if(!e)return null;e=e.replace(/\r\n/g,"\n").replace(/\r/g,"\n");const t=e.indexOf("\t")>=0?"\t":(e.indexOf(","),","),n=e.split("\n").map(e=>e.trim()).filter(Boolean);if(!n.length)return null;const o=n.map(e=>{const n=[];let o="",i=!1;for(let c=0;c<e.length;c++){const s=e[c];'"'!==s?i||e.substr(c,t.length)!==t?o+=s:(n.push(o),o="",c+=t.length-1):i&&'"'===e[c+1]?(o+='"',c++):i=!i}return n.push(o),n});return{rows:o,headers:[]}}(await(e=t,new Promise((t,n)=>{const o=new FileReader;o.onload=()=>t(String(o.result)),o.onerror=()=>n(new Error("Read failed")),o.readAsText(e,"utf-8")})));if(!n||!n.rows||0===n.rows.length)return void D("Uploaded file empty or malformed.",!0);const s=n.rows.map(e=>e.slice(0,3)).map(e=>({common:(e[0]||"").trim(),scientific:(e[1]||"").trim(),group_id:(e[2]||"").trim()})).filter(e=>e.common||e.scientific);if(0===s.length)return void D("No usable rows found in upload.",!0);const l=(document.querySelector('input[name="__sp_bulk_mode"]:checked')||{value:"merge"}).value;let a=o();if("replace"===l)a=s.map(e=>({common:e.common||"",scientific:e.scientific||"",group_id:e.group_id||"0"}));else{const e={};a.forEach(t=>{e[c(t.scientific)]=t}),s.forEach(t=>{const n=c(t.scientific||"");n&&e[n]?(e[n].common=t.common||e[n].common,t.group_id&&(e[n].group_id=t.group_id)):a.push({common:t.common||"",scientific:t.scientific||"",group_id:t.group_id||"0"})})}i(a),D("Species updated.")}catch(e){console.error(e),D("Bulk upload failed: "+String(e),!0)}var e}),O.addEventListener("click",()=>{try{const e=o(),t=["common,scientific,group_id"];e.forEach(e=>t.push([W(e.common||""),W(e.scientific||""),W(e.group_id||"")].join(",")));const n=new Blob([t.join("\n")+"\n"],{type:"text/csv;charset=utf-8"}),i=URL.createObjectURL(n),c=document.createElement("a");c.href=i,c.download="species_list.csv",document.body.appendChild(c),c.click(),c.remove(),setTimeout(()=>URL.revokeObjectURL(i),3e3),D("Download ready.")}catch(e){console.error(e),D("Download failed: "+String(e),!0)}}),z.addEventListener("click",()=>{try{const e=o(),t="window.__speciesRecords = "+JSON.stringify(e,null,2)+";\n",n=new Blob([t],{type:"application/javascript;charset=utf-8"}),i=URL.createObjectURL(n),c=document.createElement("a");c.href=i,c.download="species-data.js",document.body.appendChild(c),c.click(),c.remove(),setTimeout(()=>URL.revokeObjectURL(i),3e3),D("species-data.js download ready. Replace your repository file to persist changes.")}catch(e){console.error(e),D("Export failed: "+String(e),!0)}}),l.addEventListener("click",()=>{e.remove()}),document.addEventListener("keydown",function(e){"Escape"===e.key&&document.getElementById("__species_manage_overlay")&&document.getElementById("__species_manage_overlay").remove()}),e}function l(){const e=n(t);if(!e){return void new MutationObserver((e,o)=>{n(t)&&(o.disconnect(),l())}).observe(document.body,{childList:!0,subtree:!0})}e.addEventListener("click",e=>{e.preventDefault(),function(){if(document.getElementById("__species_manage_overlay"))return;const e=s();document.body.appendChild(e)}()})}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",l):l()}();
+// species_manage.js
+// Manage Species modal: search/edit/create/delete single species, bulk upload (merge/replace), download CSV.
+// Persists changes to localStorage key 'species_records' and updates window.__speciesRecords.
+
+(function () {
+  if (window.__speciesManageInit) return;
+  window.__speciesManageInit = true;
+
+  const STORAGE_KEY = 'species_records';
+  const BTN_ID = 'manageSpeciesBtn';
+
+  function q(id) { return document.getElementById(id); }
+
+  function loadRecords() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) { console.warn('species_manage: failed to load from storage', e); }
+    // fall back to in-memory global file data
+    try { return Array.isArray(window.__speciesRecords) ? window.__speciesRecords.slice() : []; } catch (e) { return []; }
+  }
+
+  function saveRecords(arr) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    } catch (e) { console.warn('species_manage: failed to persist to localStorage', e); }
+    try { window.__speciesRecords = Array.isArray(arr) ? arr.slice() : []; } catch (e) {}
+    try { document.dispatchEvent(new CustomEvent('species-updated', { detail: { count: (arr||[]).length } })); } catch (e) {}
+  }
+
+  // Use scientific name as the unique key
+  function normalizeKey(s) { return String(s||'').trim().toLowerCase(); }
+
+  function buildModal() {
+    const overlay = document.createElement('div');
+    overlay.id = '__species_manage_overlay';
+    overlay.setAttribute('role','dialog');
+    overlay.setAttribute('aria-modal','true');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+        overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '2147483650';
+    overlay.style.background = 'rgba(10,10,12,0.6)';
+
+  const card = document.createElement('div');
+  // Make form 50% width (viewport) and 80% height as requested, but remain responsive
+  card.style.width = '50vw';
+  card.style.maxWidth = '96%';
+  card.style.height = '80vh';
+  card.style.maxHeight = '96%';
+  card.style.overflow = 'auto';
+    card.style.background = '#0f0f10';
+    card.style.color = '#fff';
+    card.style.borderRadius = '8px';
+    card.style.padding = '12px';
+    card.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6)';
+    card.style.fontFamily = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial';
+
+    // Title row
+    const titleRow = document.createElement('div');
+    titleRow.style.display = 'flex';
+    titleRow.style.justifyContent = 'space-between';
+    titleRow.style.alignItems = 'center';
+    titleRow.style.marginBottom = '8px';
+    const title = document.createElement('div');
+    title.textContent = 'Manage Species';
+    title.style.fontSize = '16px';
+    title.style.fontWeight = '600';
+    titleRow.appendChild(title);
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = '✕';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.border = '0';
+    closeBtn.style.color = '#fff';
+    closeBtn.style.fontSize = '18px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.setAttribute('aria-label','Close species manager');
+    titleRow.appendChild(closeBtn);
+    card.appendChild(titleRow);
+
+    // Two-column layout: left = search & single-edit, right = bulk upload / download
+    const container = document.createElement('div');
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = '1fr 1fr';
+    container.style.gap = '10px';
+
+    // LEFT: Search + single record editor
+    const left = document.createElement('div');
+
+    // search box
+    const searchWrap = document.createElement('div');
+    searchWrap.style.marginBottom = '8px';
+    const searchLabel = document.createElement('label');
+    searchLabel.textContent = 'Search (common or scientific)';
+    searchLabel.style.fontSize = '12px';
+    searchLabel.style.display = 'block';
+    searchLabel.style.marginBottom = '4px';
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.className = 'meta-input';
+    searchInput.style.width = '100%';
+    searchInput.style.padding = '8px';
+    searchInput.style.borderRadius = '6px';
+    searchInput.style.border = '1px solid rgba(255,255,255,0.06)';
+    searchInput.style.background = '#111';
+    searchInput.style.color = '#fff';
+    searchWrap.appendChild(searchLabel);
+    searchWrap.appendChild(searchInput);
+    left.appendChild(searchWrap);
+
+    // Editable single-row grid (key/common/scientific)
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.style.gap = '8px';
+
+    function labeledInput(id, labelText, placeholder) {
+      const w = document.createElement('div');
+      const lab = document.createElement('label'); lab.textContent = labelText; lab.style.fontSize='12px'; lab.style.display='block'; lab.style.marginBottom='4px';
+      const inp = document.createElement('input'); inp.type='text'; inp.id = id; inp.placeholder = placeholder; inp.style.width='100%'; inp.style.padding='8px'; inp.style.borderRadius='6px'; inp.style.border='1px solid rgba(255,255,255,0.06)'; inp.style.background='#111'; inp.style.color='#fff';
+      w.appendChild(lab); w.appendChild(inp); return w;
+    }
+
+  const commonWrap = labeledInput('__sp_common', 'Common name', 'Common name');
+  const sciWrap = labeledInput('__sp_scientific', 'Scientific name', 'Scientific name');
+    // Arrange: key + common on first row, scientific spans full width below
+    const topRow = document.createElement('div'); topRow.style.display='grid'; topRow.style.gridTemplateColumns='1fr 1fr'; topRow.style.gap='8px'; topRow.appendChild(commonWrap);
+    grid.appendChild(topRow);
+    const sciRow = document.createElement('div'); sciRow.appendChild(sciWrap); grid.appendChild(sciRow);
+
+  left.appendChild(grid);
+
+  const commonInput = commonWrap.querySelector('input');
+  const sciInput = sciWrap.querySelector('input');
+  commonInput.style.width = '100%'; commonInput.style.padding = '10px';
+  sciInput.style.width = '100%'; sciInput.style.padding = '10px';
+
+    // single record action buttons: Update, Create new, Delete
+    const singleActions = document.createElement('div'); singleActions.style.display='flex'; singleActions.style.gap='8px'; singleActions.style.marginTop='8px'; singleActions.style.flexWrap='wrap';
+  const updateBtn = document.createElement('button'); updateBtn.type='button'; updateBtn.textContent='Update'; updateBtn.className='btn'; updateBtn.style.background='#1565c0'; updateBtn.style.border='1px solid rgba(0,0,0,0.15)'; updateBtn.style.color='#fff'; updateBtn.disabled = true;
+  const createBtn = document.createElement('button'); createBtn.type='button'; createBtn.textContent='Create new'; createBtn.className='btn'; createBtn.style.background='#2196F3'; createBtn.style.color='#fff'; createBtn.disabled=false;
+  const deleteBtn = document.createElement('button'); deleteBtn.type='button'; deleteBtn.textContent='Delete'; deleteBtn.className='btn'; deleteBtn.style.background='#b43a3a'; deleteBtn.style.color='#fff'; deleteBtn.disabled=false;
+    singleActions.appendChild(updateBtn); singleActions.appendChild(createBtn); singleActions.appendChild(deleteBtn);
+    left.appendChild(singleActions);
+
+    // quick status area
+    const status = document.createElement('div'); status.id='__sp_manage_status'; status.style.marginTop='8px'; status.style.fontSize='13px'; status.style.color='#cde'; left.appendChild(status);
+
+    // RIGHT: Bulk upload/Download
+    const right = document.createElement('div');
+    // bulk upload label
+    const bulkLabel = document.createElement('label'); bulkLabel.textContent='Bulk upload (CSV/TSV)'; bulkLabel.style.display='block'; bulkLabel.style.fontSize='12px'; bulkLabel.style.marginBottom='6px';
+  const fileInput = document.createElement('input'); fileInput.type='file'; fileInput.accept='.csv,.txt,.tsv,text/csv,text/tab-separated-values,text/plain'; fileInput.id='__sp_bulk_file'; fileInput.style.display='block';
+    right.appendChild(bulkLabel); right.appendChild(fileInput);
+
+    // replace/merge option
+    const optWrap = document.createElement('div'); optWrap.style.marginTop='8px'; optWrap.style.display='flex'; optWrap.style.gap='8px';
+    const rLabel = document.createElement('label'); const rRadio = document.createElement('input'); rRadio.type='radio'; rRadio.name='__sp_bulk_mode'; rRadio.value='merge'; rRadio.checked = true; rLabel.appendChild(rRadio); rLabel.appendChild(document.createTextNode(' Merge (update existing by key, add new)'));
+    const pLabel = document.createElement('label'); const pRadio = document.createElement('input'); pRadio.type='radio'; pRadio.name='__sp_bulk_mode'; pRadio.value='replace'; pLabel.appendChild(pRadio); pLabel.appendChild(document.createTextNode(' Replace (replace all with uploaded)'));
+    optWrap.appendChild(rLabel); optWrap.appendChild(pLabel); right.appendChild(optWrap);
+
+  const bulkActions = document.createElement('div'); bulkActions.style.display='flex'; bulkActions.style.gap='8px'; bulkActions.style.marginTop='8px';
+  const bulkBtn = document.createElement('button'); bulkBtn.type='button'; bulkBtn.textContent='Bulk upload'; bulkBtn.className='btn'; bulkBtn.style.background='#2a2f36'; bulkBtn.style.color='#fff';
+  const downloadBtn = document.createElement('button'); downloadBtn.type='button'; downloadBtn.textContent='Download species'; downloadBtn.className='btn'; downloadBtn.style.background='#2196F3'; downloadBtn.style.color='#fff';
+  const exportJsBtn = document.createElement('button'); exportJsBtn.type='button'; exportJsBtn.textContent='Export to species-data.js'; exportJsBtn.className='btn'; exportJsBtn.style.background='#0b66ff'; exportJsBtn.style.color='#fff';
+  bulkActions.appendChild(bulkBtn); bulkActions.appendChild(downloadBtn); bulkActions.appendChild(exportJsBtn); right.appendChild(bulkActions);
+
+    // small guidance
+    const help = document.createElement('div'); help.style.marginTop='10px'; help.style.fontSize='12px'; help.style.color='#cbd'; help.textContent = 'Upload format: key,common,scientific (header optional). Keys are case-insensitive and must be unique.';
+    right.appendChild(help);
+
+    container.appendChild(left); container.appendChild(right);
+    card.appendChild(container);
+    overlay.appendChild(card);
+
+    // wiring helpers
+  function setStatus(msg, isErr) { status.textContent = msg || ''; status.style.color = isErr ? '#fbb' : '#bfe'; }
+
+    // Find record by scientific name (our new key)
+    function findRecordBySci(records, sciName) { const nk = normalizeKey(sciName); return (records||[]).find(r => normalizeKey(r.scientific) === nk); }
+
+    // when search input changes, populate fields with first matched record
+    function onSearchChange() {
+      const qv = (searchInput.value || '').trim().toLowerCase();
+      if (!qv) { commonInput.value=''; sciInput.value=''; updateBtn.disabled = true; lastLoaded = { common:'', scientific:'' }; return; }
+      const records = loadRecords();
+      const found = records.find(r => (r.scientific && r.scientific.toLowerCase().includes(qv)) || (r.common && r.common.toLowerCase().includes(qv)));
+      if (found) {
+        commonInput.value = found.common || '';
+        sciInput.value = found.scientific || '';
+        setStatus('Loaded matching species: ' + (found.common || found.scientific));
+        lastLoaded = { common: found.common||'', scientific: found.scientific||'' };
+        updateBtn.disabled = true; // no changes yet
+      } else {
+        // clear fields but allow create
+        commonInput.value = '';
+        sciInput.value = qv; // Assume search was for scientific name if not found
+        lastLoaded = { common: '', scientific: '' };
+        setStatus('No matching species. You may create a new one.');
+        updateBtn.disabled = true;
+      }
+    }
+
+    searchInput.addEventListener('input', debounce(onSearchChange, 160));
+
+    // enable update button when any field changes relative to loaded record
+    let lastLoaded = { common: '', scientific: '' };
+    function recordFieldsChanged() {
+      const c = (commonInput && commonInput.value) ? commonInput.value : '';
+      const s = (sciInput && sciInput.value) ? sciInput.value : '';
+      return c !== (lastLoaded.common||'') || s !== (lastLoaded.scientific||'');
+    }
+
+    function refreshLastLoadedFromSci(sciName) {
+      const records = loadRecords();
+      const rec = findRecordBySci(records, sciName) || { common: '', scientific: '' };
+      lastLoaded = { common: rec.common || '', scientific: rec.scientific || '' };
+    }
+
+    [commonInput, sciInput].forEach(el => {
+      if (!el) return;
+      el.addEventListener('input', () => {
+        // update button state
+        const changed = recordFieldsChanged();
+        updateBtn.disabled = !changed;
+      });
+    });
+
+    // Helper: apply update
+    updateBtn.addEventListener('click', () => {
+      try {
+        const s = (sciInput.value || '').trim();
+        if (!s) { setStatus('Scientific name is required for update.', true); return; }
+        const records = loadRecords();
+        const existing = findRecordBySci(records, lastLoaded.scientific);
+        if (!existing) { setStatus('Species not found for update. Use Create new to add.', true); return; }
+        // check new scientific name collision
+        const newSci = normalizeKey(s);
+        const other = (records||[]).find(r => normalizeKey(r.scientific) === newSci && r !== existing);
+        if (other) { setStatus('Species already exists.', true); return; }
+        existing.common = (commonInput.value || '').trim();
+        existing.scientific = s;
+        saveRecords(records);
+        refreshLastLoadedFromSci(s);
+        updateBtn.disabled = true;
+        setStatus('Species updates successfully.');
+      } catch (e) { console.error(e); setStatus('Update failed: ' + String(e), true); }
+    });
+
+    // Create new
+    createBtn.addEventListener('click', () => {
+      try {
+        const s = (sciInput.value || '').trim();
+        if (!s) { setStatus('Scientific name is required to create new species.', true); return; }
+        const records = loadRecords();
+        if (findRecordBySci(records, s)) { setStatus('Species with this scientific name already exists.', true); return; }
+        const newRec = { common: (commonInput.value || '').trim(), scientific: s, group_id: '0' };
+        records.push(newRec);
+        saveRecords(records);
+        refreshLastLoadedFromSci(s);
+        updateBtn.disabled = true;
+        setStatus('Species created successfully.');
+      } catch (e) { console.error(e); setStatus('Create failed: ' + String(e), true); }
+    });
+
+    // Delete
+    deleteBtn.addEventListener('click', () => {
+      try {
+        const s = (sciInput.value || '').trim();
+        if (!s) { setStatus('Scientific name is required to delete species.', true); return; }
+        let records = loadRecords();
+        const ns = normalizeKey(s);
+        const idx = records.findIndex(r => normalizeKey(r.scientific) === ns);
+        if (idx === -1) { setStatus('Species not available.', true); return; }
+        records.splice(idx,1);
+        saveRecords(records);
+        // clear fields
+        commonInput.value=''; sciInput.value='';
+        refreshLastLoadedFromSci('');
+        updateBtn.disabled = true;
+        setStatus('Species deleted successfully.');
+      } catch (e) { console.error(e); setStatus('Delete failed: ' + String(e), true); }
+    });
+
+    // Bulk upload
+    bulkBtn.addEventListener('click', async () => {
+      try {
+        const f = fileInput.files && fileInput.files[0];
+        if (!f) { setStatus('No file selected for bulk upload.', true); return; }
+        const text = await readFileAsText(f);
+        const parsed = parseTableText(text);
+        if (!parsed || !parsed.rows || parsed.rows.length === 0) { setStatus('Uploaded file empty or malformed.', true); return; }
+        // Expect columns to be common, scientific, group_id or headers
+        const rows = parsed.rows.map(r => r.slice(0,3));
+        const mapped = rows.map(r => ({ common: (r[0]||'').trim(), scientific: (r[1]||'').trim(), group_id: (r[2]||'').trim() })).filter(rr => (rr.common || rr.scientific));
+        if (mapped.length === 0) { setStatus('No usable rows found in upload.', true); return; }
+        const mode = (document.querySelector('input[name="__sp_bulk_mode"]:checked') || { value: 'merge' }).value;
+        let records = loadRecords();
+        if (mode === 'replace') {
+          // replace all with mapped, but normalize keys
+          records = mapped.map(m => ({ common: m.common || '', scientific: m.scientific || '', group_id: m.group_id || '0' }));
+        } else {
+          // merge: update by scientific name (if present), else add
+          const bySci = {};
+          records.forEach(r => { bySci[normalizeKey(r.scientific)] = r; });
+          mapped.forEach(m => {
+            const ns = normalizeKey(m.scientific || '');
+            if (ns && bySci[ns]) {
+              bySci[ns].common = m.common || bySci[ns].common;
+              if (m.group_id) bySci[ns].group_id = m.group_id;
+            } else {
+              records.push({ common: m.common || '', scientific: m.scientific || '', group_id: m.group_id || '0' });
+            }
+          });
+        }
+  saveRecords(records);
+  setStatus('Species updated.');
+      } catch (e) { console.error(e); setStatus('Bulk upload failed: ' + String(e), true); }
+    });
+
+    // Download CSV
+  downloadBtn.addEventListener('click', () => {
+      try {
+        const records = loadRecords();
+        const lines = ['common,scientific,group_id'];
+        records.forEach(r => lines.push([escapeCsv(r.common || ''), escapeCsv(r.scientific || ''), escapeCsv(r.group_id || '')].join(',')));
+        const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'species_list.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 3000);
+        setStatus('Download ready.');
+      } catch (e) { console.error(e); setStatus('Download failed: ' + String(e), true); }
+    });
+
+    // Export species-data.js (download a JS file that sets window.__speciesRecords)
+    exportJsBtn.addEventListener('click', () => {
+      try {
+        const records = loadRecords();
+        const content = 'window.__speciesRecords = ' + JSON.stringify(records, null, 2) + ';\n';
+        const blob = new Blob([content], { type: 'application/javascript;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'species-data.js'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 3000);
+        setStatus('species-data.js download ready. Replace your repository file to persist changes.');
+      } catch (e) { console.error(e); setStatus('Export failed: ' + String(e), true); }
+    });
+
+    // Helpers
+    function escapeCsv(s) { return '"' + String(s||'').replace(/"/g,'""') + '"'; }
+
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = () => reject(new Error('Read failed')); r.readAsText(file, 'utf-8');
+      });
+    }
+
+    function parseTableText(text) {
+      if (!text) return null;
+      text = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+      const sep = text.indexOf('\t') >= 0 ? '\t' : (text.indexOf(',') >= 0 ? ',' : ',');
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      if (!lines.length) return null;
+      const rows = lines.map(l => {
+        // naive CSV/TSV split that handles simple quoted values
+        const out = [];
+        let cur = '', inQ = false;
+        for (let i=0;i<l.length;i++){
+          const ch = l[i];
+          if (ch === '"') { if (inQ && l[i+1] === '"') { cur += '"'; i++; } else { inQ = !inQ; } continue; }
+          if (!inQ && l.substr(i, sep.length) === sep) { out.push(cur); cur = ''; i += sep.length-1; continue; }
+          cur += ch;
+        }
+        out.push(cur);
+        return out;
+      });
+      // if first row looks like header (non-alphanumeric in first cell or contains letters), keep rows as-is but caller will slice
+      return { rows: rows, headers: [] };
+    }
+
+    function debounce(fn, ms) { let t = null; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), ms); }; }
+
+    // close
+    closeBtn.addEventListener('click', () => { overlay.remove(); });
+    document.addEventListener('keydown', function escHandler(e){ if (e.key === 'Escape') { if (document.getElementById('__species_manage_overlay')) document.getElementById('__species_manage_overlay').remove(); } });
+
+    return overlay;
+  }
+
+  function openModal() {
+    const existing = document.getElementById('__species_manage_overlay');
+    if (existing) return;
+    const modal = buildModal();
+    document.body.appendChild(modal);
+  }
+
+  // wire button
+  function init() {
+    const btn = q(BTN_ID);
+    if (!btn) {
+      // wait for button if DOM not yet present
+      const mo = new MutationObserver((muts, obs) => { if (q(BTN_ID)) { obs.disconnect(); init(); } });
+      mo.observe(document.body, { childList:true, subtree:true });
+      return;
+    }
+    btn.addEventListener('click', (ev) => { ev.preventDefault(); openModal(); });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+})();

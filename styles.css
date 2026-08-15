@@ -452,3 +452,22 @@ input[type="range"] {
 
 /* Utility */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+@keyframes pulseRedGlow {
+  0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.species-warning-glow {
+  animation: pulseRedGlow 2s infinite;
+  border-radius: 4px;
+}
+
+.species-warning-glow #speciesKwInput {
+  background-color: rgba(220, 53, 69, 0.15) !important;
+}
+
+.species-warning-glow #speciesKwInput::placeholder {
+  color: rgba(255, 120, 120, 0.8) !important;
+}
+

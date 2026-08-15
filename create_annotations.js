@@ -1,1 +1,1408 @@
-!function(){const t=12,e="rgba(0,150,255,0.12)",n="rgba(0,150,255,0.95)",o=[6,4],i=document.getElementById("viewportWrapper"),a=document.getElementById("scrollArea"),r=document.getElementById("spectrogramCanvas");if(!i||!a||!r)return;let c=document.getElementById("annotationOverlay");c||(c=document.createElement("canvas"),c.id="annotationOverlay",c.style.position="absolute",c.style.pointerEvents="none",c.style.zIndex=70,i.appendChild(c));const l=c.getContext("2d",{alpha:!0});let s=document.getElementById("annotationSelectionOverlay");s||(s=document.createElement("canvas"),s.id="annotationSelectionOverlay",s.style.position="absolute",s.style.pointerEvents="none",s.style.zIndex=72,i.appendChild(s));const d=s.getContext("2d",{alpha:!0});let h,g=null,p="create",m=null,u=null,w={common:"",scientific:""};window.addEventListener("species-select",t=>{w.common=t.detail&&t.detail.common||"",w.scientific=t.detail&&t.detail.scientific||""}),window.addEventListener("species-select-cleared",()=>{w.common="",w.scientific=""});try{window.__applyPendingAnnotationRestore=function(){try{const t=window.__pendingAnnotationRestore;if(!t)return;if(!(window.annotationGrid&&"function"==typeof window.annotationGrid.replaceData))return;let e=Array.isArray(t.parsed)?t.parsed:null;if(!e)try{e=JSON.parse(t.raw||"[]")}catch(t){e=[]}if(!Array.isArray(e)||0===e.length)return void console.info("[backup] nothing to restore");if(globalThis._annotations&&"function"==typeof globalThis._annotations.replaceAll)try{globalThis._annotations.replaceAll(e,"restore-backup-apply")}catch(t){console.warn("[backup] _annotations.replaceAll failed, direct replace fallback",t);try{window.annotationGrid.replaceData(e)}catch(t){}}else try{window.annotationGrid.replaceData(e)}catch(t){return void console.error("[backup] replaceData failed",t)}try{console.info("[backup] applied to grid:",e.length,"rows")}catch(t){}try{window.__pendingAnnotationRestore=null}catch(t){}try{window.__restorePumpTimer&&(clearInterval(window.__restorePumpTimer),window.__restorePumpTimer=null)}catch(t){}}catch(t){}}}catch(t){}const f=document.getElementById("createEditToggle");function y(){try{if(f&&f.dataset&&f.dataset.mode)return f.dataset.mode}catch(t){}return null}if(f){f.addEventListener("mode-change",function(t){const e=t&&t.detail&&t.detail.mode?t.detail.mode:y();e&&e!==p&&(p=e)},{passive:!0});const t=y();t&&(p=t)}function b(){try{if(window.annotationGrid&&"function"==typeof window.annotationGrid.getData){const t=window.annotationGrid.getData();if(Array.isArray(t))return t.slice()}}catch(t){}return[]}function _(){const e=Math.max(1,a.clientWidth),n=Math.max(1,globalThis._spectroImageHeight||r.clientHeight-t-44||100),o="number"==typeof globalThis._spectroAxisLeft?globalThis._spectroAxisLeft:70;c.style.left=o+"px",c.style.top="12px",c.style.width=e+"px",c.style.height=n+"px";const i=window.devicePixelRatio||1;c.width=Math.round(e*i),c.height=Math.round(n*i),l.setTransform(i,0,0,i,0,0),s.style.left=o+"px",s.style.top="12px",s.style.width=e+"px",s.style.height=n+"px",s.width=Math.round(e*i),s.height=Math.round(n*i),d.setTransform(i,0,0,i,0,0),x(),v()}function T(e,n){const o=e-a.getBoundingClientRect().left,c=Math.round(a.scrollLeft||0)+o;let l=1;try{const t=globalThis._spectroDuration,e=globalThis._spectroImageWidth;isFinite(t)&&t>0&&isFinite(e)&&e>0?l=e/t:globalThis._spectroMap&&"function"==typeof globalThis._spectroMap.pxPerSec?l=globalThis._spectroMap.pxPerSec():globalThis._spectroPxPerSec?l=globalThis._spectroPxPerSec:globalThis._spectroPxPerFrame&&globalThis._spectroFramesPerSec&&(l=globalThis._spectroPxPerFrame*globalThis._spectroFramesPerSec)}catch(t){l=1}const s=Math.max(0,c/Math.max(1,l)),d=n-i.getBoundingClientRect().top,h="number"==typeof globalThis._spectroImageHeight&&globalThis._spectroImageHeight>0?globalThis._spectroImageHeight:Math.max(1,(r.clientHeight||0)-t-44),g="number"==typeof globalThis._spectroYMax&&globalThis._spectroYMax>0?globalThis._spectroYMax:globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050,p="number"==typeof globalThis._spectroYMin?globalThis._spectroYMin:0,m=d-t,u=Math.max(0,Math.min(1,m/Math.max(1,h-1))),w={timeSec:s,freqHz:Math.max(p,Math.min(g,g-u*(g-p))),globalX:c,localX:o,localY:d,pxPerSec:l};try{window.DEBUG_ANNOTATION_TIME&&window.DEBUG_ANNOTATION_TIME>=2&&console.log("[annot][map]",w)}catch(t){}return w}function S(){l.clearRect(0,0,c.width/(window.devicePixelRatio||1),c.height/(window.devicePixelRatio||1))}function M(t,i,a,r,c={}){const{fill:s=e,stroke:d=n,dashed:h=!1}=c,g=Math.min(t,a),p=Math.min(i,r),m=Math.abs(a-t),u=Math.abs(r-i);l.save(),h?l.setLineDash(o):l.setLineDash([]),l.fillStyle=s,l.strokeStyle=d,l.lineWidth=1.5,l.fillRect(g,p,m,u),l.strokeRect(g+.5,p+.5,m,u),l.restore()}function x(){S();let t=1;try{const e=globalThis._spectroDuration,n=globalThis._spectroImageWidth;isFinite(e)&&e>0&&isFinite(n)&&n>0?t=n/e:globalThis._spectroMap&&"function"==typeof globalThis._spectroMap.pxPerSec?t=globalThis._spectroMap.pxPerSec():globalThis._spectroPxPerSec&&(t=globalThis._spectroPxPerSec)}catch(e){t=1}const e=globalThis._spectroImageHeight||c.clientHeight||100,n=globalThis._spectroYMax||(globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050),o=globalThis._spectroYMin||0,i="number"==typeof globalThis._spectroDuration?globalThis._spectroDuration:1/0;let r=null;try{if(window.annotationGrid)if("function"==typeof window.annotationGrid.getSelectedData){const t=window.annotationGrid.getSelectedData()||[];r=new Set(t.map(t=>t&&t.id))}else if("function"==typeof window.annotationGrid.getSelectedRows){const t=window.annotationGrid.getSelectedRows()||[],e=[];t.forEach(t=>{try{const n=t.getData&&t.getData();n&&void 0!==n.id&&e.push(n.id)}catch(t){}}),r=new Set(e)}}catch(t){r=null}const l=b(),d=[{fill:"rgba(0,150,255,0.12)",stroke:"rgba(0,150,255,0.95)"},{fill:"rgba(76,175,80,0.15)",stroke:"rgba(76,175,80,0.95)"},{fill:"rgba(156,39,176,0.15)",stroke:"rgba(156,39,176,0.95)"},{fill:"rgba(255,152,0,0.15)",stroke:"rgba(255,152,0,0.95)"},{fill:"rgba(244,67,54,0.15)",stroke:"rgba(244,67,54,0.95)"}];if(!window.__annotationColorsCached){window.__recomputeAnnotationColors&&window.__recomputeAnnotationColors(l,i)}const vStart=Math.max(0,(a.scrollLeft||0)/t-0.5),vEnd=((a.scrollLeft||0)+Math.max(a.clientWidth||0,c.clientWidth||0))/t+0.5;if(l.forEach(r=>{const l=Number(void 0!==r.beginTime?r.beginTime:0)||0,h=Number(void 0!==r.endTime?r.endTime:l)||l,g=Number(void 0!==r.lowFreq?r.lowFreq:0)||0,p=Number(void 0!==r.highFreq?r.highFreq:g)||g,m=Math.max(0,Math.min(l,i)),u=Math.max(m,Math.min(h,i));if(u<vStart||m>vEnd)return;let f=window.__annotationColorMap?window.__annotationColorMap.get(String(r.id)):0;if(f===undefined)f=0;const y=d[f%d.length],b=m*t-Math.round(a.scrollLeft||0),_=u*t-Math.round(a.scrollLeft||0),T=(n-p)/Math.max(1,n-o),S=(n-g)/Math.max(1,n-o),x=T*e,v=S*e;try{window.DEBUG_ANNOTATION_TIME&&window.DEBUG_ANNOTATION_TIME>=1&&console.log("[annot][draw]",{id:r.id,begin:l,end:h,beginClamped:m,endClamped:u,pxPerSec:t,scrollLeft:Math.round(a.scrollLeft||0),x1:b,x2:_,overlayWidth:c.width/(window.devicePixelRatio||1)})}catch(t){}M(b,x,_,v,{fill:y.fill,stroke:y.stroke,dashed:!1})}),g){const r=g.pxPerSec||t,c=Math.min(g.currentTime,i),l=Math.min(g.startTime,i),s=Math.min(l,c)*r-Math.round(a.scrollLeft||0),d=Math.max(l,c)*r-Math.round(a.scrollLeft||0),h=Math.min(g.startFreq,g.currentFreq),p=Math.max(g.startFreq,g.currentFreq),m=(n-p)/Math.max(1,n-o),u=(n-h)/Math.max(1,n-o);M(s,m*e,d,u*e,{fill:"rgba(255,165,0,0.18)",stroke:"rgba(255,165,0,0.95)",dashed:!0})}}function v(t){d.clearRect(0,0,s.width/(window.devicePixelRatio||1),s.height/(window.devicePixelRatio||1));let e=[];try{if(Array.isArray(t)&&t.length){const n=b(),o=new Set(t.map(String));e=n.filter(t=>o.has(String(t.id)))}else if(window.annotationGrid)if("function"==typeof window.annotationGrid.getSelectedData)e=window.annotationGrid.getSelectedData();else if("function"==typeof window.annotationGrid.getSelectedRows){(window.annotationGrid.getSelectedRows()||[]).forEach(t=>{try{const n=t.getData&&t.getData();n&&e.push(n)}catch(t){}})}}catch(t){e=[]}if(!Array.isArray(e)||!e.length)return;const n=globalThis._spectroMap&&"function"==typeof globalThis._spectroMap.pxPerSec?globalThis._spectroMap.pxPerSec():globalThis._spectroPxPerSec||1,o=globalThis._spectroImageHeight||c.clientHeight||100,i=globalThis._spectroYMax||(globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050),r=globalThis._spectroYMin||0,l="number"==typeof globalThis._spectroDuration?globalThis._spectroDuration:1/0;e.forEach(t=>{try{const e=Number(t.beginTime),c=Number(t.endTime),s=Number(t.lowFreq),h=Number(t.highFreq);if(!(isFinite(e)&&isFinite(c)&&isFinite(s)&&isFinite(h)))return;const g=Math.max(0,Math.min(e,l)),p=Math.max(g,Math.min(c,l)),m=g*n-Math.round(a.scrollLeft||0),u=p*n-Math.round(a.scrollLeft||0),w=(i-h)/Math.max(1,i-r),f=(i-s)/Math.max(1,i-r);!function(t,e,n,o){const i=Math.min(t,n),a=Math.min(e,o),r=Math.abs(n-t),c=Math.abs(o-e);d.save(),d.setLineDash([]),d.fillStyle="rgba(255,255,0,0.28)",d.strokeStyle="rgba(255,235,59,0.95)",d.lineWidth=2.25,d.shadowColor="rgba(255,235,59,0.8)",d.shadowBlur=8,d.fillRect(i,a,r,c),d.strokeRect(i+.5,a+.5,r,c),d.restore()}(m,w*o,u,f*o)}catch(t){}});try{console.debug("[selectionOverlay] drawn selected ids:",e.map(t=>t.id))}catch(t){}}function E(){try{const n=window.annotationGrid;if(!n||"function"!=typeof n.on)return;if(n.__overlayRenderHooked)return;try{n.hideColumn("id")}catch(l){}n.on("tableBuilt",()=>{try{n.hideColumn("id")}catch(t){}});const o=()=>{try{window.__recomputeAnnotationColors&&window.__recomputeAnnotationColors();}catch(t){}try{x()}catch(t){}try{v()}catch(t){}},i="annotations_backup::",a="annotations_backup::meta::",r="annotations_backup::tmp::";function t(){try{if(!window.annotationGrid||"function"!=typeof window.annotationGrid.getData)return;const t=window.annotationGrid.getData()||[],e=function(){try{const t=document.getElementById("file"),e=t&&t.files&&t.files[0];if(e)return`${e.name}|${e.size||0}|${e.lastModified||0}`}catch(t){}return"nofile|0|0"}(),n=r+e,o=i+e,c=a+e;if(!Array.isArray(t)||0===t.length){try{localStorage.removeItem(o)}catch(t){}try{localStorage.removeItem(n)}catch(t){}try{localStorage.removeItem(c)}catch(t){}return}const l=JSON.stringify(t);if(l&&l.length>4194304)return void console.warn("[backup] skipped: too large");try{localStorage.setItem(n,l)}catch(t){return}try{JSON.parse(localStorage.getItem(n)||"[]")}catch(t){try{localStorage.removeItem(n)}catch(t){}return}try{localStorage.setItem(o,l)}catch(t){}try{localStorage.setItem(c,JSON.stringify({ts:Date.now(),count:t.length}))}catch(t){}try{localStorage.removeItem(n)}catch(t){}}catch(t){}}let c=null;function e(){try{c&&clearTimeout(c),c=setTimeout(t,1200)}catch(t){}}n.on("dataChanged",o),n.on("dataLoaded",o),n.on("cellEdited",function(){try{o()}catch(t){}e()});try{n.on("cellEditing",function(){try{window.annotationUndo&&window.annotationUndo.saveState()}catch(t){}})}catch(s){}n.on("rowAdded",function(){try{o()}catch(t){}e()}),n.on("rowUpdated",function(){try{o()}catch(t){}e()}),n.on("rowDeleted",function(){try{o()}catch(t){}e()}),n.on("rowSelectionChanged",function(){try{v()}catch(t){}}),n.on("dataChanged",function(){e()});try{n.on&&n.on("cellEdited",function(t){try{const e=t&&t.getField?t:arguments&&arguments[0]?arguments[0]:null;if(!e)return;if("species"!==("function"==typeof e.getField?e.getField():null))return;const n="function"==typeof e.getValue?String(e.getValue()||"").trim():"";let o="";try{const t=document.getElementById("selectedSpeciesKey"),e=t?String(t.value||"").trim():"",i=Array.isArray(window.__speciesRecords)?window.__speciesRecords:[];if(e){const t=i.find(t=>String(t.key||"").trim()===e);o=t&&t.scientific||""}else if(n){const t=i.find(t=>String(t.common||"").trim()===n);o=t&&t.scientific||""}}catch(t){o=""}try{const t="function"==typeof e.getRow?e.getRow():null;if(t&&"function"==typeof t.update)t.update({scientificName:o});else if(window.annotationGrid&&"function"==typeof window.annotationGrid.updateRow){const t="function"==typeof e.getRow&&e.getRow()&&"function"==typeof e.getRow().getData?e.getRow().getData():null;t&&void 0!==t.id&&window.annotationGrid.updateRow(t.id,{scientificName:o})}try{window.dispatchEvent(new CustomEvent("annotations-changed",{detail:{reason:"species-cell-edited"}}))}catch(t){}}catch(t){}}catch(t){}})}catch(d){}n.__overlayRenderHooked=!0}catch(h){}}function I(){g=null,x()}function P(){try{if(A&&void 0!==h&&r&&r.releasePointerCapture)try{r.releasePointerCapture(h)}catch(t){}}catch(t){}A=!1,g=null,x();const t=document.getElementById("createPreviewLayer");t&&t.remove();try{h=void 0}catch(t){}}window.__cancelPendingCreate=P,window.addEventListener("cancel-pending-create",t=>{P()},!1);let A=!1;function D(){return y()||p}function G(t){if("create"===D()&&"Escape"===t.key){g&&(t.preventDefault(),I());const e=document.getElementById("createEditToggle");if(e)e.dispatchEvent(new CustomEvent("mode-change",{detail:{mode:"edit"},bubbles:!0}));else{const t=document.getElementById("toggleEdit")||document.querySelector('button[title="Edit"]')||document.querySelector("#annoEditBtn");t&&t.click()}}}r.addEventListener("pointerdown",function(e){if("create"!==D())return;if(0!==e.button)return;const n=i.getBoundingClientRect(),o=e.clientY-n.top,a=globalThis._spectroImageHeight||r.clientHeight-t-44;if(o<t||o>t+a)return;const c=T(e.clientX,e.clientY),l=globalThis._spectroOriginalNyquist||(globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050);if(c.freqHz>l)return;A=!0,h=e.pointerId;let s=!1;try{s="temporal"===JSON.parse(localStorage.getItem("spectrolipi.settings.v1")||"{}").annotationMode}catch(t){}g={startTime:c.timeSec,startFreq:s?l:c.freqHz,currentTime:c.timeSec,currentFreq:s?0:c.freqHz,pxPerSec:c.pxPerSec,isTemporal:s};try{e.target.setPointerCapture&&e.target.setPointerCapture(e.pointerId)}catch(t){}x()}),window.addEventListener("pointermove",function(t){if("create"!==D())return;if(!A||!g)return;let e=T(t.clientX,t.clientY);const n="number"==typeof globalThis._spectroDuration?globalThis._spectroDuration:1/0;g.currentTime=Math.min(e.timeSec,n),g.isTemporal||(g.currentFreq=e.freqHz),g.pxPerSec=e.pxPerSec;try{const o="number"==typeof globalThis._spectroImageWidth?globalThis._spectroImageWidth:0,i=Math.max(1,a.clientWidth||0);if(o>i){const r=a.getBoundingClientRect(),c=Math.max(16,Math.min(64,Math.round(.05*i))),l=Math.max(0,o-i),s=Math.max(0,Math.min(l,Math.round(a.scrollLeft||0)));let d=s;if(t.clientX>=r.right-c){const e=Math.max(0,t.clientX-(r.right-c)),n=Math.max(1,Math.round(e/c*24));d=Math.min(l,s+n)}else if(t.clientX<=r.left+c){const e=Math.max(0,r.left+c-t.clientX),n=Math.max(1,Math.round(e/c*24));d=Math.max(0,s-n)}d!==s&&(a.scrollLeft=d,e=T(t.clientX,t.clientY),g.currentTime=Math.min(e.timeSec,n),g.isTemporal||(g.currentFreq=e.freqHz),g.pxPerSec=e.pxPerSec)}}catch(t){}try{window.DEBUG_ANNOTATION_TIME&&window.DEBUG_ANNOTATION_TIME>=3&&console.log("[annot][drag]",{start:g.startTime,cur:g.currentTime,duration:n})}catch(t){}x();try{window.__updateSimpleTimeDebug&&window.__updateSimpleTimeDebug("[drag]")}catch(t){}}),window.addEventListener("pointerup",function(t){if("create"===D()&&A){A=!1;try{t.target.releasePointerCapture&&t.target.releasePointerCapture(t.pointerId)}catch(t){}h=void 0;try{!function(){if(!g)return;const t=Math.min(g.startTime,g.currentTime);let e=Math.max(g.startTime,g.currentTime),n=Math.min(g.startFreq,g.currentFreq),o=Math.max(g.startFreq,g.currentFreq);const i=globalThis._spectroOriginalNyquist||(globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050);if(n=Math.max(0,Math.min(i,n)),o=Math.max(0,Math.min(i,o)),!(t<e&&n<o))return g=null,void x();const a="number"==typeof globalThis._spectroDuration?globalThis._spectroDuration:1/0;e>a&&(e=a),t>=e&&(e=Math.min(a,t+.01));let r=w.common,c=w.scientific;if(!r)try{const t=document.getElementById("selectedSpeciesKey"),e=t?String(t.value||"").trim():"",n=Array.isArray(window.__speciesRecords)?window.__speciesRecords:[];if(e){const t=n.find(t=>String(t.scientific||"").trim().toLowerCase()===e.toLowerCase());t&&(r=t.common||"",c=t.scientific||"")}if(!r){const t=document.querySelector("#speciesResult");if(t&&(r=t.dataset.common||"",c=t.dataset.scientific||"",!r&&t.textContent)){const e=String(t.textContent).trim(),o=n.find(t=>t.scientific===e||t.common===e);o&&(r=o.common||"",c=o.scientific||"")}}}catch(t){}if(!c){try{r?window.alert("scientific name not found"):window.alert('Please select species first. If species is not known then select common name: "Identity unknown" or scientific name: "Mystery mystery".')}catch(t){}return void I()}const l={beginTime:t,endTime:e,lowFreq:n,highFreq:o,species:r,scientificName:c,needsMetadata:!c,notes:""};try{try{window.annotationUndo&&window.annotationUndo.saveState()}catch(t){}const t=globalThis._annotations.add(l,"create");if(t)try{m=t.id}catch(t){}}catch(t){try{window.alert("Failed to add annotation to grid. Annotation not saved.")}catch(t){}}g=null,x();try{window.__updateSimpleTimeDebug&&window.__updateSimpleTimeDebug("[commit]")}catch(t){}}()}catch(t){}x()}}),r.addEventListener("contextmenu",function(t){if("create"!==D())return;t.preventDefault(),t.stopPropagation(),g&&I();const e=document.getElementById("createEditToggle");if(e)e.dispatchEvent(new CustomEvent("mode-change",{detail:{mode:"edit"},bubbles:!0}));else{const t=document.getElementById("toggleEdit")||document.querySelector('button[title="Edit"]')||document.querySelector("#annoEditBtn");t&&t.click()}}),r.tabIndex=r.tabIndex||0,r.addEventListener("keydown",G),window.addEventListener("keydown",G),a.addEventListener("scroll",()=>{x(),v()}),window.addEventListener("resize",()=>{_(),v()}),window.addEventListener("annotations-changed",()=>{window.__recomputeAnnotationColors&&window.__recomputeAnnotationColors();x(),v()},{passive:!0}),window.addEventListener("spectrogram-generated",()=>{try{_()}catch(t){}try{requestAnimationFrame(()=>{try{x(),v()}catch(t){}})}catch(t){try{setTimeout(()=>{try{x(),v()}catch(t){}},20)}catch(t){}}},{passive:!0});try{window.__recomputeAnnotationColors=function(lArr, dur){const l=lArr||b();const i="number"==typeof dur?dur:("number"==typeof globalThis._spectroDuration?globalThis._spectroDuration:1/0);const s=[];l.forEach(r=>{const l_time=Number(void 0!==r.beginTime?r.beginTime:0)||0,h_time=Number(void 0!==r.endTime?r.endTime:l_time)||l_time,g_freq=Number(void 0!==r.lowFreq?r.lowFreq:0)||0,p_freq=Number(void 0!==r.highFreq?r.highFreq:g_freq)||g_freq,m=Math.max(0,Math.min(l_time,i)),u=Math.max(m,Math.min(h_time,i)),w=new Set;for(const t of s){const e=Math.max(0,Math.min(u,t.endClamped)-Math.max(m,t.beginClamped)),n=Math.max(0,Math.min(p_freq,t.high)-Math.max(g_freq,t.low));e>0&&n>0&&w.add(t.colorIndex)}let f=0;for(;w.has(f);)f++;s.push({beginClamped:m,endClamped:u,low:g_freq,high:p_freq,colorIndex:f});window.__annotationColorMap=window.__annotationColorMap||new Map();window.__annotationColorMap.set(String(r.id),f);});window.__annotationColorsCached=true;},window.renderAllAnnotations=x,window.resizeAnnotationOverlay=_,window.renderSelectionOverlay=v,window.__annDebugViewport=function(){try{const t=Math.max(1,a&&a.clientWidth?a.clientWidth:0);let e=1;const n=globalThis._spectroDuration,o=globalThis._spectroImageWidth;isFinite(n)&&n>0&&isFinite(o)&&o>0?e=o/n:globalThis._spectroMap&&"function"==typeof globalThis._spectroMap.pxPerSec?e=globalThis._spectroMap.pxPerSec():globalThis._spectroPxPerSec&&(e=globalThis._spectroPxPerSec);const i=Math.max(0,a&&"number"==typeof a.scrollLeft?a.scrollLeft:0),r=t/Math.max(1e-9,e),c=i/Math.max(1e-9,e),l={duration:n,displayedWidthPx:o,viewportWidthPx:t,pxPerSec:e,scrollLeftPx:i,visibleStartSec:c,visibleEndSec:(i+t)/Math.max(1e-9,e),visibleSpanSec:r};try{console.table(l)}catch(t){console.log("[__annDebugViewport]",l)}return l}catch(t){return console.error("__annDebugViewport failed",t),null}}}catch(t){}globalThis._annotations=globalThis._annotations||{},globalThis._annotations.getNextId=function(){let t=1;try{if(window.annotationGrid&&"function"==typeof window.annotationGrid.getData){const e=window.annotationGrid.getData()||[];e.length>0&&(t=Math.max(...e.map(t=>Number(t.id)||0))+1)}}catch(t){}return t},globalThis._annotations.createRow=function(t){const e=t=>Number(t).toFixed(4),n=void 0!==t.id?t.id:globalThis._annotations.getNextId();let o=t.group_id;if((null==o||""===o)&&(t.scientificName||t.species))try{const e=Array.isArray(window.__speciesRecords)?window.__speciesRecords:[];let n=e.find(e=>e.scientific&&e.scientific.toLowerCase()===String(t.scientificName).trim().toLowerCase());n||(n=e.find(e=>e.common&&e.common.toLowerCase()===String(t.species).trim().toLowerCase())),n&&void 0!==n.group_id&&(o=String(n.group_id))}catch(t){}null==o&&(o="");const i=globalThis._spectroOriginalNyquist||(globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050);let a=Number(t.lowFreq||0),r=Number(t.highFreq||0);return a=Math.max(0,Math.min(i,a)),r=Math.max(0,Math.min(i,r)),{...t,id:n,Selection:void 0!==t.Selection?String(t.Selection):String(n),beginTime:Number(e(t.beginTime||0)),endTime:Number(e(void 0!==t.endTime?t.endTime:t.beginTime||0)),lowFreq:Number(e(a)),highFreq:Number(e(r)),species:t.species||"",scientificName:t.scientificName||"",group_id:o,sex:t.sex||"",lifeStage:t.lifeStage||"",soundType:t.soundType||"",notes:t.notes||""}},globalThis._annotations.add=function(t,e="create"){const n=globalThis._annotations.addMany([t],e);return n?n[0]:null},globalThis._annotations.addMany=function(t,e="create"){if(!t||!t.length)return[];let n=globalThis._annotations.getNextId();const o=t.map(t=>(void 0===t.id&&(t.id=n++),globalThis._annotations.createRow(t)));try{if(window.annotationGrid&&"function"==typeof window.annotationGrid.addData){window.annotationGrid.addData(o),o.length>0&&(m=o[o.length-1].id);try{window.dispatchEvent(new CustomEvent("annotations-changed",{detail:{reason:e,count:o.length}}))}catch(t){}try{"function"==typeof window.renderAllAnnotations&&window.renderAllAnnotations()}catch(t){}try{"function"==typeof u&&u(b())}catch(t){}}}catch(t){console.error("Failed to add annotations",t)}return o},globalThis._annotations.replaceAll=function(t,e="replace"){if(!t)return[];let n=1;const o=t.map(t=>(void 0===t.id&&(t.id=n++),globalThis._annotations.createRow(t)));try{if(window.annotationGrid&&"function"==typeof window.annotationGrid.replaceData){window.annotationGrid.replaceData(o);try{window.dispatchEvent(new CustomEvent("annotations-changed",{detail:{reason:e,count:o.length}}))}catch(t){}try{"function"==typeof window.renderAllAnnotations&&window.renderAllAnnotations()}catch(t){}try{"function"==typeof u&&u(b())}catch(t){}}}catch(t){console.error("Failed to replace annotations",t)}return o},globalThis._annotations.getAll=()=>b(),globalThis._annotations.import=t=>{globalThis._annotations.replaceAll(t,"import")},globalThis._annotations.onChange=t=>{u=t},globalThis._annotations.delete=t=>{try{if(window.GridLib&&"function"==typeof window.GridLib.getData&&"function"==typeof window.GridLib.loadData){const e=(window.GridLib.getData()||[]||[]).filter(e=>{const n=void 0!==e.id?String(e.id):void 0!==e.Selection?String(e.Selection):"";return String(n)!==String(t)&&String(e.id||"")!==String(t)}),n=window.GridLib.tableInstance&&"function"==typeof window.GridLib.tableInstance.getColumns?window.GridLib.tableInstance.getColumns().map(t=>t.getField()):["Selection","Begin Time (s)","End Time (s)","Low Freq (Hz)","High Freq (Hz)","Common name","Notes"];window.GridLib.loadData(n,e);try{"function"==typeof u&&u(b())}catch(t){}try{x()}catch(t){}return}}catch(t){}try{"function"==typeof u&&u(b())}catch(t){}try{x()}catch(t){}},globalThis._annotations.clear=()=>{try{if(window.GridLib&&"function"==typeof window.GridLib.clear)window.GridLib.clear();else if(window.GridLib&&"function"==typeof window.GridLib.loadData){const t=window.GridLib.tableInstance&&"function"==typeof window.GridLib.tableInstance.getColumns?window.GridLib.tableInstance.getColumns().map(t=>t.getField()):["Selection","Begin Time (s)","End Time (s)","Low Freq (Hz)","High Freq (Hz)","Common name","Notes"];window.GridLib.loadData(t,[])}}catch(t){}try{"function"==typeof u&&u(b())}catch(t){}try{x()}catch(t){}},window.__clearAllAnnotations=function(){try{window.annotationUndo&&window.annotationUndo.saveState()}catch(t){}globalThis._annotations&&"function"==typeof globalThis._annotations.clear&&globalThis._annotations.clear();try{S()}catch(t){}try{window.annotationGrid&&"function"==typeof window.annotationGrid.replaceData?window.annotationGrid.replaceData([]):window.annotationGrid&&"function"==typeof window.annotationGrid.clearData&&window.annotationGrid.clearData()}catch(t){}try{"function"==typeof window.__cancelPendingCreate&&window.__cancelPendingCreate()}catch(t){}try{globalThis._editAnnotations&&"function"==typeof globalThis._editAnnotations.cancelEdit&&globalThis._editAnnotations.cancelEdit()}catch(t){}try{window.dispatchEvent(new CustomEvent("annotations-changed",{detail:{reason:"clear-all"}}))}catch(t){}},setTimeout(()=>{_(),x(),v(),E(),function(){try{if(window.__restorePumpTimer)return;window.__restorePumpTimer=setInterval(()=>{try{if(window.__pendingAnnotationRestore&&window.annotationGrid&&"function"==typeof window.annotationGrid.replaceData)try{window.__applyPendingAnnotationRestore&&window.__applyPendingAnnotationRestore()}catch(t){}}catch(t){}},250)}catch(t){}}();try{if(window.__pendingAnnotationRestore)try{window.__applyPendingAnnotationRestore()}catch(t){}}catch(t){}},120)}();
+!(function () {
+  const t = 12,
+    e = "rgba(0,150,255,0.12)",
+    n = "rgba(0,150,255,0.95)",
+    o = [6, 4],
+    i = document.getElementById("viewportWrapper"),
+    a = document.getElementById("scrollArea"),
+    r = document.getElementById("spectrogramCanvas");
+  if (!i || !a || !r) return;
+  let c = document.getElementById("annotationOverlay");
+  c ||
+    ((c = document.createElement("canvas")),
+    (c.id = "annotationOverlay"),
+    (c.style.position = "absolute"),
+    (c.style.pointerEvents = "none"),
+    (c.style.zIndex = 70),
+    i.appendChild(c));
+  const l = c.getContext("2d", { alpha: !0 });
+  let s = document.getElementById("annotationSelectionOverlay");
+  s ||
+    ((s = document.createElement("canvas")),
+    (s.id = "annotationSelectionOverlay"),
+    (s.style.position = "absolute"),
+    (s.style.pointerEvents = "none"),
+    (s.style.zIndex = 72),
+    i.appendChild(s));
+  const d = s.getContext("2d", { alpha: !0 });
+  let h,
+    g = null,
+    p = "create",
+    m = null,
+    u = null,
+    w = { common: "", scientific: "" };
+  (window.addEventListener("species-select", (t) => {
+    ((w.common = (t.detail && t.detail.common) || ""),
+      (w.scientific = (t.detail && t.detail.scientific) || ""));
+  }),
+    window.addEventListener("species-select-cleared", () => {
+      ((w.common = ""), (w.scientific = ""));
+    }));
+  try {
+    window.__applyPendingAnnotationRestore = function () {
+      try {
+        const t = window.__pendingAnnotationRestore;
+        if (!t) return;
+        if (!(
+          window.annotationGrid &&
+          "function" == typeof window.annotationGrid.replaceData
+        ))
+          return;
+        let e = Array.isArray(t.parsed) ? t.parsed : null;
+        if (!e)
+          try {
+            e = JSON.parse(t.raw || "[]");
+          } catch (t) {
+            e = [];
+          }
+        if (!Array.isArray(e) || 0 === e.length)
+          return void console.info("[backup] nothing to restore");
+        if (
+          globalThis._annotations &&
+          "function" == typeof globalThis._annotations.replaceAll
+        )
+          try {
+            globalThis._annotations.replaceAll(e, "restore-backup-apply");
+          } catch (t) {
+            console.warn(
+              "[backup] _annotations.replaceAll failed, direct replace fallback",
+              t,
+            );
+            try {
+              window.annotationGrid.replaceData(e);
+            } catch (t) {}
+          }
+        else
+          try {
+            window.annotationGrid.replaceData(e);
+          } catch (t) {
+            return void console.error("[backup] replaceData failed", t);
+          }
+        try {
+          console.info("[backup] applied to grid:", e.length, "rows");
+        } catch (t) {}
+        try {
+          window.__pendingAnnotationRestore = null;
+        } catch (t) {}
+        try {
+          window.__restorePumpTimer &&
+            (clearInterval(window.__restorePumpTimer),
+            (window.__restorePumpTimer = null));
+        } catch (t) {}
+      } catch (t) {}
+    };
+  } catch (t) {}
+  const f = document.getElementById("createEditToggle");
+  function y() {
+    try {
+      if (f && f.dataset && f.dataset.mode) return f.dataset.mode;
+    } catch (t) {}
+    return null;
+  }
+  if (f) {
+    f.addEventListener(
+      "mode-change",
+      function (t) {
+        const e = t && t.detail && t.detail.mode ? t.detail.mode : y();
+        e && e !== p && (p = e);
+      },
+      { passive: !0 },
+    );
+    const t = y();
+    t && (p = t);
+  }
+  function b() {
+    try {
+      if (
+        window.annotationGrid &&
+        "function" == typeof window.annotationGrid.getData
+      ) {
+        const t = window.annotationGrid.getData();
+        if (Array.isArray(t)) return t.slice();
+      }
+    } catch (t) {}
+    return [];
+  }
+  function _() {
+    const e = Math.max(1, a.clientWidth),
+      n = Math.max(
+        1,
+        globalThis._spectroImageHeight || r.clientHeight - t - 44 || 100,
+      ),
+      o =
+        "number" == typeof globalThis._spectroAxisLeft
+          ? globalThis._spectroAxisLeft
+          : 70;
+    ((c.style.left = o + "px"),
+      (c.style.top = "12px"),
+      (c.style.width = e + "px"),
+      (c.style.height = n + "px"));
+    const i = window.devicePixelRatio || 1;
+    ((c.width = Math.round(e * i)),
+      (c.height = Math.round(n * i)),
+      l.setTransform(i, 0, 0, i, 0, 0),
+      (s.style.left = o + "px"),
+      (s.style.top = "12px"),
+      (s.style.width = e + "px"),
+      (s.style.height = n + "px"),
+      (s.width = Math.round(e * i)),
+      (s.height = Math.round(n * i)),
+      d.setTransform(i, 0, 0, i, 0, 0),
+      x(),
+      v());
+  }
+  function T(e, n) {
+    const o = e - a.getBoundingClientRect().left,
+      c = Math.round(a.scrollLeft || 0) + o;
+    let l = 1;
+    try {
+      const t = globalThis._spectroDuration,
+        e = globalThis._spectroImageWidth;
+      isFinite(t) && t > 0 && isFinite(e) && e > 0
+        ? (l = e / t)
+        : globalThis._spectroMap &&
+            "function" == typeof globalThis._spectroMap.pxPerSec
+          ? (l = globalThis._spectroMap.pxPerSec())
+          : globalThis._spectroPxPerSec
+            ? (l = globalThis._spectroPxPerSec)
+            : globalThis._spectroPxPerFrame &&
+              globalThis._spectroFramesPerSec &&
+              (l =
+                globalThis._spectroPxPerFrame *
+                globalThis._spectroFramesPerSec);
+    } catch (t) {
+      l = 1;
+    }
+    const s = Math.max(0, c / Math.max(1, l)),
+      d = n - i.getBoundingClientRect().top,
+      h =
+        "number" == typeof globalThis._spectroImageHeight &&
+        globalThis._spectroImageHeight > 0
+          ? globalThis._spectroImageHeight
+          : Math.max(1, (r.clientHeight || 0) - t - 44),
+      g =
+        "number" == typeof globalThis._spectroYMax &&
+        globalThis._spectroYMax > 0
+          ? globalThis._spectroYMax
+          : globalThis._spectroSampleRate
+            ? globalThis._spectroSampleRate / 2
+            : 22050,
+      p =
+        "number" == typeof globalThis._spectroYMin
+          ? globalThis._spectroYMin
+          : 0,
+      m = d - t,
+      u = Math.max(0, Math.min(1, m / Math.max(1, h - 1))),
+      w = {
+        timeSec: s,
+        freqHz: Math.max(p, Math.min(g, g - u * (g - p))),
+        globalX: c,
+        localX: o,
+        localY: d,
+        pxPerSec: l,
+      };
+    try {
+      window.DEBUG_ANNOTATION_TIME &&
+        window.DEBUG_ANNOTATION_TIME >= 2 &&
+        console.log("[annot][map]", w);
+    } catch (t) {}
+    return w;
+  }
+  function S() {
+    l.clearRect(
+      0,
+      0,
+      c.width / (window.devicePixelRatio || 1),
+      c.height / (window.devicePixelRatio || 1),
+    );
+  }
+  function M(t, i, a, r, c = {}) {
+    const { fill: s = e, stroke: d = n, dashed: h = !1 } = c,
+      g = Math.min(t, a),
+      p = Math.min(i, r),
+      m = Math.abs(a - t),
+      u = Math.abs(r - i);
+    (l.save(),
+      h ? l.setLineDash(o) : l.setLineDash([]),
+      (l.fillStyle = s),
+      (l.strokeStyle = d),
+      (l.lineWidth = 1.5),
+      l.fillRect(g, p, m, u),
+      l.strokeRect(g + 0.5, p + 0.5, m, u),
+      l.restore());
+  }
+  function x() {
+    S();
+    let t = 1;
+    try {
+      const e = globalThis._spectroDuration,
+        n = globalThis._spectroImageWidth;
+      isFinite(e) && e > 0 && isFinite(n) && n > 0
+        ? (t = n / e)
+        : globalThis._spectroMap &&
+            "function" == typeof globalThis._spectroMap.pxPerSec
+          ? (t = globalThis._spectroMap.pxPerSec())
+          : globalThis._spectroPxPerSec && (t = globalThis._spectroPxPerSec);
+    } catch (e) {
+      t = 1;
+    }
+    const e = globalThis._spectroImageHeight || c.clientHeight || 100,
+      n =
+        globalThis._spectroYMax ||
+        (globalThis._spectroSampleRate
+          ? globalThis._spectroSampleRate / 2
+          : 22050),
+      o = globalThis._spectroYMin || 0,
+      i =
+        "number" == typeof globalThis._spectroDuration
+          ? globalThis._spectroDuration
+          : 1 / 0;
+    let r = null;
+    try {
+      if (window.annotationGrid)
+        if ("function" == typeof window.annotationGrid.getSelectedData) {
+          const t = window.annotationGrid.getSelectedData() || [];
+          r = new Set(t.map((t) => t && t.id));
+        } else if ("function" == typeof window.annotationGrid.getSelectedRows) {
+          const t = window.annotationGrid.getSelectedRows() || [],
+            e = [];
+          (t.forEach((t) => {
+            try {
+              const n = t.getData && t.getData();
+              n && void 0 !== n.id && e.push(n.id);
+            } catch (t) {}
+          }),
+            (r = new Set(e)));
+        }
+    } catch (t) {
+      r = null;
+    }
+    const l = b(),
+      d = [
+        { fill: "rgba(0,150,255,0.12)", stroke: "rgba(0,150,255,0.95)" },
+        { fill: "rgba(76,175,80,0.15)", stroke: "rgba(76,175,80,0.95)" },
+        { fill: "rgba(156,39,176,0.15)", stroke: "rgba(156,39,176,0.95)" },
+        { fill: "rgba(255,152,0,0.15)", stroke: "rgba(255,152,0,0.95)" },
+        { fill: "rgba(244,67,54,0.15)", stroke: "rgba(244,67,54,0.95)" },
+      ];
+    if (!window.__annotationColorsCached) {
+      window.__recomputeAnnotationColors &&
+        window.__recomputeAnnotationColors(l, i);
+    }
+    const vStart = Math.max(0, (a.scrollLeft || 0) / t - 0.5),
+      vEnd =
+        ((a.scrollLeft || 0) +
+          Math.max(a.clientWidth || 0, c.clientWidth || 0)) /
+          t +
+        0.5;
+    if (
+      (l.forEach((r) => {
+        const l = Number(void 0 !== r.beginTime ? r.beginTime : 0) || 0,
+          h = Number(void 0 !== r.endTime ? r.endTime : l) || l,
+          g = Number(void 0 !== r.lowFreq ? r.lowFreq : 0) || 0,
+          p = Number(void 0 !== r.highFreq ? r.highFreq : g) || g,
+          m = Math.max(0, Math.min(l, i)),
+          u = Math.max(m, Math.min(h, i));
+        if (u < vStart || m > vEnd) return;
+        let f = window.__annotationColorMap
+          ? window.__annotationColorMap.get(String(r.id))
+          : 0;
+        if (f === undefined) f = 0;
+        const y = d[f % d.length],
+          b = m * t - Math.round(a.scrollLeft || 0),
+          _ = u * t - Math.round(a.scrollLeft || 0),
+          T = (n - p) / Math.max(1, n - o),
+          S = (n - g) / Math.max(1, n - o),
+          x = T * e,
+          v = S * e;
+        try {
+          window.DEBUG_ANNOTATION_TIME &&
+            window.DEBUG_ANNOTATION_TIME >= 1 &&
+            console.log("[annot][draw]", {
+              id: r.id,
+              begin: l,
+              end: h,
+              beginClamped: m,
+              endClamped: u,
+              pxPerSec: t,
+              scrollLeft: Math.round(a.scrollLeft || 0),
+              x1: b,
+              x2: _,
+              overlayWidth: c.width / (window.devicePixelRatio || 1),
+            });
+        } catch (t) {}
+        M(b, x, _, v, { fill: y.fill, stroke: y.stroke, dashed: !1 });
+      }),
+      g)
+    ) {
+      const r = g.pxPerSec || t,
+        c = Math.min(g.currentTime, i),
+        l = Math.min(g.startTime, i),
+        s = Math.min(l, c) * r - Math.round(a.scrollLeft || 0),
+        d = Math.max(l, c) * r - Math.round(a.scrollLeft || 0),
+        h = Math.min(g.startFreq, g.currentFreq),
+        p = Math.max(g.startFreq, g.currentFreq),
+        m = (n - p) / Math.max(1, n - o),
+        u = (n - h) / Math.max(1, n - o);
+      M(s, m * e, d, u * e, {
+        fill: "rgba(255,165,0,0.18)",
+        stroke: "rgba(255,165,0,0.95)",
+        dashed: !0,
+      });
+    }
+  }
+  function v(t) {
+    d.clearRect(
+      0,
+      0,
+      s.width / (window.devicePixelRatio || 1),
+      s.height / (window.devicePixelRatio || 1),
+    );
+    let e = [];
+    try {
+      if (Array.isArray(t) && t.length) {
+        const n = b(),
+          o = new Set(t.map(String));
+        e = n.filter((t) => o.has(String(t.id)));
+      } else if (window.annotationGrid)
+        if ("function" == typeof window.annotationGrid.getSelectedData)
+          e = window.annotationGrid.getSelectedData();
+        else if ("function" == typeof window.annotationGrid.getSelectedRows) {
+          (window.annotationGrid.getSelectedRows() || []).forEach((t) => {
+            try {
+              const n = t.getData && t.getData();
+              n && e.push(n);
+            } catch (t) {}
+          });
+        }
+    } catch (t) {
+      e = [];
+    }
+    if (!Array.isArray(e) || !e.length) return;
+    const n =
+        globalThis._spectroMap &&
+        "function" == typeof globalThis._spectroMap.pxPerSec
+          ? globalThis._spectroMap.pxPerSec()
+          : globalThis._spectroPxPerSec || 1,
+      o = globalThis._spectroImageHeight || c.clientHeight || 100,
+      i =
+        globalThis._spectroYMax ||
+        (globalThis._spectroSampleRate
+          ? globalThis._spectroSampleRate / 2
+          : 22050),
+      r = globalThis._spectroYMin || 0,
+      l =
+        "number" == typeof globalThis._spectroDuration
+          ? globalThis._spectroDuration
+          : 1 / 0;
+    e.forEach((t) => {
+      try {
+        const e = Number(t.beginTime),
+          c = Number(t.endTime),
+          s = Number(t.lowFreq),
+          h = Number(t.highFreq);
+        if (!(isFinite(e) && isFinite(c) && isFinite(s) && isFinite(h))) return;
+        const g = Math.max(0, Math.min(e, l)),
+          p = Math.max(g, Math.min(c, l)),
+          m = g * n - Math.round(a.scrollLeft || 0),
+          u = p * n - Math.round(a.scrollLeft || 0),
+          w = (i - h) / Math.max(1, i - r),
+          f = (i - s) / Math.max(1, i - r);
+        !(function (t, e, n, o) {
+          const i = Math.min(t, n),
+            a = Math.min(e, o),
+            r = Math.abs(n - t),
+            c = Math.abs(o - e);
+          (d.save(),
+            d.setLineDash([]),
+            (d.fillStyle = "rgba(255,255,0,0.28)"),
+            (d.strokeStyle = "rgba(255,235,59,0.95)"),
+            (d.lineWidth = 2.25),
+            (d.shadowColor = "rgba(255,235,59,0.8)"),
+            (d.shadowBlur = 8),
+            d.fillRect(i, a, r, c),
+            d.strokeRect(i + 0.5, a + 0.5, r, c),
+            d.restore());
+        })(m, w * o, u, f * o);
+      } catch (t) {}
+    });
+    try {
+      console.debug(
+        "[selectionOverlay] drawn selected ids:",
+        e.map((t) => t.id),
+      );
+    } catch (t) {}
+  }
+  function E() {
+    try {
+      const n = window.annotationGrid;
+      if (!n || "function" != typeof n.on) return;
+      if (n.__overlayRenderHooked) return;
+      try {
+        n.hideColumn("id");
+      } catch (l) {}
+      n.on("tableBuilt", () => {
+        try {
+          n.hideColumn("id");
+        } catch (t) {}
+      });
+      const o = () => {
+          try {
+            window.__recomputeAnnotationColors &&
+              window.__recomputeAnnotationColors();
+          } catch (t) {}
+          try {
+            x();
+          } catch (t) {}
+          try {
+            v();
+          } catch (t) {}
+        },
+        i = "annotations_backup::",
+        a = "annotations_backup::meta::",
+        r = "annotations_backup::tmp::";
+      function t() {
+        try {
+          if (
+            !window.annotationGrid ||
+            "function" != typeof window.annotationGrid.getData
+          )
+            return;
+          const t = window.annotationGrid.getData() || [],
+            e = (function () {
+              try {
+                const t = document.getElementById("file"),
+                  e = t && t.files && t.files[0];
+                if (e) return `${e.name}|${e.size || 0}|${e.lastModified || 0}`;
+              } catch (t) {}
+              return "nofile|0|0";
+            })(),
+            n = r + e,
+            o = i + e,
+            c = a + e;
+          if (!Array.isArray(t) || 0 === t.length) {
+            try {
+              localStorage.removeItem(o);
+            } catch (t) {}
+            try {
+              localStorage.removeItem(n);
+            } catch (t) {}
+            try {
+              localStorage.removeItem(c);
+            } catch (t) {}
+            return;
+          }
+          const l = JSON.stringify(t);
+          if (l && l.length > 4194304)
+            return void console.warn("[backup] skipped: too large");
+          try {
+            localStorage.setItem(n, l);
+          } catch (t) {
+            return;
+          }
+          try {
+            JSON.parse(localStorage.getItem(n) || "[]");
+          } catch (t) {
+            try {
+              localStorage.removeItem(n);
+            } catch (t) {}
+            return;
+          }
+          try {
+            localStorage.setItem(o, l);
+          } catch (t) {}
+          try {
+            localStorage.setItem(
+              c,
+              JSON.stringify({ ts: Date.now(), count: t.length }),
+            );
+          } catch (t) {}
+          try {
+            localStorage.removeItem(n);
+          } catch (t) {}
+        } catch (t) {}
+      }
+      let c = null;
+      function e() {
+        try {
+          (c && clearTimeout(c), (c = setTimeout(t, 1200)));
+        } catch (t) {}
+      }
+      (n.on("dataChanged", o),
+        n.on("dataLoaded", o),
+        n.on("cellEdited", function () {
+          try {
+            o();
+          } catch (t) {}
+          e();
+        }));
+      try {
+        n.on("cellEditing", function () {
+          try {
+            window.annotationUndo && window.annotationUndo.saveState();
+          } catch (t) {}
+        });
+      } catch (s) {}
+      (n.on("rowAdded", function () {
+        try {
+          o();
+        } catch (t) {}
+        e();
+      }),
+        n.on("rowUpdated", function () {
+          try {
+            o();
+          } catch (t) {}
+          e();
+        }),
+        n.on("rowDeleted", function () {
+          try {
+            o();
+          } catch (t) {}
+          e();
+        }),
+        n.on("rowSelectionChanged", function () {
+          try {
+            v();
+          } catch (t) {}
+        }),
+        n.on("dataChanged", function () {
+          e();
+        }));
+      try {
+        n.on &&
+          n.on("cellEdited", function (t) {
+            try {
+              const e =
+                t && t.getField
+                  ? t
+                  : arguments && arguments[0]
+                    ? arguments[0]
+                    : null;
+              if (!e) return;
+              if (
+                "species" !==
+                ("function" == typeof e.getField ? e.getField() : null)
+              )
+                return;
+              const n =
+                "function" == typeof e.getValue
+                  ? String(e.getValue() || "").trim()
+                  : "";
+              let o = "";
+              try {
+                const t = document.getElementById("selectedSpeciesKey"),
+                  e = t ? String(t.value || "").trim() : "",
+                  i = Array.isArray(window.__speciesRecords)
+                    ? window.__speciesRecords
+                    : [];
+                if (e) {
+                  const t = i.find((t) => String(t.key || "").trim() === e);
+                  o = (t && t.scientific) || "";
+                } else if (n) {
+                  const t = i.find((t) => String(t.common || "").trim() === n);
+                  o = (t && t.scientific) || "";
+                }
+              } catch (t) {
+                o = "";
+              }
+              try {
+                const t = "function" == typeof e.getRow ? e.getRow() : null;
+                if (t && "function" == typeof t.update)
+                  t.update({ scientificName: o });
+                else if (
+                  window.annotationGrid &&
+                  "function" == typeof window.annotationGrid.updateRow
+                ) {
+                  const t =
+                    "function" == typeof e.getRow &&
+                    e.getRow() &&
+                    "function" == typeof e.getRow().getData
+                      ? e.getRow().getData()
+                      : null;
+                  t &&
+                    void 0 !== t.id &&
+                    window.annotationGrid.updateRow(t.id, {
+                      scientificName: o,
+                    });
+                }
+                try {
+                  window.dispatchEvent(
+                    new CustomEvent("annotations-changed", {
+                      detail: { reason: "species-cell-edited" },
+                    }),
+                  );
+                } catch (t) {}
+              } catch (t) {}
+            } catch (t) {}
+          });
+      } catch (d) {}
+      n.__overlayRenderHooked = !0;
+    } catch (h) {}
+  }
+  function I() {
+    ((g = null), x());
+  }
+  function P() {
+    try {
+      if (A && void 0 !== h && r && r.releasePointerCapture)
+        try {
+          r.releasePointerCapture(h);
+        } catch (t) {}
+    } catch (t) {}
+    ((A = !1), (g = null), x());
+    const t = document.getElementById("createPreviewLayer");
+    t && t.remove();
+    try {
+      h = void 0;
+    } catch (t) {}
+  }
+  ((window.__cancelPendingCreate = P),
+    window.addEventListener(
+      "cancel-pending-create",
+      (t) => {
+        P();
+      },
+      !1,
+    ));
+  let A = !1;
+  function D() {
+    return y() || p;
+  }
+  function G(t) {
+    if ("create" === D() && "Escape" === t.key) {
+      g && (t.preventDefault(), I());
+      const e = document.getElementById("createEditToggle");
+      if (e)
+        e.dispatchEvent(
+          new CustomEvent("mode-change", {
+            detail: { mode: "edit" },
+            bubbles: !0,
+          }),
+        );
+      else {
+        const t =
+          document.getElementById("toggleEdit") ||
+          document.querySelector('button[title="Edit"]') ||
+          document.querySelector("#annoEditBtn");
+        t && t.click();
+      }
+    }
+  }
+  (r.addEventListener("pointerdown", function (e) {
+    const acOverlay = document.getElementById("annotationControlsOverlay");
+    if (acOverlay && acOverlay.style.display !== "none") return;
+    
+    if ("create" !== D()) return;
+    if (0 !== e.button) return;
+    const n = i.getBoundingClientRect(),
+      o = e.clientY - n.top,
+      a = globalThis._spectroImageHeight || r.clientHeight - t - 44;
+    if (o < t || o > t + a) return;
+    const c = T(e.clientX, e.clientY),
+      l =
+        globalThis._spectroOriginalNyquist ||
+        (globalThis._spectroSampleRate
+          ? globalThis._spectroSampleRate / 2
+          : 22050);
+    if (c.freqHz > l) return;
+    ((A = !0), (h = e.pointerId));
+    let s = !1;
+    try {
+      s =
+        "temporal" ===
+        JSON.parse(localStorage.getItem("spectrolipi.settings.v1") || "{}")
+          .annotationMode;
+    } catch (t) {}
+    g = {
+      startTime: c.timeSec,
+      startFreq: s ? l : c.freqHz,
+      currentTime: c.timeSec,
+      currentFreq: s ? 0 : c.freqHz,
+      pxPerSec: c.pxPerSec,
+      isTemporal: s,
+    };
+    try {
+      e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+    } catch (t) {}
+    x();
+  }),
+    window.addEventListener("pointermove", function (t) {
+      if ("create" !== D()) return;
+      if (!A || !g) return;
+      let e = T(t.clientX, t.clientY);
+      const n =
+        "number" == typeof globalThis._spectroDuration
+          ? globalThis._spectroDuration
+          : 1 / 0;
+      ((g.currentTime = Math.min(e.timeSec, n)),
+        g.isTemporal || (g.currentFreq = e.freqHz),
+        (g.pxPerSec = e.pxPerSec));
+      try {
+        const o =
+            "number" == typeof globalThis._spectroImageWidth
+              ? globalThis._spectroImageWidth
+              : 0,
+          i = Math.max(1, a.clientWidth || 0);
+        if (o > i) {
+          const r = a.getBoundingClientRect(),
+            c = Math.max(16, Math.min(64, Math.round(0.05 * i))),
+            l = Math.max(0, o - i),
+            s = Math.max(0, Math.min(l, Math.round(a.scrollLeft || 0)));
+          let d = s;
+          if (t.clientX >= r.right - c) {
+            const e = Math.max(0, t.clientX - (r.right - c)),
+              n = Math.max(1, Math.round((e / c) * 24));
+            d = Math.min(l, s + n);
+          } else if (t.clientX <= r.left + c) {
+            const e = Math.max(0, r.left + c - t.clientX),
+              n = Math.max(1, Math.round((e / c) * 24));
+            d = Math.max(0, s - n);
+          }
+          d !== s &&
+            ((a.scrollLeft = d),
+            (e = T(t.clientX, t.clientY)),
+            (g.currentTime = Math.min(e.timeSec, n)),
+            g.isTemporal || (g.currentFreq = e.freqHz),
+            (g.pxPerSec = e.pxPerSec));
+        }
+      } catch (t) {}
+      try {
+        window.DEBUG_ANNOTATION_TIME &&
+          window.DEBUG_ANNOTATION_TIME >= 3 &&
+          console.log("[annot][drag]", {
+            start: g.startTime,
+            cur: g.currentTime,
+            duration: n,
+          });
+      } catch (t) {}
+      x();
+      try {
+        window.__updateSimpleTimeDebug &&
+          window.__updateSimpleTimeDebug("[drag]");
+      } catch (t) {}
+    }),
+    window.addEventListener("pointerup", function (t) {
+      if ("create" === D() && A) {
+        A = !1;
+        try {
+          t.target.releasePointerCapture &&
+            t.target.releasePointerCapture(t.pointerId);
+        } catch (t) {}
+        h = void 0;
+        try {
+          !(function () {
+            if (!g) return;
+            const t = Math.min(g.startTime, g.currentTime);
+            let e = Math.max(g.startTime, g.currentTime),
+              n = Math.min(g.startFreq, g.currentFreq),
+              o = Math.max(g.startFreq, g.currentFreq);
+            const i =
+              globalThis._spectroOriginalNyquist ||
+              (globalThis._spectroSampleRate
+                ? globalThis._spectroSampleRate / 2
+                : 22050);
+            if (
+              ((n = Math.max(0, Math.min(i, n))),
+              (o = Math.max(0, Math.min(i, o))),
+              !(t < e && n < o))
+            )
+              return ((g = null), void x());
+            const a =
+              "number" == typeof globalThis._spectroDuration
+                ? globalThis._spectroDuration
+                : 1 / 0;
+            (e > a && (e = a), t >= e && (e = Math.min(a, t + 0.01)));
+            let r = w.common,
+              c = w.scientific;
+            if (!r)
+              try {
+                const t = document.getElementById("selectedSpeciesKey"),
+                  e = t ? String(t.value || "").trim() : "",
+                  n = Array.isArray(window.__speciesRecords)
+                    ? window.__speciesRecords
+                    : [];
+                if (e) {
+                  const t = n.find(
+                    (t) =>
+                      String(t.scientific || "")
+                        .trim()
+                        .toLowerCase() === e.toLowerCase(),
+                  );
+                  t && ((r = t.common || ""), (c = t.scientific || ""));
+                }
+                if (!r) {
+                  const t = document.querySelector("#speciesResult");
+                  if (
+                    t &&
+                    ((r = t.dataset.common || ""),
+                    (c = t.dataset.scientific || ""),
+                    !r && t.textContent)
+                  ) {
+                    const e = String(t.textContent).trim(),
+                      o = n.find((t) => t.scientific === e || t.common === e);
+                    o && ((r = o.common || ""), (c = o.scientific || ""));
+                  }
+                }
+              } catch (t) {}
+            if (!c) {
+              try {
+                r
+                  ? window.alert("scientific name not found")
+                  : window.alert(
+                      'Please select species first. If species is not known then select common name: "Identity unknown" or scientific name: "Mystery mystery".',
+                    );
+                const speciesInput = document.getElementById('speciesKwInput');
+                if (speciesInput) {
+                  speciesInput.focus();
+                }
+              } catch (t) {}
+              return void I();
+            }
+            const l = {
+              beginTime: t,
+              endTime: e,
+              lowFreq: n,
+              highFreq: o,
+              species: r,
+              scientificName: c,
+              needsMetadata: !c,
+              notes: "",
+            };
+            try {
+              try {
+                window.annotationUndo && window.annotationUndo.saveState();
+              } catch (t) {}
+              const t = globalThis._annotations.add(l, "create");
+              if (t)
+                try {
+                  m = t.id;
+                } catch (t) {}
+            } catch (t) {
+              try {
+                window.alert(
+                  "Failed to add annotation to grid. Annotation not saved.",
+                );
+              } catch (t) {}
+            }
+            ((g = null), x());
+            try {
+              window.__updateSimpleTimeDebug &&
+                window.__updateSimpleTimeDebug("[commit]");
+            } catch (t) {}
+          })();
+        } catch (t) {}
+        x();
+      }
+    }),
+    r.addEventListener("contextmenu", function (t) {
+      if ("create" !== D()) return;
+      (t.preventDefault(), t.stopPropagation(), g && I());
+      const e = document.getElementById("createEditToggle");
+      if (e)
+        e.dispatchEvent(
+          new CustomEvent("mode-change", {
+            detail: { mode: "edit" },
+            bubbles: !0,
+          }),
+        );
+      else {
+        const t =
+          document.getElementById("toggleEdit") ||
+          document.querySelector('button[title="Edit"]') ||
+          document.querySelector("#annoEditBtn");
+        t && t.click();
+      }
+    }),
+    (r.tabIndex = r.tabIndex || 0),
+    r.addEventListener("keydown", G),
+    window.addEventListener("keydown", G),
+    a.addEventListener("scroll", () => {
+      (x(), v());
+    }),
+    window.addEventListener("resize", () => {
+      (_(), v());
+    }),
+    window.addEventListener(
+      "annotations-changed",
+      () => {
+        window.__recomputeAnnotationColors &&
+          window.__recomputeAnnotationColors();
+        (x(), v());
+      },
+      { passive: !0 },
+    ),
+    window.addEventListener(
+      "spectrogram-generated",
+      () => {
+        try {
+          _();
+        } catch (t) {}
+        try {
+          requestAnimationFrame(() => {
+            try {
+              (x(), v());
+            } catch (t) {}
+          });
+        } catch (t) {
+          try {
+            setTimeout(() => {
+              try {
+                (x(), v());
+              } catch (t) {}
+            }, 20);
+          } catch (t) {}
+        }
+      },
+      { passive: !0 },
+    ));
+  try {
+    ((window.__recomputeAnnotationColors = function (lArr, dur) {
+      const l = lArr || b();
+      const i =
+        "number" == typeof dur
+          ? dur
+          : "number" == typeof globalThis._spectroDuration
+            ? globalThis._spectroDuration
+            : 1 / 0;
+      const s = [];
+      l.forEach((r) => {
+        const l_time = Number(void 0 !== r.beginTime ? r.beginTime : 0) || 0,
+          h_time = Number(void 0 !== r.endTime ? r.endTime : l_time) || l_time,
+          g_freq = Number(void 0 !== r.lowFreq ? r.lowFreq : 0) || 0,
+          p_freq =
+            Number(void 0 !== r.highFreq ? r.highFreq : g_freq) || g_freq,
+          m = Math.max(0, Math.min(l_time, i)),
+          u = Math.max(m, Math.min(h_time, i)),
+          w = new Set();
+        for (const t of s) {
+          const e = Math.max(
+              0,
+              Math.min(u, t.endClamped) - Math.max(m, t.beginClamped),
+            ),
+            n = Math.max(0, Math.min(p_freq, t.high) - Math.max(g_freq, t.low));
+          e > 0 && n > 0 && w.add(t.colorIndex);
+        }
+        let f = 0;
+        for (; w.has(f);) f++;
+        s.push({
+          beginClamped: m,
+          endClamped: u,
+          low: g_freq,
+          high: p_freq,
+          colorIndex: f,
+        });
+        window.__annotationColorMap = window.__annotationColorMap || new Map();
+        window.__annotationColorMap.set(String(r.id), f);
+      });
+      window.__annotationColorsCached = true;
+    }),
+      (window.renderAllAnnotations = x),
+      (window.resizeAnnotationOverlay = _),
+      (window.renderSelectionOverlay = v),
+      (window.__annDebugViewport = function () {
+        try {
+          const t = Math.max(1, a && a.clientWidth ? a.clientWidth : 0);
+          let e = 1;
+          const n = globalThis._spectroDuration,
+            o = globalThis._spectroImageWidth;
+          isFinite(n) && n > 0 && isFinite(o) && o > 0
+            ? (e = o / n)
+            : globalThis._spectroMap &&
+                "function" == typeof globalThis._spectroMap.pxPerSec
+              ? (e = globalThis._spectroMap.pxPerSec())
+              : globalThis._spectroPxPerSec &&
+                (e = globalThis._spectroPxPerSec);
+          const i = Math.max(
+              0,
+              a && "number" == typeof a.scrollLeft ? a.scrollLeft : 0,
+            ),
+            r = t / Math.max(1e-9, e),
+            c = i / Math.max(1e-9, e),
+            l = {
+              duration: n,
+              displayedWidthPx: o,
+              viewportWidthPx: t,
+              pxPerSec: e,
+              scrollLeftPx: i,
+              visibleStartSec: c,
+              visibleEndSec: (i + t) / Math.max(1e-9, e),
+              visibleSpanSec: r,
+            };
+          try {
+            console.table(l);
+          } catch (t) {
+            console.log("[__annDebugViewport]", l);
+          }
+          return l;
+        } catch (t) {
+          return (console.error("__annDebugViewport failed", t), null);
+        }
+      }));
+  } catch (t) {}
+  ((globalThis._annotations = globalThis._annotations || {}),
+    (globalThis._annotations.getNextId = function () {
+      let t = 1;
+      try {
+        if (
+          window.annotationGrid &&
+          "function" == typeof window.annotationGrid.getData
+        ) {
+          const e = window.annotationGrid.getData() || [];
+          e.length > 0 &&
+            (t = Math.max(...e.map((t) => Number(t.id) || 0)) + 1);
+        }
+      } catch (t) {}
+      return t;
+    }),
+    (globalThis._annotations.createRow = function (t) {
+      const e = (t) => Number(t).toFixed(4),
+        n = void 0 !== t.id ? t.id : globalThis._annotations.getNextId();
+      let o = t.group_id;
+      if ((null == o || "" === o) && (t.scientificName || t.species))
+        try {
+          const e = Array.isArray(window.__speciesRecords)
+            ? window.__speciesRecords
+            : [];
+          let n = e.find(
+            (e) =>
+              e.scientific &&
+              e.scientific.toLowerCase() ===
+                String(t.scientificName).trim().toLowerCase(),
+          );
+          (n ||
+            (n = e.find(
+              (e) =>
+                e.common &&
+                e.common.toLowerCase() ===
+                  String(t.species).trim().toLowerCase(),
+            )),
+            n && void 0 !== n.group_id && (o = String(n.group_id)));
+        } catch (t) {}
+      null == o && (o = "");
+      const i =
+        globalThis._spectroOriginalNyquist ||
+        (globalThis._spectroSampleRate
+          ? globalThis._spectroSampleRate / 2
+          : 22050);
+      let a = Number(t.lowFreq || 0),
+        r = Number(t.highFreq || 0);
+      return (
+        (a = Math.max(0, Math.min(i, a))),
+        (r = Math.max(0, Math.min(i, r))),
+        {
+          ...t,
+          id: n,
+          Selection: void 0 !== t.Selection ? String(t.Selection) : String(n),
+          beginTime: Number(e(t.beginTime || 0)),
+          endTime: Number(
+            e(void 0 !== t.endTime ? t.endTime : t.beginTime || 0),
+          ),
+          lowFreq: Number(e(a)),
+          highFreq: Number(e(r)),
+          species: t.species || "",
+          scientificName: t.scientificName || "",
+          group_id: o,
+          sex: t.sex || "",
+          lifeStage: t.lifeStage || "",
+          soundType: t.soundType || "",
+          notes: t.notes || "",
+        }
+      );
+    }),
+    (globalThis._annotations.add = function (t, e = "create") {
+      const n = globalThis._annotations.addMany([t], e);
+      return n ? n[0] : null;
+    }),
+    (globalThis._annotations.addMany = function (t, e = "create") {
+      if (!t || !t.length) return [];
+      let n = globalThis._annotations.getNextId();
+      const o = t.map(
+        (t) => (
+          void 0 === t.id && (t.id = n++),
+          globalThis._annotations.createRow(t)
+        ),
+      );
+      try {
+        if (
+          window.annotationGrid &&
+          "function" == typeof window.annotationGrid.addData
+        ) {
+          (window.annotationGrid.addData(o),
+            o.length > 0 && (m = o[o.length - 1].id));
+          try {
+            window.dispatchEvent(
+              new CustomEvent("annotations-changed", {
+                detail: { reason: e, count: o.length },
+              }),
+            );
+          } catch (t) {}
+          try {
+            "function" == typeof window.renderAllAnnotations &&
+              window.renderAllAnnotations();
+          } catch (t) {}
+          try {
+            "function" == typeof u && u(b());
+          } catch (t) {}
+        }
+      } catch (t) {
+        console.error("Failed to add annotations", t);
+      }
+      return o;
+    }),
+    (globalThis._annotations.replaceAll = function (t, e = "replace") {
+      if (!t) return [];
+      let n = 1;
+      const o = t.map(
+        (t) => (
+          void 0 === t.id && (t.id = n++),
+          globalThis._annotations.createRow(t)
+        ),
+      );
+      try {
+        if (
+          window.annotationGrid &&
+          "function" == typeof window.annotationGrid.replaceData
+        ) {
+          window.annotationGrid.replaceData(o);
+          try {
+            window.dispatchEvent(
+              new CustomEvent("annotations-changed", {
+                detail: { reason: e, count: o.length },
+              }),
+            );
+          } catch (t) {}
+          try {
+            "function" == typeof window.renderAllAnnotations &&
+              window.renderAllAnnotations();
+          } catch (t) {}
+          try {
+            "function" == typeof u && u(b());
+          } catch (t) {}
+        }
+      } catch (t) {
+        console.error("Failed to replace annotations", t);
+      }
+      return o;
+    }),
+    (globalThis._annotations.getAll = () => b()),
+    (globalThis._annotations.import = (t) => {
+      globalThis._annotations.replaceAll(t, "import");
+    }),
+    (globalThis._annotations.onChange = (t) => {
+      u = t;
+    }),
+    (globalThis._annotations.delete = (t) => {
+      try {
+        if (
+          window.GridLib &&
+          "function" == typeof window.GridLib.getData &&
+          "function" == typeof window.GridLib.loadData
+        ) {
+          const e = (window.GridLib.getData() || [] || []).filter((e) => {
+              const n =
+                void 0 !== e.id
+                  ? String(e.id)
+                  : void 0 !== e.Selection
+                    ? String(e.Selection)
+                    : "";
+              return (
+                String(n) !== String(t) && String(e.id || "") !== String(t)
+              );
+            }),
+            n =
+              window.GridLib.tableInstance &&
+              "function" == typeof window.GridLib.tableInstance.getColumns
+                ? window.GridLib.tableInstance
+                    .getColumns()
+                    .map((t) => t.getField())
+                : [
+                    "Selection",
+                    "Begin Time (s)",
+                    "End Time (s)",
+                    "Low Freq (Hz)",
+                    "High Freq (Hz)",
+                    "Common name",
+                    "Notes",
+                  ];
+          window.GridLib.loadData(n, e);
+          try {
+            "function" == typeof u && u(b());
+          } catch (t) {}
+          try {
+            x();
+          } catch (t) {}
+          return;
+        }
+      } catch (t) {}
+      try {
+        "function" == typeof u && u(b());
+      } catch (t) {}
+      try {
+        x();
+      } catch (t) {}
+    }),
+    (globalThis._annotations.clear = () => {
+      try {
+        if (window.GridLib && "function" == typeof window.GridLib.clear)
+          window.GridLib.clear();
+        else if (
+          window.GridLib &&
+          "function" == typeof window.GridLib.loadData
+        ) {
+          const t =
+            window.GridLib.tableInstance &&
+            "function" == typeof window.GridLib.tableInstance.getColumns
+              ? window.GridLib.tableInstance
+                  .getColumns()
+                  .map((t) => t.getField())
+              : [
+                  "Selection",
+                  "Begin Time (s)",
+                  "End Time (s)",
+                  "Low Freq (Hz)",
+                  "High Freq (Hz)",
+                  "Common name",
+                  "Notes",
+                ];
+          window.GridLib.loadData(t, []);
+        }
+      } catch (t) {}
+      try {
+        "function" == typeof u && u(b());
+      } catch (t) {}
+      try {
+        x();
+      } catch (t) {}
+    }),
+    (window.__clearAllAnnotations = function () {
+      try {
+        window.annotationUndo && window.annotationUndo.saveState();
+      } catch (t) {}
+      globalThis._annotations &&
+        "function" == typeof globalThis._annotations.clear &&
+        globalThis._annotations.clear();
+      try {
+        S();
+      } catch (t) {}
+      try {
+        window.annotationGrid &&
+        "function" == typeof window.annotationGrid.replaceData
+          ? window.annotationGrid.replaceData([])
+          : window.annotationGrid &&
+            "function" == typeof window.annotationGrid.clearData &&
+            window.annotationGrid.clearData();
+      } catch (t) {}
+      try {
+        "function" == typeof window.__cancelPendingCreate &&
+          window.__cancelPendingCreate();
+      } catch (t) {}
+      try {
+        globalThis._editAnnotations &&
+          "function" == typeof globalThis._editAnnotations.cancelEdit &&
+          globalThis._editAnnotations.cancelEdit();
+      } catch (t) {}
+      try {
+        window.dispatchEvent(
+          new CustomEvent("annotations-changed", {
+            detail: { reason: "clear-all" },
+          }),
+        );
+      } catch (t) {}
+    }),
+    setTimeout(() => {
+      (_(),
+        x(),
+        v(),
+        E(),
+        (function () {
+          try {
+            if (window.__restorePumpTimer) return;
+            window.__restorePumpTimer = setInterval(() => {
+              try {
+                if (
+                  window.__pendingAnnotationRestore &&
+                  window.annotationGrid &&
+                  "function" == typeof window.annotationGrid.replaceData
+                )
+                  try {
+                    window.__applyPendingAnnotationRestore &&
+                      window.__applyPendingAnnotationRestore();
+                  } catch (t) {}
+              } catch (t) {}
+            }, 250);
+          } catch (t) {}
+        })());
+      try {
+        if (window.__pendingAnnotationRestore)
+          try {
+            window.__applyPendingAnnotationRestore();
+          } catch (t) {}
+      } catch (t) {}
+    }, 120));
+})();
+
+(function() {
+  function checkAndFocus() {
+    const acOverlay = document.getElementById("annotationControlsOverlay");
+    // Ensure we handle edge cases where style might not be initialized
+    const isAudioLoaded = !acOverlay || acOverlay.style.display === "none" || window.getComputedStyle(acOverlay).display === "none";
+    
+    const speciesResult = document.getElementById('speciesResult');
+    const hasSpecies = speciesResult && speciesResult.textContent.trim().length > 0;
+    
+    const searchContainer = document.querySelector('.species-search');
+    if (searchContainer) {
+      if (isAudioLoaded && !hasSpecies) {
+        searchContainer.classList.add('species-warning-glow');
+      } else {
+        searchContainer.classList.remove('species-warning-glow');
+      }
+    }
+    return { isAudioLoaded, hasSpecies };
+  }
+
+  // Hook into mode changes and species selections
+  window.addEventListener("species-select", checkAndFocus);
+  window.addEventListener("species-select-cleared", checkAndFocus);
+  window.addEventListener("mode-change", checkAndFocus);
+
+  // Set up a MutationObserver to detect exactly when the audio finishes loading
+  // by watching the overlay hide itself. This is much more reliable than custom events in Edge.
+  const observerCallback = () => {
+    const acOverlay = document.getElementById("annotationControlsOverlay");
+    if (!acOverlay) return;
+
+    // Track the previous state to detect a transition
+    let wasAudioLoaded = !acOverlay || acOverlay.style.display === "none" || window.getComputedStyle(acOverlay).display === "none";
+    
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'style' || mutation.attributeName === 'class') {
+          const { isAudioLoaded, hasSpecies } = checkAndFocus();
+          
+          // If it just transitioned from NOT loaded to LOADED
+          if (isAudioLoaded && !wasAudioLoaded && !hasSpecies) {
+            const speciesInput = document.getElementById('speciesKwInput');
+            if (speciesInput) {
+              // Timeout helps ensure any DOM repaints have finished
+              setTimeout(() => speciesInput.focus(), 300);
+            }
+          }
+          wasAudioLoaded = isAudioLoaded;
+        }
+      }
+    });
+    observer.observe(acOverlay, { attributes: true });
+  };
+
+  // The DOM might not be fully ready when this script executes
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', observerCallback);
+  } else {
+    observerCallback();
+  }
+
+  // Fallback poller to ensure glow state is always correct even if events are missed
+  setInterval(checkAndFocus, 1500);
+})();

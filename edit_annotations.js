@@ -1,1 +1,1508 @@
-!function(){const e="#ffff66",t=document.getElementById("viewportWrapper"),n=document.getElementById("scrollArea"),i=document.getElementById("spectrogramCanvas"),o=document.getElementById("annotationOverlay");if(!(t&&n&&i&&o))return;let r=document.getElementById("editHighlightOverlay");r||(r=document.createElement("canvas"),r.id="editHighlightOverlay",r.style.position="absolute",r.style.pointerEvents="none",r.style.zIndex=75,t.appendChild(r));const a=r.getContext&&r.getContext("2d",{alpha:!0});if(!a)return;let l=document.getElementById("editPointerLayer");l||(l=document.createElement("div"),l.id="editPointerLayer",l.style.position="absolute",l.style.left="0px",l.style.top="0px",l.style.width="100%",l.style.height="100%",l.style.background="transparent",l.style.zIndex=80,l.style.pointerEvents="none",t.appendChild(l));const c=document.getElementById("createEditToggle"),d=document.getElementById("toggleCreate")||document.querySelector('button[title="Create"]')||document.querySelector("#annoCreateBtn"),s=document.getElementById("toggleEdit")||document.querySelector('button[title="Edit"]')||document.querySelector("#annoEditBtn"),g=document.getElementById("multiDeleteBtn");function h(){if(globalThis._annotations&&"function"==typeof globalThis._annotations.getAll)try{return globalThis._annotations.getAll()||[]}catch(e){return[]}return[]}function u(e){if(globalThis._annotations&&"function"==typeof globalThis._annotations.import)try{globalThis._annotations.import(e)}catch(e){}}function f(){return{pxPerSec:globalThis._spectroMap&&"function"==typeof globalThis._spectroMap.pxPerSec?globalThis._spectroMap.pxPerSec():globalThis._spectroPxPerSec||1,imageHeight:"number"==typeof globalThis._spectroImageHeight&&globalThis._spectroImageHeight>0?globalThis._spectroImageHeight:Math.max(1,(i.clientHeight||300)-12-44),ymaxHz:"number"==typeof globalThis._spectroYMax&&globalThis._spectroYMax>0?globalThis._spectroYMax:globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050,yminHz:"number"==typeof globalThis._spectroYMin?globalThis._spectroYMin:0,axisLeft:"number"==typeof globalThis._spectroAxisLeft?globalThis._spectroAxisLeft:70}}function m(){if("number"==typeof globalThis._spectroDuration&&isFinite(globalThis._spectroDuration))return globalThis._spectroDuration;if(globalThis._spectroAudioBuffer&&"number"==typeof globalThis._spectroAudioBuffer.duration&&isFinite(globalThis._spectroAudioBuffer.duration))return globalThis._spectroAudioBuffer.duration;const e=document.querySelector("audio");return e&&isFinite(e.duration)?e.duration:null}function w(){const e=Math.max(1,n.clientWidth),{imageHeight:t}=f(),i="number"==typeof globalThis._spectroAxisLeft?globalThis._spectroAxisLeft:70;r.style.left=i+"px",r.style.top="12px",r.style.width=e+"px",r.style.height=t+"px";const o=window.devicePixelRatio||1;r.width=Math.round(e*o),r.height=Math.round(t*o),a.setTransform(o,0,0,o,0,0),l.style.left=i+"px",l.style.top="12px",l.style.width=e+"px",l.style.height=t+"px"}function y(){a.clearRect(0,0,r.width/(window.devicePixelRatio||1),r.height/(window.devicePixelRatio||1))}function p(e){const{pxPerSec:t,imageHeight:i,ymaxHz:o,yminHz:r}=f(),a=e.beginTime*t-Math.round(n.scrollLeft||0),l=e.endTime*t-Math.round(n.scrollLeft||0),c=(o-e.highFreq)/Math.max(1,o-r)*i,d=(o-e.lowFreq)/Math.max(1,o-r)*i;return{left:a,top:c,right:l,bottom:d,width:Math.abs(l-a),height:Math.abs(d-c)}}function b(e,t,n){const i=Math.min(n.left,n.right),o=Math.max(n.left,n.right),r=Math.min(n.top,n.bottom),a=Math.max(n.top,n.bottom);if(e>=i&&e<=o&&t>=r&&t<=a)return 0;const l=Math.max(i-e,0,e-o),c=Math.max(r-t,0,t-a);return Math.sqrt(l*l+c*c)}function T(e,t){const n=h();if(!n||!n.length)return null;let i=null;for(const o of n){const n=p(o),r=b(e,t,n);(null===i||r<i.dist||r===i.dist&&n.width*n.height<i.rectPx.width*i.rectPx.height)&&(i={id:o.id,dist:r,rectPx:n,ann:o})}return i&&i.dist<=6?i:null}const v=22;function x(e){const t=Math.abs(e.right-e.left),n=Math.max(e.left,e.right);let i=Math.min(e.top,e.bottom),o=Math.max(e.top,e.bottom);try{const{imageHeight:e}=f();i=Math.max(0,i),o=Math.min(e,o)}catch(e){}const r=Math.max(0,o-i);let a,l;return t<34&&r<34?(a=n+4,l=o+4):t<34?(a=n+4,l=o-v-6):r<34?(a=n-v-6,l=o+4):(a=n-v-6,l=o-v-6),{x:a,y:l,w:v,h:v}}function S(e){const t=Math.min(e.left,e.right),n=Math.max(e.left,e.right);let i=Math.min(e.top,e.bottom),o=Math.max(e.top,e.bottom);try{const{imageHeight:e}=f();i=Math.max(0,i),o=Math.min(e,o)}catch(e){}const r=(t+n)/2,a=(i+o)/2,l=10;return[{name:"left",x:t,y:a,w:l,h:l},{name:"right",x:n,y:a,w:l,h:l},{name:"top",x:r,y:i,w:l,h:l},{name:"bottom",x:r,y:o,w:l,h:l},{name:"topleft",x:t,y:i,w:l,h:l},{name:"topright",x:n,y:i,w:l,h:l},{name:"bottomleft",x:t,y:o,w:l,h:l},{name:"bottomright",x:n,y:o,w:l,h:l}]}function _(e,t,n){const i=S(n);for(const n of i){const i=n.x-7,o=n.y-7;if(e>=i&&e<=i+14&&t>=o&&t<=o+14)return n.name}return null}function M(t){if(y(),!t)return;try{if(null!=F&&F!==t.id){const t=h().find(e=>e.id===F);if(t){const n=p(t);a.save(),a.setLineDash([]),a.lineWidth=2.5,a.strokeStyle=e;const i=Math.min(n.left,n.right),o=Math.min(n.top,n.bottom),r=Math.abs(n.right-n.left),l=Math.abs(n.bottom-n.top);a.strokeRect(i+.5,o+.5,r,l),a.restore()}}}catch(e){}const n=p(t);a.save(),a.setLineDash([]),a.lineWidth=2.5,a.strokeStyle=e;const i=Math.min(n.left,n.right),o=Math.min(n.top,n.bottom),r=Math.abs(n.right-n.left),l=Math.abs(n.bottom-n.top);a.strokeRect(i+.5,o+.5,r,l);const c=S(n);for(const t of c){const n=t.x-t.w/2,i=t.y-t.h/2;a.fillStyle=e,a.fillRect(n,i,t.w,t.h)}!function(e,t,n=!1){const i=x(t);i&&(e.save(),e.fillStyle=n?"rgba(220, 53, 69, 0.9)":"#ffffff",e.strokeStyle=n?"#ffffff":"#000000",e.lineWidth=1.2,e.beginPath(),"function"==typeof e.roundRect?e.roundRect(i.x,i.y,i.w,i.h,2):e.rect(i.x,i.y,i.w,i.h),e.fill(),e.stroke(),e.strokeStyle=n?"#ffffff":"#000000",e.beginPath(),e.moveTo(i.x+6,i.y+8),e.lineTo(i.x+7,i.y+17),e.lineTo(i.x+15,i.y+17),e.lineTo(i.x+16,i.y+8),e.moveTo(i.x+4,i.y+8),e.lineTo(i.x+18,i.y+8),e.moveTo(i.x+9,i.y+8),e.lineTo(i.x+9,i.y+5),e.lineTo(i.x+13,i.y+5),e.lineTo(i.x+13,i.y+8),e.moveTo(i.x+9,i.y+10),e.lineTo(i.x+9,i.y+15),e.moveTo(i.x+13,i.y+10),e.lineTo(i.x+13,i.y+15),e.stroke(),e.restore())}(a,n,D===t.id),a.restore()}function E(t){y();const n=h().find(e=>e.id===t);if(!n)return;const i=p(n);a.save(),a.setLineDash([]),a.lineWidth=2.5,a.strokeStyle=e;const o=Math.min(i.left,i.right),r=Math.min(i.top,i.bottom),l=Math.abs(i.right-i.left),c=Math.abs(i.bottom-i.top);a.strokeRect(o+.5,r+.5,l,c),a.restore()}let q=!1,R=!0,F=null,k=null,G={x:0,y:0},L=0,D=null;function I(e){const t=h(),n=t.findIndex(t=>t.id===e);if(n<0)return;const i=t[n];k={id:i.id,originalSnapshot:JSON.parse(JSON.stringify(i)),working:JSON.parse(JSON.stringify(i)),activeHandle:null,pointerId:null,dragging:!1};try{globalThis._annotations._editingId=k.id}catch(e){}R=!0,F=null,M(k.working),Z();try{globalThis._playbackScrollJump&&"function"==typeof globalThis._playbackScrollJump.setPosition&&globalThis._playbackScrollJump.setPosition(i.beginTime)}catch(e){}try{ee(i.id)}catch(e){console.warn("ensureGridSelectionAndOverlay failed",e)}}function O(){if(k)try{const e=k.working,t=e=>Number(e).toFixed(4),n={beginTime:Number(t(e.beginTime)),endTime:Number(t(e.endTime)),lowFreq:Number(t(e.lowFreq)),highFreq:Number(t(e.highFreq))};if(window.annotationGrid&&"function"==typeof window.annotationGrid.updateRow){window.annotationGrid.updateRow(k.id,n);try{window.dispatchEvent(new CustomEvent("annotations-changed",{detail:{reason:"edit-commit",id:k.id}}))}catch(e){}}else{const e=h(),t=e.findIndex(e=>e.id===k.id);t>=0&&(e[t]=Object.assign({},e[t],n),u(e))}}catch(e){console.error("persist failed",e)}}function A(){if(!k)return;const e=k.working,t=m(),n=globalThis._spectroOriginalNyquist||(globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050);Number.isFinite(t)?(e.beginTime=Math.max(0,Math.min(t,e.beginTime)),e.endTime=Math.max(0,Math.min(t,e.endTime))):(e.beginTime=Math.max(0,e.beginTime),e.endTime=Math.max(0,e.endTime)),e.beginTime<e.endTime?(e.lowFreq=Math.max(0,Math.min(n,e.lowFreq)),e.highFreq=Math.max(0,Math.min(n,e.highFreq)),e.lowFreq<e.highFreq?(O(),N(),Z()):P()):P()}function P(){if(k){try{const e=k.originalSnapshot;if(e){const t={beginTime:Number(e.beginTime),endTime:Number(e.endTime),lowFreq:Number(e.lowFreq),highFreq:Number(e.highFreq)};if("label"in e&&(t.label=e.label),"notes"in e&&(t.notes=e.notes),"color"in e&&(t.color=e.color),window.annotationGrid&&"function"==typeof window.annotationGrid.updateRow){window.annotationGrid.updateRow(k.id,t);try{window.dispatchEvent(new CustomEvent("annotations-changed",{detail:{reason:"edit-revert",id:k.id}}))}catch(e){}}else{const e=h(),n=e.findIndex(e=>e.id===k.id);n>=0&&(e[n]=Object.assign({},e[n],t),u(e))}}}catch(e){console.error("revert failed",e)}N(),Z()}}function N(){if(k){try{delete globalThis._annotations._editingId}catch(e){}if(null!=k.pointerId)try{l.releasePointerCapture&&l.releasePointerCapture(k.pointerId)}catch(e){}k=null,F=null,R=!0;try{l&&(l.style.cursor="")}catch(e){}y()}}function C(e,t){if(!q)return;if(!R)return;G.x=e,G.y=t;const n=r.getBoundingClientRect(),i=e-n.left,o=t-n.top;if(o<-6||o>n.height+6)return y(),void(F=null);const a=T(i,o);if(!a)return y(),void(F=null);F!==a.id&&(F=a.id,E(F))}function H(e){if(!q)return;if(0!==e.button)return;const t=r.getBoundingClientRect(),i=e.clientX-t.left,o=e.clientY-t.top,a=e.ctrlKey||e.metaKey;let c=null;if(k){const e=x(p(k.working));e&&i>=e.x&&i<=e.x+e.w&&o>=e.y&&o<=e.y+e.h&&(c=k.id)}if(null!=c){e.preventDefault(),e.stopPropagation();const t=Date.now();return void(D===c&&t-L<500?(Y([c]),D=null,L=0):(D=c,L=t,k&&k.id===c&&M(k.working),setTimeout(()=>{D===c&&Date.now()-L>=490&&(D=null,k&&k.id===c&&M(k.working))},500)))}if(null!=D){const e=D;D=null,k&&k.id===e&&M(k.working)}if(k&&!a){const t=p(k.working),r=_(i,o,t);if(r){e.preventDefault(),k.activeHandle=r,k.pointerId=e.pointerId;try{window.annotationUndo&&window.annotationUndo.saveState()}catch(e){}k.dragging=!0;try{l.setPointerCapture&&l.setPointerCapture(e.pointerId)}catch(e){}return void M(k.working)}let a=!1;const c=T(i,o);if(c&&c.id!==k.id&&(a=!0),!a&&0===b(i,o,t)){e.preventDefault();const t=k.working;k.activeHandle="move",k.pointerId=e.pointerId;try{window.annotationUndo&&window.annotationUndo.saveState()}catch(e){}k.dragging=!0,k.moveStart={beginTime:t.beginTime,endTime:t.endTime,lowFreq:t.lowFreq,highFreq:t.highFreq};try{const{pxPerSec:e,imageHeight:t,ymaxHz:r,yminHz:a}=f(),l=1/Math.max(1e-9,e),c=Math.max(0,Math.min(t,o));k.dragOrigin={x:i,y:c},k.dragOriginGlobalX=i+Math.round(n.scrollLeft||0),k.dragOriginTime=k.dragOriginGlobalX*l,k.dragOriginFreq=Math.max(a,Math.min(r,r-c/t*(r-a)))}catch(e){k.dragOrigin={x:i,y:o},k.dragOriginGlobalX=null,k.dragOriginTime=null,k.dragOriginFreq=null}try{l.setPointerCapture&&l.setPointerCapture(e.pointerId)}catch(e){}return void M(k.working)}}const d=o>=-6&&o<=t.height+6?T(i,o):null,s=d?d.id:null;if(!s){if(a)return;k&&A(),window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{const e=window.annotationGrid;e&&("function"==typeof e.deselectRow&&e.deselectRow(),"function"==typeof e.getSelectedRows&&(e.getSelectedRows()||[]).forEach(e=>{try{e.deselect&&e.deselect()}catch(e){}}))}catch(e){}finally{window.__syncingGridSelection--}return V(),void C(e.clientX,e.clientY)}if(a){let t=k?k.id:null;k&&(O(),N()),window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{const e=window.annotationGrid;if(e){const n="function"==typeof e.getSelectedData?e.getSelectedData():[];let i=new Set(n.map(e=>String(e.id)));null!=t&&i.add(String(t));const o=String(s);i.has(o)?i.delete(o):i.add(o),"function"==typeof e.deselectRow&&e.deselectRow(),"function"==typeof e.getSelectedRows&&(e.getSelectedRows()||[]).forEach(e=>{try{e.deselect&&e.deselect()}catch(e){}});const r=Array.from(i);if("function"==typeof e.selectRow&&r.length>0&&e.selectRow(r),1===i.size)I(r[0]);else{N();try{"function"==typeof window.renderSelectionOverlay&&window.renderSelectionOverlay(r)}catch(e){}}}}catch(e){console.error("Exception in Multi-Select:",e)}finally{window.__syncingGridSelection--}return V(),void(e.preventDefault&&e.preventDefault())}window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{try{const e=window.annotationGrid;e&&("function"==typeof e.deselectRow&&e.deselectRow(),"function"==typeof e.getSelectedRows&&(e.getSelectedRows()||[]).forEach(e=>{try{e.deselect&&e.deselect()}catch(e){}}))}catch(e){}try{k&&k.id!==s&&O()}catch(e){}I(s)}finally{window.__syncingGridSelection--}V(),e.preventDefault&&e.preventDefault()}function B(e){if(!k||!k.activeHandle)return;if(null!=k.pointerId&&e.pointerId!==k.pointerId)return;e.preventDefault();const t=r.getBoundingClientRect(),i=e.clientX-t.left,o=e.clientY-t.top,{pxPerSec:a,imageHeight:l,ymaxHz:c,yminHz:d}=f(),s=1/Math.max(1e-9,a);let g=(i+Math.round(n.scrollLeft||0))*s;const h=m();Number.isFinite(h)?(g<0&&(g=0),g>h&&(g=h)):g<0&&(g=0);const u=globalThis._spectroOriginalNyquist||(globalThis._spectroSampleRate?globalThis._spectroSampleRate/2:22050),w=Math.max(d,Math.min(u,c-o/Math.max(1,l)*(c-d))),y=k.working;if("move"===k.activeHandle){const e=k.moveStart||{beginTime:y.beginTime,endTime:y.endTime,lowFreq:y.lowFreq,highFreq:y.highFreq};let t=0,r=0;try{if("number"==typeof k.dragOriginGlobalX){const e=i+Math.round(n.scrollLeft||0);t=(e-k.dragOriginGlobalX)*s}else if(k.dragOrigin&&"number"==typeof k.dragOrigin.x){t=(i-k.dragOrigin.x)*s}if("number"==typeof k.dragOriginFreq)r=w-k.dragOriginFreq;else if(k.dragOrigin&&"number"==typeof k.dragOrigin.y){const e=Math.max(0,Math.min(l,k.dragOrigin.y));r=(e-Math.max(0,Math.min(l,o)))/Math.max(1,l)*(c-d)}else r=0}catch(e){}if(Number.isFinite(h)){const n=-e.beginTime,i=h-e.endTime;t=Math.max(n,Math.min(i,t))}else t=Math.max(-e.beginTime,t);const a=-e.lowFreq,g=u-e.highFreq;return r=Math.max(a,Math.min(g,r)),y.beginTime=e.beginTime+t,y.endTime=e.endTime+t,y.lowFreq=e.lowFreq+r,y.highFreq=e.highFreq+r,void M(k.working)}const p=1e-6,b=1e-6;let T=k.activeHandle;switch(T.includes("top")&&w<y.lowFreq?(T=T.replace("top","bottom"),y.highFreq=y.lowFreq):T.includes("bottom")&&w>y.highFreq&&(T=T.replace("bottom","top"),y.lowFreq=y.highFreq),T.includes("left")&&g>y.endTime?(T=T.replace("left","right"),y.beginTime=y.endTime):T.includes("right")&&g<y.beginTime&&(T=T.replace("right","left"),y.endTime=y.beginTime),k.activeHandle=T,k.activeHandle){case"left":y.beginTime=Math.min(y.endTime-p,g);break;case"right":y.endTime=Math.max(y.beginTime+p,g);break;case"top":y.highFreq=Math.max(y.lowFreq+b,w);break;case"bottom":y.lowFreq=Math.min(y.highFreq-b,w);break;case"topleft":y.beginTime=Math.min(y.endTime-p,g),y.highFreq=Math.max(y.lowFreq+b,w);break;case"topright":y.endTime=Math.max(y.beginTime+p,g),y.highFreq=Math.max(y.lowFreq+b,w);break;case"bottomleft":y.beginTime=Math.min(y.endTime-p,g),y.lowFreq=Math.min(y.highFreq-b,w);break;case"bottomright":y.endTime=Math.max(y.beginTime+p,g),y.lowFreq=Math.min(y.highFreq-b,w)}y.lowFreq=Math.max(0,Math.min(u,y.lowFreq)),y.highFreq=Math.max(0,Math.min(u,y.highFreq));let v=!1;try{v="temporal"===JSON.parse(localStorage.getItem("spectrolipi.settings.v1")||"{}").annotationMode}catch(e){}v&&(y.lowFreq=0,y.highFreq=u),M(k.working)}function z(e){if(!k)return;if(null!=k.pointerId&&e.pointerId!==k.pointerId)return;const t=!(!k||!k.dragging);t&&e.preventDefault();try{l.releasePointerCapture&&l.releasePointerCapture(e.pointerId)}catch(e){}if(k&&(k.activeHandle=null,k.pointerId=null),t){window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{O(),k&&ee(k.id)}finally{window.__syncingGridSelection--}Z()}k&&(k.dragging=!1),R=!0,M(k?k.working:null)}function W(e){try{if(!1===e.isPrimary)return}catch(e){}if(k){const t=r.getBoundingClientRect(),n=e.clientX-t.left,i=e.clientY-t.top,o=p(k.working),a=_(n,i,o);if(k.dragging)return void("move"===k.activeHandle?l.style.cursor="grabbing":l.style.cursor="move");if(a){const e={left:"ew-resize",right:"ew-resize",top:"ns-resize",bottom:"ns-resize",topleft:"nwse-resize",bottomright:"nwse-resize",topright:"nesw-resize",bottomleft:"nesw-resize"};return l.style.cursor=e[a]||"default",void(R&&(F=k.id,M(k.working)))}let c=null;return i>=-6&&i<=t.height+6&&(c=T(n,i)),c&&c.id!==k.id?(l.style.cursor="",void(R&&F!==c.id&&(F=c.id,M(k.working)))):0===b(n,i,o)?(l.style.cursor="grab",void(R&&F!==k.id&&(F=k.id,M(k.working)))):(l.style.cursor="",void(R&&null!==F&&(F=null,M(k.working))))}C(e.clientX,e.clientY),k||(l.style.cursor="")}function X(){if(k){try{l&&(l.style.cursor="")}catch(e){}M(k.working)}else{try{l&&(l.style.cursor="")}catch(e){}y(),F=null}}function U(){w(),k?M(k.working):F?E(F):y()}function Y(e){try{let t=Array.isArray(e)?e:[];if(!t.length&&window.annotationGrid&&"function"==typeof window.annotationGrid.getSelectedRows&&!1!==window.annotationGrid.initialized){const e=window.annotationGrid.getSelectedRows();t=e.map(e=>e.getData().id)}if(0===t.length&&k&&(t=[k.id]),!t.length)return void window.alert("No annotations selected to delete.");try{window.annotationUndo&&window.annotationUndo.saveState()}catch(e){}const n=function(){let e=!1;return{show(t){try{if(window.__spectroWait&&"function"==typeof window.__spectroWait.show){const n=t&&t.etaText||"Deleting rows…",i=t&&t.titleText||"Deleting rows",o=t&&t.bodyText||"Removing selected annotations. Please wait…";window.__spectroWait.show({etaText:n,titleText:i,bodyText:o}),e=!0}}catch(e){}},updateEta(t){try{e&&window.__spectroWait&&"function"==typeof window.__spectroWait.show&&window.__spectroWait.show({etaText:t,titleText:"Deleting rows",bodyText:"Removing selected annotations. Please wait…"})}catch(e){}},hide(){if(e){try{window.__spectroWait&&"function"==typeof window.__spectroWait.hide&&window.__spectroWait.hide()}catch(e){}e=!1}}}}(),i=t.length;i>1&&n.show({etaText:`Deleting ${i} rows…`,titleText:"Deleting rows",bodyText:"Removing selected annotations. Please wait…"});const o=async()=>{try{const e=200;for(let o=0;o<t.length;o+=e){const r=t.slice(o,o+e);window.annotationGrid.deleteRow(r),i>1&&n.updateEta(`Deleting rows ${Math.min(t.length,o+e)} / ${t.length}…`),await new Promise(e=>setTimeout(e,0))}const o=h(),r=new Set(t.map(String));let a=o.filter(e=>!r.has(String(e.id)));const l=new Array(a.length);for(let e=0;e<a.length;e++){const t=a[e];l[e]={...t,id:e+1,Selection:String(e+1)},i>1&&e%500==0&&await new Promise(e=>setTimeout(e,0))}u(l),window.annotationGrid&&"function"==typeof window.annotationGrid.replaceData&&await window.annotationGrid.replaceData(l);try{window.dispatchEvent(new CustomEvent("annotations-changed",{detail:{reason:"multi-delete",deleted:t}}))}catch(e){}k&&r.has(String(k.id))&&N(),C(G.x,G.y)}catch(e){console.error("multi-delete error",e),window.alert("Deletion failed; see console")}finally{i>1&&n.hide()}};return void setTimeout(o,20)}catch(e){console.error("multi-delete error",e),window.alert("Deletion failed; see console")}}function J(e){if(!q)return;e.preventDefault(),e.stopPropagation(),k&&(A(),C(G.x,G.y));const t=document.getElementById("createEditToggle");if(t)t.dispatchEvent(new CustomEvent("mode-change",{detail:{mode:"create"},bubbles:!0}));else{const e=document.getElementById("toggleCreate")||document.querySelector('button[title="Create"]')||document.querySelector("#annoCreateBtn");e&&e.click()}}function $(e,t){try{e&&(e.style.background=t?"rgba(255,255,255,0.02)":"transparent")}catch(e){}}function K(){try{if(c&&c.dataset)return c.dataset.mode}catch(e){}return null}function j(){if(!q){q=!0,R=!0,F=null,k=null,l.style.pointerEvents="auto",l.addEventListener("pointermove",W),l.addEventListener("pointerleave",X),l.addEventListener("pointerdown",H),l.addEventListener("pointermove",B),l.addEventListener("pointerup",z),l.addEventListener("pointercancel",z),l.addEventListener("contextmenu",J),n.addEventListener("scroll",U),window.addEventListener("resize",U),window.addEventListener("spectrogram-generated",U,{passive:!0}),w(),y();try{if(c){c.dataset.mode="edit";const e=c.querySelector('[data-mode="edit"]'),t=c.querySelector('[data-mode="create"]');e&&e.setAttribute("aria-pressed","true"),t&&t.setAttribute("aria-pressed","false")}else $(s,!0),$(d,!1)}catch(e){}}}function Q(){if(q){if(q=!1,R=!1,F=null,k)try{A()}catch(e){P()}window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{const e=window.annotationGrid;e&&("function"==typeof e.deselectRow&&e.deselectRow(),"function"==typeof e.getSelectedRows&&(e.getSelectedRows()||[]).forEach(e=>{try{e.deselect&&e.deselect()}catch(e){}}))}catch(e){}finally{window.__syncingGridSelection--}V(),function(){l.style.pointerEvents="none",l.removeEventListener("pointermove",W),l.removeEventListener("pointerleave",X),l.removeEventListener("pointerdown",H),l.removeEventListener("pointermove",B),l.removeEventListener("pointerup",z),l.removeEventListener("pointercancel",z),l.removeEventListener("contextmenu",J),n.removeEventListener("scroll",U),window.removeEventListener("resize",U);try{window.removeEventListener("spectrogram-generated",U)}catch(e){}}(),y();try{if(c){c.dataset.mode="create";const e=c.querySelector('[data-mode="edit"]'),t=c.querySelector('[data-mode="create"]');e&&e.setAttribute("aria-pressed","false"),t&&t.setAttribute("aria-pressed","true")}else $(s,!1)}catch(e){}}}function V(){let e=0;try{window.annotationGrid&&window.annotationGrid.initialized&&"function"==typeof window.annotationGrid.getSelectedData&&(e=window.annotationGrid.getSelectedData().length)}catch(e){}k&&e<=1&&(e=1);let t=!1;try{"function"==typeof window.isAnyModalOpen&&window.isAnyModalOpen()&&(t=!0)}catch(e){}const n=e>0&&!t;let i=!1;try{i="temporal"===JSON.parse(localStorage.getItem("spectrolipi.settings.v1")||"{}").annotationMode}catch(e){}const o=1===e&&!i&&!t;function r(e,t){const n=document.getElementById(e)||document.querySelector(`button[title="${e}"]`);if(n){n.disabled=!t;try{n.style.opacity=t?"1.0":"0.45",n.style.cursor=t?"pointer":"default",n.style.border=t?"1px solid rgba(255,255,255,0.06)":"1px solid transparent",t||(n.style.background="transparent")}catch(e){}}}r("multiDeleteBtn",n),r("Delete",n),r("updateTagsBtn",n),r("bulkUpdateSpeciesBtn",n),r("runSccBtn",o)}g&&g.addEventListener("click",e=>{e.preventDefault&&e.preventDefault(),Y()},!1),window.addEventListener("mode-change",()=>setTimeout(V,0)),window.addEventListener("annotation-mode-changed",()=>setTimeout(V,0)),window.addEventListener("edit-selection-changed",()=>setTimeout(V,0)),window.addEventListener("annotations-changed",()=>setTimeout(V,0)),window.addEventListener("modal-toggled",()=>setTimeout(V,0)),window.addEventListener("keydown",function(e){if(document.activeElement){const e=(document.activeElement.tagName||"").toUpperCase();if("INPUT"===e||"TEXTAREA"===e||"SELECT"===e||document.activeElement.isContentEditable)return;if(document.activeElement.closest&&document.activeElement.closest('[role="dialog"]'))return}let t=0;try{const e=window.annotationGrid;e&&e.initialized&&"function"==typeof e.getSelectedData&&(t=e.getSelectedData().length)}catch(e){}if(!k&&0===t)return;if("Escape"===e.key){k&&(A(),C(G.x,G.y)),window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{const e=window.annotationGrid;e&&("function"==typeof e.deselectRow&&e.deselectRow(),"function"==typeof e.getSelectedRows&&(e.getSelectedRows()||[]).forEach(e=>{try{e.deselect&&e.deselect()}catch(e){}}))}catch(e){}finally{window.__syncingGridSelection--}return V(),void e.preventDefault()}const i=document.getElementById("multiDeleteBtn")||document.querySelector('button[title="Delete"]');if(i&&!i.disabled&&("Delete"===e.key||"d"===e.key||"D"===e.key))return Y(),void e.preventDefault();if(q)if(t>1&&"Tab"===e.key)e.preventDefault();else if("Tab"===e.key){e.preventDefault();const t=h();if(!t||0===t.length)return;const i=t.slice().sort((e,t)=>{const n=(Number(e.beginTime)||0)-(Number(t.beginTime)||0);if(0!==n)return n;return(Number(e.Selection)||Number(e.id)||0)-(Number(t.Selection)||Number(t.id)||0)}),o=i.findIndex(e=>e.id===k.id);if(o<0)return;let r=-1;if(e.shiftKey?o>0&&(r=o-1):o<i.length-1&&(r=o+1),r>=0&&r<i.length){const e=i[r];O(),window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{I(e.id)}finally{window.__syncingGridSelection--}V();try{const{pxPerSec:t}=f(),i=e.beginTime*t,o=e.endTime*t,r=n.scrollLeft,a=r+n.clientWidth;(i<r||o>a)&&(n.scrollLeft=Math.max(0,i-n.clientWidth/2+(o-i)/2))}catch(e){}}return}}),w(),function(){if(!c)return d&&d.addEventListener("click",()=>{$(s,!1),Q()}),void(s&&s.addEventListener("click",()=>{q?Q():j()}));c.addEventListener("mode-change",e=>{"edit"===(e&&e.detail&&e.detail.mode?e.detail.mode:K())?j():Q()},{passive:!0}),"edit"===K()?j():Q()}(),setTimeout(()=>{w(),y()},120),function(){try{const e=window.annotationGrid;if(!e||"function"!=typeof e.on)return;if(e.__editOverlayHooked)return;const t=()=>{try{if(!k)return;const e=h()||[];if(e.find(e=>String(e.id)===String(k.id)))try{M(k.working)}catch(e){}else{N();try{"function"==typeof window.renderAllAnnotations&&window.renderAllAnnotations()}catch(e){}}}catch(e){console.error("grid change handler failed",e)}};try{e.on("dataChanged",t)}catch(e){}try{e.on("dataLoaded",t)}catch(e){}try{e.on("rowDeleted",t)}catch(e){}try{e.on("cellEdited",t)}catch(e){}try{e.on("rowUpdated",t)}catch(e){}try{e.on("rowSelectionChanged",function(e,t){window.__syncingGridSelection>0||(1===e.length?!q||k&&String(k.id)===String(e[0].id)||k&&k.dragging||I(e[0].id):k&&!k.dragging&&(N(),C(G.x,G.y)),V())})}catch(e){}e.__editOverlayHooked=!0}catch(e){}}();try{window.addEventListener("annotations-changed",e=>{try{if(!k)return;const e=h()||[];if(!e.find(e=>String(e.id)===String(k.id))){N();try{"function"==typeof window.renderAllAnnotations&&window.renderAllAnnotations()}catch(e){}}}catch(e){}},{passive:!0})}catch(e){}function Z(){try{const e={isEditMode:!!q,editingId:k?k.id:null};window.dispatchEvent(new CustomEvent("edit-selection-changed",{detail:e}))}catch(e){}}function ee(e){if(!e)return;try{"function"==typeof window.renderSelectionOverlay&&window.renderSelectionOverlay([e])}catch(e){}const t=window.annotationGrid;if(!t)return void console.debug("[edit-sync] grid not ready yet for id",e);let n=0;const i=()=>{n++,window.__syncingGridSelection=(window.__syncingGridSelection||0)+1;try{if(!(e=>{try{"function"==typeof t.deselectRow&&t.deselectRow(),"function"==typeof t.getSelectedRows&&(t.getSelectedRows()||[]).forEach(e=>{try{e.deselect&&e.deselect()}catch(e){}});let n=null;if("function"==typeof t.getRow&&(n=t.getRow(e)||t.getRow(String(e))||(isNaN(e)?null:t.getRow(Number(e)))),n&&"function"==typeof n.select){try{"function"==typeof t.scrollToRow&&t.scrollToRow(n)}catch(e){}return n.select(),!0}if("function"==typeof t.selectRow)try{return t.selectRow([e]),!0}catch(n){try{return t.selectRow(String(e)),!0}catch(e){}try{if(!isNaN(e))return t.selectRow(Number(e)),!0}catch(e){}}}catch(e){}return!1})(e)&&n<5){try{if("function"==typeof t.getRow){if(!(t.getRow(e)||t.getRow(String(e)))&&"function"==typeof t.scrollToRow)try{t.scrollToRow(e)}catch(e){}}}catch(e){}setTimeout(i,80*n)}}finally{window.__syncingGridSelection--}};i();try{"function"==typeof window.renderSelectionOverlay&&window.renderSelectionOverlay([e])}catch(e){}}globalThis._editAnnotations=globalThis._editAnnotations||{},globalThis._editAnnotations.isEditMode=()=>!!q,globalThis._editAnnotations.getEditingId=()=>k?k.id:null,globalThis._editAnnotations.cancelEdit=()=>{if(k)try{A()}catch(e){P()}},globalThis._editAnnotations.commitEdit=()=>{k&&A()},globalThis._editAnnotations.deleteEditing=()=>{k&&Y()},function(){try{if(document.getElementById("edit-sync-style"))return;const e=".tabulator-row.row-active-edit { box-shadow: inset 0 0 0 2px rgba(255,235,59,0.9); background: rgba(255,255,0,0.10) !important; }",t=document.createElement("style");t.id="edit-sync-style",t.appendChild(document.createTextNode(e)),document.head.appendChild(t)}catch(e){}}()}();
+!(function () {
+  const e = "#ffff66",
+    t = document.getElementById("viewportWrapper"),
+    n = document.getElementById("scrollArea"),
+    i = document.getElementById("spectrogramCanvas"),
+    o = document.getElementById("annotationOverlay");
+  if (!(t && n && i && o)) return;
+  let r = document.getElementById("editHighlightOverlay");
+  r ||
+    ((r = document.createElement("canvas")),
+    (r.id = "editHighlightOverlay"),
+    (r.style.position = "absolute"),
+    (r.style.pointerEvents = "none"),
+    (r.style.zIndex = 75),
+    t.appendChild(r));
+  const a = r.getContext && r.getContext("2d", { alpha: !0 });
+  if (!a) return;
+  let l = document.getElementById("editPointerLayer");
+  l ||
+    ((l = document.createElement("div")),
+    (l.id = "editPointerLayer"),
+    (l.style.position = "absolute"),
+    (l.style.left = "0px"),
+    (l.style.top = "0px"),
+    (l.style.width = "100%"),
+    (l.style.height = "100%"),
+    (l.style.background = "transparent"),
+    (l.style.zIndex = 80),
+    (l.style.pointerEvents = "none"),
+    t.appendChild(l));
+  const c = document.getElementById("createEditToggle"),
+    d =
+      document.getElementById("toggleCreate") ||
+      document.querySelector('button[title="Create"]') ||
+      document.querySelector("#annoCreateBtn"),
+    s =
+      document.getElementById("toggleEdit") ||
+      document.querySelector('button[title="Edit"]') ||
+      document.querySelector("#annoEditBtn"),
+    g = document.getElementById("multiDeleteBtn");
+  function h() {
+    if (
+      globalThis._annotations &&
+      "function" == typeof globalThis._annotations.getAll
+    )
+      try {
+        return globalThis._annotations.getAll() || [];
+      } catch (e) {
+        return [];
+      }
+    return [];
+  }
+  function u(e) {
+    if (
+      globalThis._annotations &&
+      "function" == typeof globalThis._annotations.import
+    )
+      try {
+        globalThis._annotations.import(e);
+      } catch (e) {}
+  }
+  function f() {
+    return {
+      pxPerSec:
+        globalThis._spectroMap &&
+        "function" == typeof globalThis._spectroMap.pxPerSec
+          ? globalThis._spectroMap.pxPerSec()
+          : globalThis._spectroPxPerSec || 1,
+      imageHeight:
+        "number" == typeof globalThis._spectroImageHeight &&
+        globalThis._spectroImageHeight > 0
+          ? globalThis._spectroImageHeight
+          : Math.max(1, (i.clientHeight || 300) - 12 - 44),
+      ymaxHz:
+        "number" == typeof globalThis._spectroYMax &&
+        globalThis._spectroYMax > 0
+          ? globalThis._spectroYMax
+          : globalThis._spectroSampleRate
+            ? globalThis._spectroSampleRate / 2
+            : 22050,
+      yminHz:
+        "number" == typeof globalThis._spectroYMin
+          ? globalThis._spectroYMin
+          : 0,
+      axisLeft:
+        "number" == typeof globalThis._spectroAxisLeft
+          ? globalThis._spectroAxisLeft
+          : 70,
+    };
+  }
+  function m() {
+    if (
+      "number" == typeof globalThis._spectroDuration &&
+      isFinite(globalThis._spectroDuration)
+    )
+      return globalThis._spectroDuration;
+    if (
+      globalThis._spectroAudioBuffer &&
+      "number" == typeof globalThis._spectroAudioBuffer.duration &&
+      isFinite(globalThis._spectroAudioBuffer.duration)
+    )
+      return globalThis._spectroAudioBuffer.duration;
+    const e = document.querySelector("audio");
+    return e && isFinite(e.duration) ? e.duration : null;
+  }
+  function w() {
+    const e = Math.max(1, n.clientWidth),
+      { imageHeight: t } = f(),
+      i =
+        "number" == typeof globalThis._spectroAxisLeft
+          ? globalThis._spectroAxisLeft
+          : 70;
+    ((r.style.left = i + "px"),
+      (r.style.top = "12px"),
+      (r.style.width = e + "px"),
+      (r.style.height = t + "px"));
+    const o = window.devicePixelRatio || 1;
+    ((r.width = Math.round(e * o)),
+      (r.height = Math.round(t * o)),
+      a.setTransform(o, 0, 0, o, 0, 0),
+      (l.style.left = i + "px"),
+      (l.style.top = "12px"),
+      (l.style.width = e + "px"),
+      (l.style.height = t + "px"));
+  }
+  function y() {
+    a.clearRect(
+      0,
+      0,
+      r.width / (window.devicePixelRatio || 1),
+      r.height / (window.devicePixelRatio || 1),
+    );
+  }
+  function p(e) {
+    const { pxPerSec: t, imageHeight: i, ymaxHz: o, yminHz: r } = f(),
+      a = e.beginTime * t - Math.round(n.scrollLeft || 0),
+      l = e.endTime * t - Math.round(n.scrollLeft || 0),
+      c = ((o - e.highFreq) / Math.max(1, o - r)) * i,
+      d = ((o - e.lowFreq) / Math.max(1, o - r)) * i;
+    return {
+      left: a,
+      top: c,
+      right: l,
+      bottom: d,
+      width: Math.abs(l - a),
+      height: Math.abs(d - c),
+    };
+  }
+  function b(e, t, n) {
+    const i = Math.min(n.left, n.right),
+      o = Math.max(n.left, n.right),
+      r = Math.min(n.top, n.bottom),
+      a = Math.max(n.top, n.bottom);
+    if (e >= i && e <= o && t >= r && t <= a) return 0;
+    const l = Math.max(i - e, 0, e - o),
+      c = Math.max(r - t, 0, t - a);
+    return Math.sqrt(l * l + c * c);
+  }
+  function T(e, t) {
+    const n = h();
+    if (!n || !n.length) return null;
+    let i = null;
+    for (const o of n) {
+      const n = p(o),
+        r = b(e, t, n);
+      (null === i ||
+        r < i.dist ||
+        (r === i.dist &&
+          n.width * n.height < i.rectPx.width * i.rectPx.height)) &&
+        (i = { id: o.id, dist: r, rectPx: n, ann: o });
+    }
+    return i && i.dist <= 6 ? i : null;
+  }
+  const v = 22;
+  function x(e) {
+    const t = Math.abs(e.right - e.left),
+      n = Math.max(e.left, e.right);
+    let i = Math.min(e.top, e.bottom),
+      o = Math.max(e.top, e.bottom);
+    try {
+      const { imageHeight: e } = f();
+      ((i = Math.max(0, i)), (o = Math.min(e, o)));
+    } catch (e) {}
+    const r = Math.max(0, o - i);
+    let a, l;
+    return (
+      t < 34 && r < 34
+        ? ((a = n + 4), (l = o + 4))
+        : t < 34
+          ? ((a = n + 4), (l = o - v - 6))
+          : r < 34
+            ? ((a = n - v - 6), (l = o + 4))
+            : ((a = n - v - 6), (l = o - v - 6)),
+      { x: a, y: l, w: v, h: v }
+    );
+  }
+  function S(e) {
+    const t = Math.min(e.left, e.right),
+      n = Math.max(e.left, e.right);
+    let i = Math.min(e.top, e.bottom),
+      o = Math.max(e.top, e.bottom);
+    try {
+      const { imageHeight: e } = f();
+      ((i = Math.max(0, i)), (o = Math.min(e, o)));
+    } catch (e) {}
+    const r = (t + n) / 2,
+      a = (i + o) / 2,
+      l = 10;
+    return [
+      { name: "left", x: t, y: a, w: l, h: l },
+      { name: "right", x: n, y: a, w: l, h: l },
+      { name: "top", x: r, y: i, w: l, h: l },
+      { name: "bottom", x: r, y: o, w: l, h: l },
+      { name: "topleft", x: t, y: i, w: l, h: l },
+      { name: "topright", x: n, y: i, w: l, h: l },
+      { name: "bottomleft", x: t, y: o, w: l, h: l },
+      { name: "bottomright", x: n, y: o, w: l, h: l },
+    ];
+  }
+  function _(e, t, n) {
+    const i = S(n);
+    for (const n of i) {
+      const i = n.x - 7,
+        o = n.y - 7;
+      if (e >= i && e <= i + 14 && t >= o && t <= o + 14) return n.name;
+    }
+    return null;
+  }
+  function M(t) {
+    if ((y(), !t)) return;
+    try {
+      if (null != F && F !== t.id) {
+        const t = h().find((e) => e.id === F);
+        if (t) {
+          const n = p(t);
+          (a.save(),
+            a.setLineDash([]),
+            (a.lineWidth = 2.5),
+            (a.strokeStyle = e));
+          const i = Math.min(n.left, n.right),
+            o = Math.min(n.top, n.bottom),
+            r = Math.abs(n.right - n.left),
+            l = Math.abs(n.bottom - n.top);
+          (a.strokeRect(i + 0.5, o + 0.5, r, l), a.restore());
+        }
+      }
+    } catch (e) {}
+    const n = p(t);
+    (a.save(), a.setLineDash([]), (a.lineWidth = 2.5), (a.strokeStyle = e));
+    const i = Math.min(n.left, n.right),
+      o = Math.min(n.top, n.bottom),
+      r = Math.abs(n.right - n.left),
+      l = Math.abs(n.bottom - n.top);
+    a.strokeRect(i + 0.5, o + 0.5, r, l);
+    const c = S(n);
+    for (const t of c) {
+      const n = t.x - t.w / 2,
+        i = t.y - t.h / 2;
+      ((a.fillStyle = e), a.fillRect(n, i, t.w, t.h));
+    }
+    (!(function (e, t, n = !1) {
+      const i = x(t);
+      i &&
+        (e.save(),
+        (e.fillStyle = n ? "rgba(220, 53, 69, 0.9)" : "#ffffff"),
+        (e.strokeStyle = n ? "#ffffff" : "#000000"),
+        (e.lineWidth = 1.2),
+        e.beginPath(),
+        "function" == typeof e.roundRect
+          ? e.roundRect(i.x, i.y, i.w, i.h, 2)
+          : e.rect(i.x, i.y, i.w, i.h),
+        e.fill(),
+        e.stroke(),
+        (e.strokeStyle = n ? "#ffffff" : "#000000"),
+        e.beginPath(),
+        e.moveTo(i.x + 6, i.y + 8),
+        e.lineTo(i.x + 7, i.y + 17),
+        e.lineTo(i.x + 15, i.y + 17),
+        e.lineTo(i.x + 16, i.y + 8),
+        e.moveTo(i.x + 4, i.y + 8),
+        e.lineTo(i.x + 18, i.y + 8),
+        e.moveTo(i.x + 9, i.y + 8),
+        e.lineTo(i.x + 9, i.y + 5),
+        e.lineTo(i.x + 13, i.y + 5),
+        e.lineTo(i.x + 13, i.y + 8),
+        e.moveTo(i.x + 9, i.y + 10),
+        e.lineTo(i.x + 9, i.y + 15),
+        e.moveTo(i.x + 13, i.y + 10),
+        e.lineTo(i.x + 13, i.y + 15),
+        e.stroke(),
+        e.restore());
+    })(a, n, D === t.id),
+      a.restore());
+  }
+  function E(t) {
+    y();
+    const n = h().find((e) => e.id === t);
+    if (!n) return;
+    const i = p(n);
+    (a.save(), a.setLineDash([]), (a.lineWidth = 2.5), (a.strokeStyle = e));
+    const o = Math.min(i.left, i.right),
+      r = Math.min(i.top, i.bottom),
+      l = Math.abs(i.right - i.left),
+      c = Math.abs(i.bottom - i.top);
+    (a.strokeRect(o + 0.5, r + 0.5, l, c), a.restore());
+  }
+  let q = !1,
+    R = !0,
+    F = null,
+    k = null,
+    G = { x: 0, y: 0 },
+    L = 0,
+    D = null;
+  function I(e) {
+    const t = h(),
+      n = t.findIndex((t) => t.id === e);
+    if (n < 0) return;
+    const i = t[n];
+    k = {
+      id: i.id,
+      originalSnapshot: JSON.parse(JSON.stringify(i)),
+      working: JSON.parse(JSON.stringify(i)),
+      activeHandle: null,
+      pointerId: null,
+      dragging: !1,
+    };
+    try {
+      globalThis._annotations._editingId = k.id;
+    } catch (e) {}
+    ((R = !0), (F = null), M(k.working), Z());
+    try {
+      globalThis._playbackScrollJump &&
+        "function" == typeof globalThis._playbackScrollJump.setPosition &&
+        globalThis._playbackScrollJump.setPosition(i.beginTime);
+    } catch (e) {}
+    try {
+      ee(i.id);
+    } catch (e) {
+      console.warn("ensureGridSelectionAndOverlay failed", e);
+    }
+  }
+  function O() {
+    if (k)
+      try {
+        const e = k.working,
+          t = (e) => Number(e).toFixed(4),
+          n = {
+            beginTime: Number(t(e.beginTime)),
+            endTime: Number(t(e.endTime)),
+            lowFreq: Number(t(e.lowFreq)),
+            highFreq: Number(t(e.highFreq)),
+          };
+        if (
+          window.annotationGrid &&
+          "function" == typeof window.annotationGrid.updateRow
+        ) {
+          window.annotationGrid.updateRow(k.id, n);
+          try {
+            window.dispatchEvent(
+              new CustomEvent("annotations-changed", {
+                detail: { reason: "edit-commit", id: k.id },
+              }),
+            );
+          } catch (e) {}
+        } else {
+          const e = h(),
+            t = e.findIndex((e) => e.id === k.id);
+          t >= 0 && ((e[t] = Object.assign({}, e[t], n)), u(e));
+        }
+      } catch (e) {
+        console.error("persist failed", e);
+      }
+  }
+  function A() {
+    if (!k) return;
+    const e = k.working,
+      t = m(),
+      n =
+        globalThis._spectroOriginalNyquist ||
+        (globalThis._spectroSampleRate
+          ? globalThis._spectroSampleRate / 2
+          : 22050);
+    (Number.isFinite(t)
+      ? ((e.beginTime = Math.max(0, Math.min(t, e.beginTime))),
+        (e.endTime = Math.max(0, Math.min(t, e.endTime))))
+      : ((e.beginTime = Math.max(0, e.beginTime)),
+        (e.endTime = Math.max(0, e.endTime))),
+      e.beginTime < e.endTime
+        ? ((e.lowFreq = Math.max(0, Math.min(n, e.lowFreq))),
+          (e.highFreq = Math.max(0, Math.min(n, e.highFreq))),
+          e.lowFreq < e.highFreq ? (O(), N(), Z()) : P())
+        : P());
+  }
+  function P() {
+    if (k) {
+      try {
+        const e = k.originalSnapshot;
+        if (e) {
+          const t = {
+            beginTime: Number(e.beginTime),
+            endTime: Number(e.endTime),
+            lowFreq: Number(e.lowFreq),
+            highFreq: Number(e.highFreq),
+          };
+          if (
+            ("label" in e && (t.label = e.label),
+            "notes" in e && (t.notes = e.notes),
+            "color" in e && (t.color = e.color),
+            window.annotationGrid &&
+              "function" == typeof window.annotationGrid.updateRow)
+          ) {
+            window.annotationGrid.updateRow(k.id, t);
+            try {
+              window.dispatchEvent(
+                new CustomEvent("annotations-changed", {
+                  detail: { reason: "edit-revert", id: k.id },
+                }),
+              );
+            } catch (e) {}
+          } else {
+            const e = h(),
+              n = e.findIndex((e) => e.id === k.id);
+            n >= 0 && ((e[n] = Object.assign({}, e[n], t)), u(e));
+          }
+        }
+      } catch (e) {
+        console.error("revert failed", e);
+      }
+      (N(), Z());
+    }
+  }
+  function N() {
+    if (k) {
+      try {
+        delete globalThis._annotations._editingId;
+      } catch (e) {}
+      if (null != k.pointerId)
+        try {
+          l.releasePointerCapture && l.releasePointerCapture(k.pointerId);
+        } catch (e) {}
+      ((k = null), (F = null), (R = !0));
+      try {
+        l && (l.style.cursor = "");
+      } catch (e) {}
+      y();
+    }
+  }
+  function C(e, t) {
+    if (!q) return;
+    if (!R) return;
+    ((G.x = e), (G.y = t));
+    const n = r.getBoundingClientRect(),
+      i = e - n.left,
+      o = t - n.top;
+    if (o < -6 || o > n.height + 6) return (y(), void (F = null));
+    const a = T(i, o);
+    if (!a) return (y(), void (F = null));
+    F !== a.id && ((F = a.id), E(F));
+  }
+  function H(e) {
+    if (!q) return;
+    if (0 !== e.button) return;
+    const t = r.getBoundingClientRect(),
+      i = e.clientX - t.left,
+      o = e.clientY - t.top,
+      a = e.ctrlKey || e.metaKey;
+    let c = null;
+    if (k) {
+      const e = x(p(k.working));
+      e &&
+        i >= e.x &&
+        i <= e.x + e.w &&
+        o >= e.y &&
+        o <= e.y + e.h &&
+        (c = k.id);
+    }
+    if (null != c) {
+      (e.preventDefault(), e.stopPropagation());
+      const t = Date.now();
+      return void (D === c && t - L < 500
+        ? (Y([c]), (D = null), (L = 0))
+        : ((D = c),
+          (L = t),
+          k && k.id === c && M(k.working),
+          setTimeout(() => {
+            D === c &&
+              Date.now() - L >= 490 &&
+              ((D = null), k && k.id === c && M(k.working));
+          }, 500)));
+    }
+    if (null != D) {
+      const e = D;
+      ((D = null), k && k.id === e && M(k.working));
+    }
+    if (k && !a) {
+      const t = p(k.working),
+        r = _(i, o, t);
+      if (r) {
+        (e.preventDefault(), (k.activeHandle = r), (k.pointerId = e.pointerId));
+        try {
+          window.annotationUndo && window.annotationUndo.saveState();
+        } catch (e) {}
+        k.dragging = !0;
+        try {
+          l.setPointerCapture && l.setPointerCapture(e.pointerId);
+        } catch (e) {}
+        return void M(k.working);
+      }
+      let a = !1;
+      const c = T(i, o);
+      if ((c && c.id !== k.id && (a = !0), !a && 0 === b(i, o, t))) {
+        e.preventDefault();
+        const t = k.working;
+        ((k.activeHandle = "move"), (k.pointerId = e.pointerId));
+        try {
+          window.annotationUndo && window.annotationUndo.saveState();
+        } catch (e) {}
+        ((k.dragging = !0),
+          (k.moveStart = {
+            beginTime: t.beginTime,
+            endTime: t.endTime,
+            lowFreq: t.lowFreq,
+            highFreq: t.highFreq,
+          }));
+        try {
+          const { pxPerSec: e, imageHeight: t, ymaxHz: r, yminHz: a } = f(),
+            l = 1 / Math.max(1e-9, e),
+            c = Math.max(0, Math.min(t, o));
+          ((k.dragOrigin = { x: i, y: c }),
+            (k.dragOriginGlobalX = i + Math.round(n.scrollLeft || 0)),
+            (k.dragOriginTime = k.dragOriginGlobalX * l),
+            (k.dragOriginFreq = Math.max(
+              a,
+              Math.min(r, r - (c / t) * (r - a)),
+            )));
+        } catch (e) {
+          ((k.dragOrigin = { x: i, y: o }),
+            (k.dragOriginGlobalX = null),
+            (k.dragOriginTime = null),
+            (k.dragOriginFreq = null));
+        }
+        try {
+          l.setPointerCapture && l.setPointerCapture(e.pointerId);
+        } catch (e) {}
+        return void M(k.working);
+      }
+    }
+    const d = o >= -6 && o <= t.height + 6 ? T(i, o) : null,
+      s = d ? d.id : null;
+    if (!s) {
+      if (a) return;
+      (k && A(),
+        (window.__syncingGridSelection =
+          (window.__syncingGridSelection || 0) + 1));
+      try {
+        const e = window.annotationGrid;
+        e &&
+          ("function" == typeof e.deselectRow && e.deselectRow(),
+          "function" == typeof e.getSelectedRows &&
+            (e.getSelectedRows() || []).forEach((e) => {
+              try {
+                e.deselect && e.deselect();
+              } catch (e) {}
+            }));
+      } catch (e) {
+      } finally {
+        window.__syncingGridSelection--;
+      }
+      return (V(), void C(e.clientX, e.clientY));
+    }
+    if (a) {
+      let t = k ? k.id : null;
+      (k && (O(), N()),
+        (window.__syncingGridSelection =
+          (window.__syncingGridSelection || 0) + 1));
+      try {
+        const e = window.annotationGrid;
+        if (e) {
+          const n =
+            "function" == typeof e.getSelectedData ? e.getSelectedData() : [];
+          let i = new Set(n.map((e) => String(e.id)));
+          null != t && i.add(String(t));
+          const o = String(s);
+          (i.has(o) ? i.delete(o) : i.add(o),
+            "function" == typeof e.deselectRow && e.deselectRow(),
+            "function" == typeof e.getSelectedRows &&
+              (e.getSelectedRows() || []).forEach((e) => {
+                try {
+                  e.deselect && e.deselect();
+                } catch (e) {}
+              }));
+          const r = Array.from(i);
+          if (
+            ("function" == typeof e.selectRow && r.length > 0 && e.selectRow(r),
+            1 === i.size)
+          )
+            I(r[0]);
+          else {
+            N();
+            try {
+              "function" == typeof window.renderSelectionOverlay &&
+                window.renderSelectionOverlay(r);
+            } catch (e) {}
+          }
+        }
+      } catch (e) {
+        console.error("Exception in Multi-Select:", e);
+      } finally {
+        window.__syncingGridSelection--;
+      }
+      return (V(), void (e.preventDefault && e.preventDefault()));
+    }
+    window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+    try {
+      try {
+        const e = window.annotationGrid;
+        e &&
+          ("function" == typeof e.deselectRow && e.deselectRow(),
+          "function" == typeof e.getSelectedRows &&
+            (e.getSelectedRows() || []).forEach((e) => {
+              try {
+                e.deselect && e.deselect();
+              } catch (e) {}
+            }));
+      } catch (e) {}
+      try {
+        k && k.id !== s && O();
+      } catch (e) {}
+      I(s);
+    } finally {
+      window.__syncingGridSelection--;
+    }
+    (V(), e.preventDefault && e.preventDefault());
+  }
+  function B(e) {
+    if (!k || !k.activeHandle) return;
+    if (null != k.pointerId && e.pointerId !== k.pointerId) return;
+    e.preventDefault();
+    const t = r.getBoundingClientRect(),
+      i = e.clientX - t.left,
+      o = e.clientY - t.top,
+      { pxPerSec: a, imageHeight: l, ymaxHz: c, yminHz: d } = f(),
+      s = 1 / Math.max(1e-9, a);
+    let g = (i + Math.round(n.scrollLeft || 0)) * s;
+    const h = m();
+    Number.isFinite(h)
+      ? (g < 0 && (g = 0), g > h && (g = h))
+      : g < 0 && (g = 0);
+    const u =
+        globalThis._spectroOriginalNyquist ||
+        (globalThis._spectroSampleRate
+          ? globalThis._spectroSampleRate / 2
+          : 22050),
+      w = Math.max(d, Math.min(u, c - (o / Math.max(1, l)) * (c - d))),
+      y = k.working;
+    if ("move" === k.activeHandle) {
+      const e = k.moveStart || {
+        beginTime: y.beginTime,
+        endTime: y.endTime,
+        lowFreq: y.lowFreq,
+        highFreq: y.highFreq,
+      };
+      let t = 0,
+        r = 0;
+      try {
+        if ("number" == typeof k.dragOriginGlobalX) {
+          const e = i + Math.round(n.scrollLeft || 0);
+          t = (e - k.dragOriginGlobalX) * s;
+        } else if (k.dragOrigin && "number" == typeof k.dragOrigin.x) {
+          t = (i - k.dragOrigin.x) * s;
+        }
+        if ("number" == typeof k.dragOriginFreq) r = w - k.dragOriginFreq;
+        else if (k.dragOrigin && "number" == typeof k.dragOrigin.y) {
+          const e = Math.max(0, Math.min(l, k.dragOrigin.y));
+          r = ((e - Math.max(0, Math.min(l, o))) / Math.max(1, l)) * (c - d);
+        } else r = 0;
+      } catch (e) {}
+      if (Number.isFinite(h)) {
+        const n = -e.beginTime,
+          i = h - e.endTime;
+        t = Math.max(n, Math.min(i, t));
+      } else t = Math.max(-e.beginTime, t);
+      const a = -e.lowFreq,
+        g = u - e.highFreq;
+      return (
+        (r = Math.max(a, Math.min(g, r))),
+        (y.beginTime = e.beginTime + t),
+        (y.endTime = e.endTime + t),
+        (y.lowFreq = e.lowFreq + r),
+        (y.highFreq = e.highFreq + r),
+        void M(k.working)
+      );
+    }
+    const p = 1e-6,
+      b = 1e-6;
+    let T = k.activeHandle;
+    switch (
+      (T.includes("top") && w < y.lowFreq
+        ? ((T = T.replace("top", "bottom")), (y.highFreq = y.lowFreq))
+        : T.includes("bottom") &&
+          w > y.highFreq &&
+          ((T = T.replace("bottom", "top")), (y.lowFreq = y.highFreq)),
+      T.includes("left") && g > y.endTime
+        ? ((T = T.replace("left", "right")), (y.beginTime = y.endTime))
+        : T.includes("right") &&
+          g < y.beginTime &&
+          ((T = T.replace("right", "left")), (y.endTime = y.beginTime)),
+      (k.activeHandle = T),
+      k.activeHandle)
+    ) {
+      case "left":
+        y.beginTime = Math.min(y.endTime - p, g);
+        break;
+      case "right":
+        y.endTime = Math.max(y.beginTime + p, g);
+        break;
+      case "top":
+        y.highFreq = Math.max(y.lowFreq + b, w);
+        break;
+      case "bottom":
+        y.lowFreq = Math.min(y.highFreq - b, w);
+        break;
+      case "topleft":
+        ((y.beginTime = Math.min(y.endTime - p, g)),
+          (y.highFreq = Math.max(y.lowFreq + b, w)));
+        break;
+      case "topright":
+        ((y.endTime = Math.max(y.beginTime + p, g)),
+          (y.highFreq = Math.max(y.lowFreq + b, w)));
+        break;
+      case "bottomleft":
+        ((y.beginTime = Math.min(y.endTime - p, g)),
+          (y.lowFreq = Math.min(y.highFreq - b, w)));
+        break;
+      case "bottomright":
+        ((y.endTime = Math.max(y.beginTime + p, g)),
+          (y.lowFreq = Math.min(y.highFreq - b, w)));
+    }
+    ((y.lowFreq = Math.max(0, Math.min(u, y.lowFreq))),
+      (y.highFreq = Math.max(0, Math.min(u, y.highFreq))));
+    let v = !1;
+    try {
+      v =
+        "temporal" ===
+        JSON.parse(localStorage.getItem("spectrolipi.settings.v1") || "{}")
+          .annotationMode;
+    } catch (e) {}
+    (v && ((y.lowFreq = 0), (y.highFreq = u)), M(k.working));
+  }
+  function z(e) {
+    if (!k) return;
+    if (null != k.pointerId && e.pointerId !== k.pointerId) return;
+    const t = !(!k || !k.dragging);
+    t && e.preventDefault();
+    try {
+      l.releasePointerCapture && l.releasePointerCapture(e.pointerId);
+    } catch (e) {}
+    if ((k && ((k.activeHandle = null), (k.pointerId = null)), t)) {
+      window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+      try {
+        (O(), k && ee(k.id));
+      } finally {
+        window.__syncingGridSelection--;
+      }
+      Z();
+    }
+    (k && (k.dragging = !1), (R = !0), M(k ? k.working : null));
+  }
+  function W(e) {
+    try {
+      if (!1 === e.isPrimary) return;
+    } catch (e) {}
+    if (k) {
+      const t = r.getBoundingClientRect(),
+        n = e.clientX - t.left,
+        i = e.clientY - t.top,
+        o = p(k.working),
+        a = _(n, i, o);
+      if (k.dragging)
+        return void ("move" === k.activeHandle
+          ? (l.style.cursor = "grabbing")
+          : (l.style.cursor = "move"));
+      if (a) {
+        const e = {
+          left: "ew-resize",
+          right: "ew-resize",
+          top: "ns-resize",
+          bottom: "ns-resize",
+          topleft: "nwse-resize",
+          bottomright: "nwse-resize",
+          topright: "nesw-resize",
+          bottomleft: "nesw-resize",
+        };
+        return (
+          (l.style.cursor = e[a] || "default"),
+          void (R && ((F = k.id), M(k.working)))
+        );
+      }
+      let c = null;
+      return (
+        i >= -6 && i <= t.height + 6 && (c = T(n, i)),
+        c && c.id !== k.id
+          ? ((l.style.cursor = ""),
+            void (R && F !== c.id && ((F = c.id), M(k.working))))
+          : 0 === b(n, i, o)
+            ? ((l.style.cursor = "grab"),
+              void (R && F !== k.id && ((F = k.id), M(k.working))))
+            : ((l.style.cursor = ""),
+              void (R && null !== F && ((F = null), M(k.working))))
+      );
+    }
+    (C(e.clientX, e.clientY), k || (l.style.cursor = ""));
+  }
+  function X() {
+    if (k) {
+      try {
+        l && (l.style.cursor = "");
+      } catch (e) {}
+      M(k.working);
+    } else {
+      try {
+        l && (l.style.cursor = "");
+      } catch (e) {}
+      (y(), (F = null));
+    }
+  }
+  function U() {
+    (w(), k ? M(k.working) : F ? E(F) : y());
+  }
+  function Y(e) {
+    try {
+      let t = Array.isArray(e) ? e : [];
+      if (
+        !t.length &&
+        window.annotationGrid &&
+        "function" == typeof window.annotationGrid.getSelectedRows &&
+        !1 !== window.annotationGrid.initialized
+      ) {
+        const e = window.annotationGrid.getSelectedRows();
+        t = e.map((e) => e.getData().id);
+      }
+      if ((0 === t.length && k && (t = [k.id]), !t.length))
+        return void window.alert("No annotations selected to delete.");
+      try {
+        window.annotationUndo && window.annotationUndo.saveState();
+      } catch (e) {}
+      const n = (function () {
+          let e = !1;
+          return {
+            show(t) {
+              try {
+                if (
+                  window.__spectroWait &&
+                  "function" == typeof window.__spectroWait.show
+                ) {
+                  const n = (t && t.etaText) || "Deleting rows…",
+                    i = (t && t.titleText) || "Deleting rows",
+                    o =
+                      (t && t.bodyText) ||
+                      "Removing selected annotations. Please wait…";
+                  (window.__spectroWait.show({
+                    etaText: n,
+                    titleText: i,
+                    bodyText: o,
+                  }),
+                    (e = !0));
+                }
+              } catch (e) {}
+            },
+            updateEta(t) {
+              try {
+                e &&
+                  window.__spectroWait &&
+                  "function" == typeof window.__spectroWait.show &&
+                  window.__spectroWait.show({
+                    etaText: t,
+                    titleText: "Deleting rows",
+                    bodyText: "Removing selected annotations. Please wait…",
+                  });
+              } catch (e) {}
+            },
+            hide() {
+              if (e) {
+                try {
+                  window.__spectroWait &&
+                    "function" == typeof window.__spectroWait.hide &&
+                    window.__spectroWait.hide();
+                } catch (e) {}
+                e = !1;
+              }
+            },
+          };
+        })(),
+        i = t.length;
+      i > 1 &&
+        n.show({
+          etaText: `Deleting ${i} rows…`,
+          titleText: "Deleting rows",
+          bodyText: "Removing selected annotations. Please wait…",
+        });
+      const o = async () => {
+        try {
+          const e = 200;
+          for (let o = 0; o < t.length; o += e) {
+            const r = t.slice(o, o + e);
+            (window.annotationGrid.deleteRow(r),
+              i > 1 &&
+                n.updateEta(
+                  `Deleting rows ${Math.min(t.length, o + e)} / ${t.length}…`,
+                ),
+              await new Promise((e) => setTimeout(e, 0)));
+          }
+          const o = h(),
+            r = new Set(t.map(String));
+          let a = o.filter((e) => !r.has(String(e.id)));
+          const l = new Array(a.length);
+          for (let e = 0; e < a.length; e++) {
+            const t = a[e];
+            ((l[e] = { ...t, id: e + 1, Selection: String(e + 1) }),
+              i > 1 &&
+                e % 500 == 0 &&
+                (await new Promise((e) => setTimeout(e, 0))));
+          }
+          (u(l),
+            window.annotationGrid &&
+              "function" == typeof window.annotationGrid.replaceData &&
+              (await window.annotationGrid.replaceData(l)));
+          try {
+            window.dispatchEvent(
+              new CustomEvent("annotations-changed", {
+                detail: { reason: "multi-delete", deleted: t },
+              }),
+            );
+          } catch (e) {}
+          (k && r.has(String(k.id)) && N(), C(G.x, G.y));
+        } catch (e) {
+          (console.error("multi-delete error", e),
+            window.alert("Deletion failed; see console"));
+        } finally {
+          i > 1 && n.hide();
+        }
+      };
+      return void setTimeout(o, 20);
+    } catch (e) {
+      (console.error("multi-delete error", e),
+        window.alert("Deletion failed; see console"));
+    }
+  }
+  function J(e) {
+    if (!q) return;
+    (e.preventDefault(), e.stopPropagation(), k && (A(), C(G.x, G.y)));
+    const t = document.getElementById("createEditToggle");
+    if (t)
+      t.dispatchEvent(
+        new CustomEvent("mode-change", {
+          detail: { mode: "create" },
+          bubbles: !0,
+        }),
+      );
+    else {
+      const e =
+        document.getElementById("toggleCreate") ||
+        document.querySelector('button[title="Create"]') ||
+        document.querySelector("#annoCreateBtn");
+      e && e.click();
+    }
+  }
+  function $(e, t) {
+    try {
+      e && (e.style.background = t ? "rgba(255,255,255,0.02)" : "transparent");
+    } catch (e) {}
+  }
+  function K() {
+    try {
+      if (c && c.dataset) return c.dataset.mode;
+    } catch (e) {}
+    return null;
+  }
+  function j() {
+    if (!q) {
+      ((q = !0),
+        (R = !0),
+        (F = null),
+        (k = null),
+        (l.style.pointerEvents = "auto"),
+        l.addEventListener("pointermove", W),
+        l.addEventListener("pointerleave", X),
+        l.addEventListener("pointerdown", H),
+        l.addEventListener("pointermove", B),
+        l.addEventListener("pointerup", z),
+        l.addEventListener("pointercancel", z),
+        l.addEventListener("contextmenu", J),
+        n.addEventListener("scroll", U),
+        window.addEventListener("resize", U),
+        window.addEventListener("spectrogram-generated", U, { passive: !0 }),
+        w(),
+        y());
+      try {
+        if (c) {
+          c.dataset.mode = "edit";
+          const e = c.querySelector('[data-mode="edit"]'),
+            t = c.querySelector('[data-mode="create"]');
+          (e && e.setAttribute("aria-pressed", "true"),
+            t && t.setAttribute("aria-pressed", "false"));
+        } else ($(s, !0), $(d, !1));
+      } catch (e) {}
+    }
+  }
+  function Q() {
+    if (q) {
+      if (((q = !1), (R = !1), (F = null), k))
+        try {
+          A();
+        } catch (e) {
+          P();
+        }
+      window.__syncingGridSelection = (window.__syncingGridSelection || 0) + 1;
+      try {
+        const e = window.annotationGrid;
+        e &&
+          ("function" == typeof e.deselectRow && e.deselectRow(),
+          "function" == typeof e.getSelectedRows &&
+            (e.getSelectedRows() || []).forEach((e) => {
+              try {
+                e.deselect && e.deselect();
+              } catch (e) {}
+            }));
+      } catch (e) {
+      } finally {
+        window.__syncingGridSelection--;
+      }
+      (V(),
+        (function () {
+          ((l.style.pointerEvents = "none"),
+            l.removeEventListener("pointermove", W),
+            l.removeEventListener("pointerleave", X),
+            l.removeEventListener("pointerdown", H),
+            l.removeEventListener("pointermove", B),
+            l.removeEventListener("pointerup", z),
+            l.removeEventListener("pointercancel", z),
+            l.removeEventListener("contextmenu", J),
+            n.removeEventListener("scroll", U),
+            window.removeEventListener("resize", U));
+          try {
+            window.removeEventListener("spectrogram-generated", U);
+          } catch (e) {}
+        })(),
+        y());
+      try {
+        if (c) {
+          c.dataset.mode = "create";
+          const e = c.querySelector('[data-mode="edit"]'),
+            t = c.querySelector('[data-mode="create"]');
+          (e && e.setAttribute("aria-pressed", "false"),
+            t && t.setAttribute("aria-pressed", "true"));
+        } else $(s, !1);
+      } catch (e) {}
+    }
+  }
+  function V() {
+    let e = 0;
+    try {
+      window.annotationGrid &&
+        window.annotationGrid.initialized &&
+        "function" == typeof window.annotationGrid.getSelectedData &&
+        (e = window.annotationGrid.getSelectedData().length);
+    } catch (e) {}
+    k && e <= 1 && (e = 1);
+    let t = !1;
+    try {
+      "function" == typeof window.isAnyModalOpen &&
+        window.isAnyModalOpen() &&
+        (t = !0);
+    } catch (e) {}
+    const n = e > 0 && !t;
+    let i = !1;
+    try {
+      i =
+        "temporal" ===
+        JSON.parse(localStorage.getItem("spectrolipi.settings.v1") || "{}")
+          .annotationMode;
+    } catch (e) {}
+    const o = 1 === e && !i && !t;
+    function r(e, t) {
+      const n =
+        document.getElementById(e) ||
+        document.querySelector(`button[title="${e}"]`);
+      if (n) {
+        n.disabled = !t;
+        try {
+          ((n.style.opacity = t ? "1.0" : "0.45"),
+            (n.style.cursor = t ? "pointer" : "default"),
+            (n.style.border = t
+              ? "1px solid rgba(255,255,255,0.06)"
+              : "1px solid transparent"),
+            t || (n.style.background = "transparent"));
+        } catch (e) {}
+      }
+    }
+    (r("multiDeleteBtn", n),
+      r("Delete", n),
+      r("updateTagsBtn", n),
+      r("bulkUpdateSpeciesBtn", n),
+      r("runSccBtn", o));
+  }
+  (g &&
+    g.addEventListener(
+      "click",
+      (e) => {
+        (e.preventDefault && e.preventDefault(), Y());
+      },
+      !1,
+    ),
+    window.addEventListener("mode-change", () => setTimeout(V, 0)),
+    window.addEventListener("annotation-mode-changed", () => setTimeout(V, 0)),
+    window.addEventListener("edit-selection-changed", () => setTimeout(V, 0)),
+    window.addEventListener("annotations-changed", () => setTimeout(V, 0)),
+    window.addEventListener("modal-toggled", () => setTimeout(V, 0)),
+    window.addEventListener("keydown", function (e) {
+      if (document.activeElement) {
+        const e = (document.activeElement.tagName || "").toUpperCase();
+        if (
+          "INPUT" === e ||
+          "TEXTAREA" === e ||
+          "SELECT" === e ||
+          document.activeElement.isContentEditable
+        )
+          return;
+        if (
+          document.activeElement.closest &&
+          document.activeElement.closest('[role="dialog"]')
+        )
+          return;
+      }
+      let t = 0;
+      try {
+        const e = window.annotationGrid;
+        e &&
+          e.initialized &&
+          "function" == typeof e.getSelectedData &&
+          (t = e.getSelectedData().length);
+      } catch (e) {}
+      if (!k && 0 === t) return;
+      if ("Escape" === e.key) {
+        (k && (A(), C(G.x, G.y)),
+          (window.__syncingGridSelection =
+            (window.__syncingGridSelection || 0) + 1));
+        try {
+          const e = window.annotationGrid;
+          e &&
+            ("function" == typeof e.deselectRow && e.deselectRow(),
+            "function" == typeof e.getSelectedRows &&
+              (e.getSelectedRows() || []).forEach((e) => {
+                try {
+                  e.deselect && e.deselect();
+                } catch (e) {}
+              }));
+        } catch (e) {
+        } finally {
+          window.__syncingGridSelection--;
+        }
+        return (V(), void e.preventDefault());
+      }
+      const i =
+        document.getElementById("multiDeleteBtn") ||
+        document.querySelector('button[title="Delete"]');
+      if (
+        i &&
+        !i.disabled &&
+        ("Delete" === e.key || "d" === e.key || "D" === e.key)
+      )
+        return (Y(), void e.preventDefault());
+      if (q) {
+        const isArrow = e.key.startsWith("Arrow");
+        if (t === 1 && k && isArrow) {
+          e.preventDefault();
+          if (!e.repeat) {
+            try {
+              window.annotationUndo && window.annotationUndo.saveState();
+            } catch (err) {}
+          }
+          const { pxPerSec, imageHeight, ymaxHz, yminHz } = f();
+          const timeDelta = 1 / Math.max(1e-9, pxPerSec);
+          const freqDelta = (ymaxHz - yminHz) / Math.max(1, imageHeight);
+          
+          let y = k.working;
+          const u = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+          const maxDur = m();
+
+          if (e.altKey && !e.shiftKey) {
+            if (e.key === "ArrowRight") y.endTime += timeDelta;
+            if (e.key === "ArrowLeft") y.endTime -= timeDelta;
+            if (e.key === "ArrowUp") y.highFreq += freqDelta;
+            if (e.key === "ArrowDown") y.highFreq -= freqDelta;
+            
+            if (y.beginTime < 0) y.beginTime = 0;
+            if (Number.isFinite(maxDur) && y.endTime > maxDur) y.endTime = maxDur;
+            if (y.endTime < y.beginTime + 1e-6) y.endTime = y.beginTime + 1e-6;
+            
+            if (y.lowFreq < 0) y.lowFreq = 0;
+            if (y.highFreq > u) y.highFreq = u;
+            if (y.highFreq < y.lowFreq + 1e-6) y.highFreq = y.lowFreq + 1e-6;
+          } else if (e.altKey && e.shiftKey) {
+            if (e.key === "ArrowRight") y.beginTime += timeDelta;
+            if (e.key === "ArrowLeft") y.beginTime -= timeDelta;
+            if (e.key === "ArrowUp") y.lowFreq += freqDelta;
+            if (e.key === "ArrowDown") y.lowFreq -= freqDelta;
+            
+            if (y.beginTime < 0) y.beginTime = 0;
+            if (Number.isFinite(maxDur) && y.endTime > maxDur) y.endTime = maxDur;
+            if (y.endTime < y.beginTime + 1e-6) y.beginTime = y.endTime - 1e-6;
+            
+            if (y.lowFreq < 0) y.lowFreq = 0;
+            if (y.highFreq > u) y.highFreq = u;
+            if (y.highFreq < y.lowFreq + 1e-6) y.lowFreq = y.highFreq - 1e-6;
+          } else {
+            if (e.key === "ArrowRight") { y.beginTime += timeDelta; y.endTime += timeDelta; }
+            if (e.key === "ArrowLeft") { y.beginTime -= timeDelta; y.endTime -= timeDelta; }
+            if (e.key === "ArrowUp") { y.lowFreq += freqDelta; y.highFreq += freqDelta; }
+            if (e.key === "ArrowDown") { y.lowFreq -= freqDelta; y.highFreq -= freqDelta; }
+            
+            const width = y.endTime - y.beginTime;
+            if (y.beginTime < 0) { y.beginTime = 0; y.endTime = width; }
+            if (Number.isFinite(maxDur) && y.endTime > maxDur) { y.endTime = maxDur; y.beginTime = Math.max(0, maxDur - width); }
+            
+            const height = y.highFreq - y.lowFreq;
+            if (y.lowFreq < 0) { y.lowFreq = 0; y.highFreq = height; }
+            if (y.highFreq > u) { y.highFreq = u; y.lowFreq = Math.max(0, u - height); }
+          }
+          
+          let v = !1;
+          try {
+            v = "temporal" === JSON.parse(localStorage.getItem("spectrolipi.settings.v1") || "{}").annotationMode;
+          } catch (err) {}
+          if (v) { y.lowFreq = 0; y.highFreq = u; }
+
+          O();
+          M(k.working);
+          return;
+        }
+
+        if (t > 1 && "Tab" === e.key) {
+          e.preventDefault();
+        } else if ("Tab" === e.key) {
+          e.preventDefault();
+          const t = h();
+          if (!t || 0 === t.length) return;
+          const i = t.slice().sort((e, t) => {
+              const n = (Number(e.beginTime) || 0) - (Number(t.beginTime) || 0);
+              if (0 !== n) return n;
+              return (
+                (Number(e.Selection) || Number(e.id) || 0) -
+                (Number(t.Selection) || Number(t.id) || 0)
+              );
+            }),
+            o = i.findIndex((e) => e.id === k.id);
+          if (o < 0) return;
+          let r = -1;
+          if (
+            (e.shiftKey
+              ? o > 0 && (r = o - 1)
+              : o < i.length - 1 && (r = o + 1),
+            r >= 0 && r < i.length)
+          ) {
+            const e = i[r];
+            (O(),
+              (window.__syncingGridSelection =
+                (window.__syncingGridSelection || 0) + 1));
+            try {
+              I(e.id);
+            } finally {
+              window.__syncingGridSelection--;
+            }
+            V();
+            try {
+              const { pxPerSec: t } = f(),
+                i = e.beginTime * t,
+                o = e.endTime * t,
+                r = n.scrollLeft,
+                a = r + n.clientWidth;
+              (i < r || o > a) &&
+                (n.scrollLeft = Math.max(
+                  0,
+                  i - n.clientWidth / 2 + (o - i) / 2,
+                ));
+            } catch (e) {}
+          }
+          return;
+        }
+      }
+    }),
+    w(),
+    (function () {
+      if (!c)
+        return (
+          d &&
+            d.addEventListener("click", () => {
+              ($(s, !1), Q());
+            }),
+          void (
+            s &&
+            s.addEventListener("click", () => {
+              q ? Q() : j();
+            })
+          )
+        );
+      (c.addEventListener(
+        "mode-change",
+        (e) => {
+          "edit" === (e && e.detail && e.detail.mode ? e.detail.mode : K())
+            ? j()
+            : Q();
+        },
+        { passive: !0 },
+      ),
+        "edit" === K() ? j() : Q());
+    })(),
+    setTimeout(() => {
+      (w(), y());
+    }, 120),
+    (function () {
+      try {
+        const e = window.annotationGrid;
+        if (!e || "function" != typeof e.on) return;
+        if (e.__editOverlayHooked) return;
+        const t = () => {
+          try {
+            if (!k) return;
+            const e = h() || [];
+            if (e.find((e) => String(e.id) === String(k.id)))
+              try {
+                M(k.working);
+              } catch (e) {}
+            else {
+              N();
+              try {
+                "function" == typeof window.renderAllAnnotations &&
+                  window.renderAllAnnotations();
+              } catch (e) {}
+            }
+          } catch (e) {
+            console.error("grid change handler failed", e);
+          }
+        };
+        try {
+          e.on("dataChanged", t);
+        } catch (e) {}
+        try {
+          e.on("dataLoaded", t);
+        } catch (e) {}
+        try {
+          e.on("rowDeleted", t);
+        } catch (e) {}
+        try {
+          e.on("cellEdited", t);
+        } catch (e) {}
+        try {
+          e.on("rowUpdated", t);
+        } catch (e) {}
+        try {
+          e.on("rowSelectionChanged", function (e, t) {
+            window.__syncingGridSelection > 0 ||
+              (1 === e.length
+                ? !q ||
+                  (k && String(k.id) === String(e[0].id)) ||
+                  (k && k.dragging) ||
+                  I(e[0].id)
+                : k && !k.dragging && (N(), C(G.x, G.y)),
+              V());
+          });
+        } catch (e) {}
+        e.__editOverlayHooked = !0;
+      } catch (e) {}
+    })());
+  try {
+    window.addEventListener(
+      "annotations-changed",
+      (e) => {
+        try {
+          if (!k) return;
+          const e = h() || [];
+          if (!e.find((e) => String(e.id) === String(k.id))) {
+            N();
+            try {
+              "function" == typeof window.renderAllAnnotations &&
+                window.renderAllAnnotations();
+            } catch (e) {}
+          }
+        } catch (e) {}
+      },
+      { passive: !0 },
+    );
+  } catch (e) {}
+  function Z() {
+    try {
+      const e = { isEditMode: !!q, editingId: k ? k.id : null };
+      window.dispatchEvent(
+        new CustomEvent("edit-selection-changed", { detail: e }),
+      );
+    } catch (e) {}
+  }
+  function ee(e) {
+    if (!e) return;
+    try {
+      "function" == typeof window.renderSelectionOverlay &&
+        window.renderSelectionOverlay([e]);
+    } catch (e) {}
+    const t = window.annotationGrid;
+    if (!t)
+      return void console.debug("[edit-sync] grid not ready yet for id", e);
+    let n = 0;
+    const i = () => {
+      (n++,
+        (window.__syncingGridSelection =
+          (window.__syncingGridSelection || 0) + 1));
+      try {
+        if (
+          !((e) => {
+            try {
+              ("function" == typeof t.deselectRow && t.deselectRow(),
+                "function" == typeof t.getSelectedRows &&
+                  (t.getSelectedRows() || []).forEach((e) => {
+                    try {
+                      e.deselect && e.deselect();
+                    } catch (e) {}
+                  }));
+              let n = null;
+              if (
+                ("function" == typeof t.getRow &&
+                  (n =
+                    t.getRow(e) ||
+                    t.getRow(String(e)) ||
+                    (isNaN(e) ? null : t.getRow(Number(e)))),
+                n && "function" == typeof n.select)
+              ) {
+                try {
+                  "function" == typeof t.scrollToRow && t.scrollToRow(n);
+                } catch (e) {}
+                return (n.select(), !0);
+              }
+              if ("function" == typeof t.selectRow)
+                try {
+                  return (t.selectRow([e]), !0);
+                } catch (n) {
+                  try {
+                    return (t.selectRow(String(e)), !0);
+                  } catch (e) {}
+                  try {
+                    if (!isNaN(e)) return (t.selectRow(Number(e)), !0);
+                  } catch (e) {}
+                }
+            } catch (e) {}
+            return !1;
+          })(e) &&
+          n < 5
+        ) {
+          try {
+            if ("function" == typeof t.getRow) {
+              if (
+                !(t.getRow(e) || t.getRow(String(e))) &&
+                "function" == typeof t.scrollToRow
+              )
+                try {
+                  t.scrollToRow(e);
+                } catch (e) {}
+            }
+          } catch (e) {}
+          setTimeout(i, 80 * n);
+        }
+      } finally {
+        window.__syncingGridSelection--;
+      }
+    };
+    i();
+    try {
+      "function" == typeof window.renderSelectionOverlay &&
+        window.renderSelectionOverlay([e]);
+    } catch (e) {}
+  }
+  ((globalThis._editAnnotations = globalThis._editAnnotations || {}),
+    (globalThis._editAnnotations.isEditMode = () => !!q),
+    (globalThis._editAnnotations.getEditingId = () => (k ? k.id : null)),
+    (globalThis._editAnnotations.cancelEdit = () => {
+      if (k)
+        try {
+          A();
+        } catch (e) {
+          P();
+        }
+    }),
+    (globalThis._editAnnotations.commitEdit = () => {
+      k && A();
+    }),
+    (globalThis._editAnnotations.deleteEditing = () => {
+      k && Y();
+    }),
+    (function () {
+      try {
+        if (document.getElementById("edit-sync-style")) return;
+        const e =
+            ".tabulator-row.row-active-edit { box-shadow: inset 0 0 0 2px rgba(255,235,59,0.9); background: rgba(255,255,0,0.10) !important; }",
+          t = document.createElement("style");
+        ((t.id = "edit-sync-style"),
+          t.appendChild(document.createTextNode(e)),
+          document.head.appendChild(t));
+      } catch (e) {}
+    })());
+})();

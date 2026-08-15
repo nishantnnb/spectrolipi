@@ -172,6 +172,60 @@
     octx.beginPath();
     octx.arc(Math.round(cx), Math.round(cy), 3, 0, Math.PI * 2);
     octx.fill();
+
+    // Draw missing species tooltip if applicable
+    const createEditToggle = document.getElementById('createEditToggle');
+    const isCreateMode = createEditToggle ? createEditToggle.dataset.mode === 'create' : true;
+    const speciesResult = document.getElementById('speciesResult');
+    const hasSpecies = speciesResult && speciesResult.textContent.trim().length > 0;
+    
+    const acOverlay = document.getElementById("annotationControlsOverlay");
+    // If the overlay doesn't exist, assume loaded; otherwise it must be explicitly display: none
+    const isAudioLoaded = !acOverlay || acOverlay.style.display === "none";
+
+    let tooltipText = "";
+    if (!isAudioLoaded) {
+      tooltipText = "⚠️ Please load a sound file.";
+    } else if (!hasSpecies) {
+      tooltipText = "⚠️ Species not selected.";
+    }
+    
+    if (tooltipText) {
+      octx.font = "12px Inter, sans-serif";
+      const padding = 6;
+      const textWidth = octx.measureText(tooltipText).width;
+      const boxWidth = textWidth + padding * 2;
+      const boxHeight = 24;
+      
+      let tx = Math.round(cx) + 15;
+      let ty = Math.round(cy) + 15;
+      
+      // Ensure tooltip doesn't draw outside canvas bounds
+      if (tx + boxWidth > w) tx = Math.round(cx) - 15 - boxWidth;
+      if (ty + boxHeight > h) ty = Math.round(cy) - 15 - boxHeight;
+      
+      octx.fillStyle = "rgba(180, 0, 0, 0.85)"; // reddish warning background
+      if (octx.roundRect) {
+        octx.beginPath();
+        octx.roundRect(tx, ty, boxWidth, boxHeight, 4);
+        octx.fill();
+      } else {
+        octx.fillRect(tx, ty, boxWidth, boxHeight);
+      }
+      
+      octx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+      octx.lineWidth = 1;
+      if (octx.roundRect) {
+        octx.stroke();
+      } else {
+        octx.strokeRect(tx, ty, boxWidth, boxHeight);
+      }
+      
+      octx.fillStyle = "#ffffff";
+      octx.textAlign = "left";
+      octx.textBaseline = "middle";
+      octx.fillText(tooltipText, tx + padding, ty + boxHeight / 2);
+    }
   }
 
   // convert client coords to overlay-local canvas coords (CSS px)
@@ -260,12 +314,24 @@
   }
 
   function onLeave() {
+    if (!inside) return;
     inside = false;
     clearCrosshair();
   }
 
   function onMove(ev) {
-    if (!inside) return;
+    const rect = spectrogramCanvas.getBoundingClientRect();
+    const isOverCanvas = ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+    
+    if (!isOverCanvas) {
+      onLeave();
+      return;
+    }
+    
+    if (!inside) {
+      onEnter(ev);
+    }
+
     if (globalThis._isRepeatMode) {
       clearCrosshair();
     } else {
@@ -279,10 +345,10 @@
     readout.textContent = `X: ${formatTimeLabel(timeSec)}   Y: ${formatFreqLabel(freqHz)}`;
   }
 
-  spectrogramCanvas.addEventListener('mouseenter', onEnter);
-  spectrogramCanvas.addEventListener('mouseleave', onLeave);
-  spectrogramCanvas.addEventListener('mousemove', onMove);
-  spectrogramCanvas.addEventListener('pointermove', onMove);
+  window.addEventListener('pointermove', onMove, { capture: true });
+  window.addEventListener('pointerleave', (ev) => {
+    if (!ev.relatedTarget) onLeave();
+  }, { capture: true });
 
   // Keep overlay synchronized during scroll/resize
   scrollArea.addEventListener('scroll', () => {
