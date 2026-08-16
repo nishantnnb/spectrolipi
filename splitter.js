@@ -135,4 +135,8 @@
   window.addEventListener('resize', () => { if (!isDragging) adjustTableHeight(); });
   setTimeout(adjustTableHeight, 300);
   setTimeout(adjustTableHeight, 1000);
+
+  // Expose globally so annotation import pipeline can force layout recalculation
+  window.__adjustTableHeight = adjustTableHeight;
+  window.__applyResize = applyResize;
 })();
