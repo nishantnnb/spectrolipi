@@ -133,6 +133,7 @@
         "number" == typeof globalThis._spectroAxisLeft
           ? globalThis._spectroAxisLeft
           : 70;
+    
     ((c.style.left = o + "px"),
       (c.style.top = "12px"),
       (c.style.width = e + "px"),
@@ -257,6 +258,7 @@
         "number" == typeof globalThis._spectroDuration
           ? globalThis._spectroDuration
           : 1 / 0;
+
     let r = null;
     try {
       if (window.annotationGrid)
@@ -296,7 +298,7 @@
           t +
         0.5;
     if (
-      (l.forEach((r) => {
+      (l.forEach((r, idx) => {
         const l = Number(void 0 !== r.beginTime ? r.beginTime : 0) || 0,
           h = Number(void 0 !== r.endTime ? r.endTime : l) || l,
           g = Number(void 0 !== r.lowFreq ? r.lowFreq : 0) || 0,
@@ -1128,22 +1130,53 @@
           window.annotationGrid &&
           "function" == typeof window.annotationGrid.addData
         ) {
-          (window.annotationGrid.addData(o),
-            o.length > 0 && (m = o[o.length - 1].id));
-          try {
-            window.dispatchEvent(
-              new CustomEvent("annotations-changed", {
-                detail: { reason: e, count: o.length },
-              }),
-            );
-          } catch (t) {}
-          try {
-            "function" == typeof window.renderAllAnnotations &&
-              window.renderAllAnnotations();
-          } catch (t) {}
-          try {
-            "function" == typeof u && u(b());
-          } catch (t) {}
+          const addPromise = window.annotationGrid.addData(o);
+
+          const finishAdd = function () {
+            try {
+              window.dispatchEvent(
+                new CustomEvent("annotations-changed", {
+                  detail: { reason: e, count: o.length },
+                }),
+              );
+            } catch (t) {}
+            try {
+              if ("function" == typeof window.__adjustTableHeight) {
+                window.__adjustTableHeight();
+              }
+            } catch (t) {}
+            try {
+              if ("function" == typeof globalThis._scheduleAnnotationOverlaySync) {
+                globalThis._scheduleAnnotationOverlaySync(e);
+              }
+            } catch (t) {}
+            try {
+              if ("function" == typeof window.renderAllAnnotations) {
+                window.renderAllAnnotations();
+              }
+            } catch (t) {}
+            try {
+              if ("function" == typeof u) {
+                u(b());
+              }
+            } catch (t) {}
+
+            setTimeout(() => {
+              if (typeof window.__applyResize === "function") {
+                window.__applyResize();
+              } else {
+                window.dispatchEvent(new Event("resize"));
+              }
+            }, 250);
+          };
+
+          if (addPromise && "function" == typeof addPromise.then) {
+            addPromise.then(finishAdd).catch(function (err) { 
+              finishAdd(); 
+            });
+          } else {
+            requestAnimationFrame(finishAdd);
+          }
         }
       } catch (t) {
         console.error("Failed to add annotations", t);
@@ -1164,21 +1197,45 @@
           window.annotationGrid &&
           "function" == typeof window.annotationGrid.replaceData
         ) {
-          window.annotationGrid.replaceData(o);
-          try {
-            window.dispatchEvent(
-              new CustomEvent("annotations-changed", {
-                detail: { reason: e, count: o.length },
-              }),
-            );
-          } catch (t) {}
-          try {
-            "function" == typeof window.renderAllAnnotations &&
-              window.renderAllAnnotations();
-          } catch (t) {}
-          try {
-            "function" == typeof u && u(b());
-          } catch (t) {}
+          const replacePromise = window.annotationGrid.replaceData(o);
+
+          const finishReplace = function () {
+            try {
+              window.dispatchEvent(
+                new CustomEvent("annotations-changed", {
+                  detail: { reason: e, count: o.length },
+                })
+              );
+            } catch (t) {}
+            try {
+              if ("function" == typeof window.__adjustTableHeight) {
+                window.__adjustTableHeight();
+              }
+            } catch (t) {}
+            try {
+              if ("function" == typeof globalThis._scheduleAnnotationOverlaySync) {
+                globalThis._scheduleAnnotationOverlaySync(e);
+              }
+            } catch (t) {}
+            try {
+              if ("function" == typeof window.renderAllAnnotations) {
+                window.renderAllAnnotations();
+              }
+            } catch (t) {}
+            try {
+              if ("function" == typeof u) {
+                u(b());
+              }
+            } catch (t) {}
+          };
+
+          if (replacePromise && "function" == typeof replacePromise.then) {
+            replacePromise.then(finishReplace).catch(function (err) { 
+              finishReplace(); 
+            });
+          } else {
+            requestAnimationFrame(finishReplace);
+          }
         }
       } catch (t) {
         console.error("Failed to replace annotations", t);
