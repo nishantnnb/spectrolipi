@@ -464,6 +464,8 @@
         e.preventDefault();
         e.stopPropagation();
         triggerSelection(sp);
+        isCollapsed = true;
+        renderList();
       });
 
       actionContainer.appendChild(removeBtn);
