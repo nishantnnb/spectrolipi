@@ -607,7 +607,7 @@
     }
     document.getElementById('xcResultClose').addEventListener('click', close);
     document.getElementById('xcResultDismiss').addEventListener('click', close);
-    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
+    // Removed backdrop click listener so modal doesn't disappear when clicking outside
     document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && wrap.style.display === 'flex') close(); });
     window.__showXcResultModal = function({ title, summary, detailsHtml }) {
       document.getElementById('xcResultTitle').textContent = title || 'Upload result';
@@ -681,8 +681,12 @@
       detailParts.push('<div style="margin-top:8px;color:#ffb4b4;"><strong>Errors</strong><ul>' + errors.map(w => `<li>${escapeHtml(String(w))}</li>`).join('') + '</ul></div>');
     }
     if (!warnings.length && !errors.length && responseText) {
-      detailParts.push('<pre style="background:#0b0d14;padding:8px;border-radius:6px;white-space:pre-wrap;max-height:160px;overflow:auto;">' + escapeHtml(responseText) + '</pre>');
+      let cleanedText = responseText.replace(/(\s*)Visit https:\/\/xeno-canto\.org\/account to import the data\.?/gi, '');
+      detailParts.push('<pre style="background:#0b0d14;padding:8px;border-radius:6px;white-space:pre-wrap;max-height:160px;overflow:auto;">' + escapeHtml(cleanedText) + '</pre>');
     }
+    
+    detailParts.push('<p style="margin-top:12px;font-size:0.9rem;">Visit <a href="https://xeno-canto.org/account/annotations" target="_blank" style="color:#60a5fa;text-decoration:underline;">https://xeno-canto.org/account/annotations</a> to import the data.</p>');
+    
     const detailHtml = detailParts.join('');
     window.__showXcResultModal && window.__showXcResultModal({ title: 'Xeno-canto upload', summary, detailsHtml: detailHtml });
   }
