@@ -298,9 +298,25 @@
       await new Promise(r => setTimeout(r, 0));
 
       const channels = Math.max(1, audioBuf.numberOfChannels || 1);
+      const totalLen = audioBuf.length || 0;
+      
+      // Create a new AudioBuffer (matching the pattern used in filters.js and cut operations)
+      // This allows the snapshot system to just store a reference to the old buffer without deep-copying it.
+      const CtxClass = window.AudioContext || window.webkitAudioContext;
+      let tempCtx = null;
+      try { tempCtx = new CtxClass(); } catch(e) { tempCtx = null; }
+      if (!tempCtx) { throw new Error('AudioContext not available'); }
+      const newBuf = tempCtx.createBuffer(channels, Math.max(1, totalLen), sr);
+      
+      // First, copy the original audio into the new buffer
+      for (let c = 0; c < channels; c++) {
+        newBuf.getChannelData(c).set(audioBuf.getChannelData(c));
+      }
+      try { if (typeof tempCtx.close === 'function') await tempCtx.close(); } catch(e){}
+
       let peak = 0;
       for (let c = 0; c < channels; c++) {
-        const data = audioBuf.getChannelData(c);
+        const data = newBuf.getChannelData(c);
         let sum = 0;
         for (let i = startSample; i < endSample; i++) {
           sum += data[i];
@@ -322,8 +338,8 @@
       const targetAmp = Math.pow(10, targetDb / 20);
       const clampedTarget = Math.min(0.999, Math.max(1e-6, targetAmp));
       const gain = clampedTarget / peak;
-      for (let c = 0; c < Math.max(1, audioBuf.numberOfChannels || 1); c++) {
-        const data = audioBuf.getChannelData(c);
+      for (let c = 0; c < channels; c++) {
+        const data = newBuf.getChannelData(c);
         for (let i = startSample; i < endSample; i++) {
           let sample = data[i] * gain;
           if (sample > 1) sample = 1;
@@ -331,6 +347,9 @@
           data[i] = sample;
         }
       }
+
+      // Replace global buffer
+      globalThis._spectroAudioBuffer = newBuf;
 
       if (noteField) noteField.textContent = 'Updating spectrogram...';
       if (overlay && typeof overlay.show === 'function') {

@@ -3128,20 +3128,12 @@ self.onmessage = function(e) {
         if (window.__updateSimpleTimeDebug) { try { window.__updateSimpleTimeDebug('[recalc after undo]'); } catch(e){} }
       } catch(_){}
       const spacer = document.getElementById('spectroSpacer'); if (spacer) { spacer.style.width = (globalThis._spectroImageWidth||0) + 'px'; spacer.style.height = (12 + (globalThis._spectroImageHeight||0) + 44) + 'px'; }
-      // Use the same proven rendering path as Stamp/Normalize/Filter tools:
-      // chunked _spectrogram_recomputeFrames calls that stay under the 25% fallback threshold.
-      const totalFrames = globalThis._spectroNumFrames|0;
-      if (totalFrames > 0 && typeof _spectrogram_recomputeFrames === 'function') {
-        const maxChunk = Math.max(1, Math.floor(totalFrames * 0.24));
-        for (let cursor = 0; cursor < totalFrames;) {
-          const chunkEnd = Math.min(totalFrames - 1, cursor + maxChunk - 1);
-          await _spectrogram_recomputeFrames(cursor, chunkEnd);
-          cursor = chunkEnd + 1;
-        }
-      } else {
-        await _rebuildAllTilesFromSpectra();
-        try { await (typeof reRenderFromSpectra==='function' ? reRenderFromSpectra(_resolveCurrentYMaxSafe()) : Promise.resolve()); } catch(e){}
-      }
+      // Rebuild tiles from the already-restored spectra snapshot.
+      // IMPORTANT: Do NOT use _spectrogram_recomputeFrames here — it re-runs FFT
+      // on the audio buffer and would overwrite the restored spectra.
+      // _rebuildAllTilesFromSpectra renders tiles directly from the spectra array.
+      await _rebuildAllTilesFromSpectra();
+      try { await (typeof reRenderFromSpectra==='function' ? reRenderFromSpectra(_resolveCurrentYMaxSafe()) : Promise.resolve()); } catch(e){}
       if (typeof drawViewportFromTiles==='function') drawViewportFromTiles();
       if (typeof updateXTicksFromScroll==='function') updateXTicksFromScroll();
       _scheduleAnnotationOverlaySync('restoreSnapshot');
