@@ -39,10 +39,30 @@
                 if (typeof globalThis.disarmCutMode === 'function') {
                     globalThis.disarmCutMode(true);
                 }
+                window.dispatchEvent(new CustomEvent('stamp-mode-enabled'));
             } else {
                 cancelStampMode();
             }
         });
+
+        window.addEventListener('repeat-mode-enabled', () => { if (stampState !== 'off') cancelStampMode(); });
+        window.addEventListener('magic-wand-enabled', () => { if (stampState !== 'off') cancelStampMode(); });
+        window.addEventListener('mode-change', () => { if (stampState !== 'off') cancelStampMode(); });
+
+        const axisCanvas = document.getElementById('axisCanvas');
+        if (axisCanvas) {
+            const lockAxis = (e) => {
+                if (stampState !== 'off') {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    if (e.type === 'pointermove') axisCanvas.style.cursor = 'default';
+                }
+            };
+            axisCanvas.addEventListener('pointerdown', lockAxis, true);
+            axisCanvas.addEventListener('pointermove', lockAxis, true);
+            axisCanvas.addEventListener('wheel', lockAxis, true);
+        }
 
         const wrapper = document.getElementById('viewportWrapper');
         if (wrapper) {
@@ -109,6 +129,9 @@
 
     function onPointerDown(ev) {
         if (stampState === 'off' || ev.button !== 0) return;
+
+        const scrollArea = document.getElementById('scrollArea');
+        if (scrollArea && ev.clientX < scrollArea.getBoundingClientRect().left) return;
 
         const current = getCoords(ev);
         const AXIS_TOP = 12;
@@ -438,6 +461,7 @@
 
         // Replace global buffer so the Undo stack perfectly holds the original pointer
         globalThis._spectroAudioBuffer = newAudioBuf;
+        globalThis.isAudioDirty = true;
     }
 
     function onPointerLeave(ev) {

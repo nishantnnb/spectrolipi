@@ -1,1 +1,257 @@
-!function(){const e=document.getElementById("exportBtn"),t=document.getElementById("exportModal"),n=document.getElementById("exportInfo"),o=document.getElementById("exportSampleRate"),a=document.getElementById("exportEncoding"),l=document.getElementById("exportEstimate"),i=document.getElementById("exportCancel"),r=document.getElementById("exportDo");function s(){const e=globalThis._spectroAudioBuffer;if(!e)return n&&(n.textContent="No audio loaded"),l&&(l.textContent="Estimated size: —"),void(r&&(r.disabled=!0));const t=e.sampleRate||44100,i=e.numberOfChannels||1,s=e.duration||e.length/t;n&&(n.textContent=`Detected: ${t} Hz · ${i} ch · ${s.toFixed(2)} s`);const d=o&&o.value?o.value:"orig",c="orig"===d?t:Number(d),u=a&&a.value?a.value:"24",m="16"===u?2:"24"===u?3:4,f=Math.round(s*c*i*m);l&&(l.textContent="Estimated size: "+function(e){if(!isFinite(e))return"—";const t=["B","KB","MB","GB"];let n=0;for(;e>=1024&&n<t.length-1;)e/=1024,n++;return e.toFixed(2)+" "+t[n]}(f)),r&&(r.disabled=!1)}function d(e){try{const t=document.getElementById("waitOverlay");if(t){t.style.display="block";const n=document.querySelector("#waitOverlay .msg");n&&(n.textContent=e||"Exporting...")}}catch(e){}}function c(){try{const e=document.getElementById("waitOverlay");e&&(e.style.display="none")}catch(e){}}async function u(){try{const e=globalThis._spectroAudioBuffer;if(!e)return void alert("No audio to export");const n=e.sampleRate||44100,l=o&&o.value?o.value:"orig",i="orig"===l?n:Number(l),r=a&&a.value?a.value:"24",s="16"===r?16:"24"===r?24:32;t&&(t.style.display="none"),d("Preparing export...");const u=await async function(e,t){if(!e)return null;if(!t||t===e.sampleRate)return e;try{const n=e.numberOfChannels||1,o=new(globalThis.OfflineAudioContext||globalThis.webkitOfflineAudioContext)(n,Math.ceil(e.duration*t),t),a=o.createBufferSource();return a.buffer=e,a.connect(o.destination),a.start(0),await o.startRendering()}catch(t){return console.warn("Resample failed",t),e}}(e,i);d("Encoding WAV...");const m=function(e,t){const n=e.numberOfChannels,o=e.sampleRate,a=e.length,l=16===t?2:24===t?3:4,i=n*l,r=o*i,s=a*i,d=new ArrayBuffer(44+s),c=new DataView(d);function u(e,t,n){for(let o=0;o<n.length;o++)e.setUint8(t+o,n.charCodeAt(o))}u(c,0,"RIFF"),c.setUint32(4,36+s,!0),u(c,8,"WAVE"),u(c,12,"fmt "),c.setUint32(16,16,!0),c.setUint16(20,1,!0),c.setUint16(22,n,!0),c.setUint32(24,o,!0),c.setUint32(28,r,!0),c.setUint16(32,i,!0),c.setUint16(34,8*l,!0),u(c,36,"data"),c.setUint32(40,s,!0);let m=44;const f=[];for(let t=0;t<n;t++)f.push(e.getChannelData(t));for(let e=0;e<a;e++)for(let o=0;o<n;o++){let n=Math.max(-1,Math.min(1,f[o][e]||0));if(16===t){const e=Math.round(32767*n);c.setInt16(m,e,!0),m+=2}else if(24===t){const e=Math.round(8388607*n);c.setUint8(m,255&e),c.setUint8(m+1,e>>8&255),c.setUint8(m+2,e>>16&255),m+=3}else c.setFloat32(m,n,!0),m+=4}return new Blob([c],{type:"audio/wav"})}(u,s),f=(window.__currentFileName||document.getElementById("file")&&document.getElementById("file").files&&document.getElementById("file").files[0]&&document.getElementById("file").files[0].name||"export").replace(/\.[^.]+$/,"")+"_edited.wav",y=URL.createObjectURL(m),p=document.createElement("a");p.href=y,p.download=f,document.body.appendChild(p),p.click(),setTimeout(()=>{try{URL.revokeObjectURL(y),p.remove()}catch(e){}},2e3),c();try{const e=document.createElement("div");e.textContent="Export complete",e.style.position="fixed",e.style.left="50%",e.style.transform="translateX(-50%)",e.style.bottom="20px",e.style.background="rgba(0,0,0,0.8)",e.style.color="#fff",e.style.padding="6px 10px",e.style.borderRadius="6px",e.style.zIndex="2147483646",document.body.appendChild(e),setTimeout(()=>{try{e.remove()}catch(e){}},2e3)}catch(e){}}catch(e){c(),console.error("Export failed",e),alert("Export failed: "+(e&&e.message?e.message:e))}}e&&e.addEventListener("click",e=>{if(e.preventDefault(),t)try{t.style.display="block",s()}catch(e){}}),i&&i.addEventListener("click",e=>{e.preventDefault(),t&&(t.style.display="none")}),o&&o.addEventListener("change",s),a&&a.addEventListener("change",s),r&&r.addEventListener("click",async e=>{e.preventDefault(),r.disabled=!0;try{await u()}finally{r.disabled=!1}});try{s()}catch(e){}}();
+!function() {
+  const exportBtn = document.getElementById("exportBtn");
+  const exportModal = document.getElementById("exportModal");
+  const exportInfo = document.getElementById("exportInfo");
+  const exportSampleRate = document.getElementById("exportSampleRate");
+  const exportEncoding = document.getElementById("exportEncoding");
+  const exportEstimate = document.getElementById("exportEstimate");
+  const exportCancel = document.getElementById("exportCancel");
+  const exportDo = document.getElementById("exportDo");
+  const exportFileNameInput = document.getElementById("exportFileNameInput");
+
+  function updateUiState() {
+    const audioBuf = globalThis._spectroAudioBuffer;
+    if (!audioBuf) {
+      if (exportInfo) exportInfo.textContent = "No audio loaded";
+      if (exportEstimate) exportEstimate.textContent = "Estimated size: —";
+      if (exportDo) exportDo.disabled = true;
+      return;
+    }
+    const sr = audioBuf.sampleRate || 44100;
+    const ch = audioBuf.numberOfChannels || 1;
+    const dur = audioBuf.duration || audioBuf.length / sr;
+    if (exportInfo) exportInfo.textContent = `Detected: ${sr} Hz · ${ch} ch · ${dur.toFixed(2)} s`;
+    
+    const srSel = exportSampleRate && exportSampleRate.value ? exportSampleRate.value : "orig";
+    const outSr = srSel === "orig" ? sr : Number(srSel);
+    
+    const encSel = exportEncoding && exportEncoding.value ? exportEncoding.value : "24";
+    const bytesPerSamp = encSel === "16" ? 2 : encSel === "24" ? 3 : 4;
+    
+    const estimatedBytes = Math.round(dur * outSr * ch * bytesPerSamp);
+    if (exportEstimate) {
+      exportEstimate.textContent = "Estimated size: " + (function(bytes) {
+        if (!isFinite(bytes)) return "—";
+        const units = ["B", "KB", "MB", "GB"];
+        let u = 0;
+        while (bytes >= 1024 && u < units.length - 1) {
+          bytes /= 1024;
+          u++;
+        }
+        return bytes.toFixed(2) + " " + units[u];
+      })(estimatedBytes);
+    }
+    
+    if (exportFileNameInput) {
+      let baseName = globalThis.latestSavedAudioFileName || "export.wav";
+      if (globalThis.isAudioDirty) {
+        baseName = baseName.replace(/\.[^.]+$/, "") + "_edited.wav";
+      }
+      exportFileNameInput.value = baseName;
+    }
+    if (exportDo) exportDo.disabled = false;
+  }
+
+  function showWait(msg) {
+    try {
+      const waitOverlay = document.getElementById("waitOverlay");
+      if (waitOverlay) {
+        waitOverlay.style.display = "block";
+        const msgEl = document.querySelector("#waitOverlay .msg");
+        if (msgEl) msgEl.textContent = msg || "Exporting...";
+      }
+    } catch(e) {}
+  }
+
+  function hideWait() {
+    try {
+      const waitOverlay = document.getElementById("waitOverlay");
+      if (waitOverlay) waitOverlay.style.display = "none";
+    } catch(e) {}
+  }
+
+  async function performExport() {
+    try {
+      const audioBuf = globalThis._spectroAudioBuffer;
+      if (!audioBuf) {
+        alert("No audio to export");
+        return;
+      }
+      const sr = audioBuf.sampleRate || 44100;
+      
+      const srSel = exportSampleRate && exportSampleRate.value ? exportSampleRate.value : "orig";
+      const outSr = srSel === "orig" ? sr : Number(srSel);
+      
+      const encSel = exportEncoding && exportEncoding.value ? exportEncoding.value : "24";
+      const bitDepth = encSel === "16" ? 16 : encSel === "24" ? 24 : 32;
+      
+      if (exportModal) exportModal.style.display = "none";
+      showWait("Preparing export...");
+      
+      const resampledBuf = await (async function(buf, targetSr) {
+        if (!buf) return null;
+        if (!targetSr || targetSr === buf.sampleRate) return buf;
+        try {
+          const ch = buf.numberOfChannels || 1;
+          const OfflineCtx = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
+          const octx = new OfflineCtx(ch, Math.ceil(buf.duration * targetSr), targetSr);
+          const src = octx.createBufferSource();
+          src.buffer = buf;
+          src.connect(octx.destination);
+          src.start(0);
+          return await octx.startRendering();
+        } catch(e) {
+          console.warn("Resample failed", e);
+          return buf;
+        }
+      })(audioBuf, outSr);
+      
+      showWait("Encoding WAV...");
+      
+      const wavBlob = (function(buf, depth) {
+        const ch = buf.numberOfChannels;
+        const sRate = buf.sampleRate;
+        const len = buf.length;
+        const bytesPerSamp = depth === 16 ? 2 : depth === 24 ? 3 : 4;
+        const blockAlign = ch * bytesPerSamp;
+        const byteRate = sRate * blockAlign;
+        const dataSize = len * blockAlign;
+        
+        const ab = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(ab);
+        
+        function writeStr(v, offset, str) {
+          for (let i = 0; i < str.length; i++) {
+            v.setUint8(offset + i, str.charCodeAt(i));
+          }
+        }
+        
+        writeStr(view, 0, "RIFF");
+        view.setUint32(4, 36 + dataSize, true);
+        writeStr(view, 8, "WAVE");
+        writeStr(view, 12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); 
+        view.setUint16(22, ch, true);
+        view.setUint32(24, sRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, depth, true);
+        writeStr(view, 36, "data");
+        view.setUint32(40, dataSize, true);
+        
+        let offset = 44;
+        const channels = [];
+        for (let i = 0; i < ch; i++) channels.push(buf.getChannelData(i));
+        
+        for (let i = 0; i < len; i++) {
+          for (let c = 0; c < ch; c++) {
+            let sample = Math.max(-1, Math.min(1, channels[c][i] || 0));
+            if (depth === 16) {
+              const val = Math.round(32767 * sample);
+              view.setInt16(offset, val, true);
+              offset += 2;
+            } else if (depth === 24) {
+              const val = Math.round(8388607 * sample);
+              view.setUint8(offset, val & 255);
+              view.setUint8(offset + 1, (val >> 8) & 255);
+              view.setUint8(offset + 2, (val >> 16) & 255);
+              offset += 3;
+            } else {
+              view.setFloat32(offset, sample, true);
+              offset += 4;
+            }
+          }
+        }
+        return new Blob([view], { type: "audio/wav" });
+      })(resampledBuf, bitDepth);
+      
+      let fileName = exportFileNameInput && exportFileNameInput.value.trim() ? exportFileNameInput.value.trim() : "export_edited.wav";
+      if (!fileName.toLowerCase().endsWith(".wav")) fileName += ".wav";
+      
+      const objUrl = URL.createObjectURL(wavBlob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        try {
+          URL.revokeObjectURL(objUrl);
+          a.remove();
+        } catch(e) {}
+      }, 2000);
+      hideWait();
+      
+      globalThis.latestSavedAudioFileName = fileName;
+      globalThis.isAudioDirty = false;
+      
+      if (typeof window.__onExportSuccess === "function") {
+        window.__onExportSuccess();
+        window.__onExportSuccess = null;
+      }
+      
+      try {
+        const toast = document.createElement("div");
+        toast.textContent = "Export complete";
+        toast.style.position = "fixed";
+        toast.style.left = "50%";
+        toast.style.transform = "translateX(-50%)";
+        toast.style.bottom = "20px";
+        toast.style.background = "rgba(0,0,0,0.8)";
+        toast.style.color = "#fff";
+        toast.style.padding = "6px 10px";
+        toast.style.borderRadius = "6px";
+        toast.style.zIndex = "2147483646";
+        document.body.appendChild(toast);
+        setTimeout(() => { try { toast.remove(); } catch(e){} }, 2000);
+      } catch(e) {}
+      
+    } catch(e) {
+      hideWait();
+      console.error("Export failed", e);
+      alert("Export failed: " + (e && e.message ? e.message : e));
+    }
+  }
+
+  if (exportBtn) {
+    exportBtn.addEventListener("click", ev => {
+      ev.preventDefault();
+      if (exportModal) {
+        try {
+          exportModal.style.display = "block";
+          updateUiState();
+        } catch(e) {}
+      }
+    });
+  }
+  
+  if (exportCancel) {
+    exportCancel.addEventListener("click", ev => {
+      ev.preventDefault();
+      if (exportModal) exportModal.style.display = "none";
+      if (typeof window.__onExportCancel === "function") {
+        window.__onExportCancel();
+        window.__onExportCancel = null;
+      }
+    });
+  }
+  
+  if (exportSampleRate) exportSampleRate.addEventListener("change", updateUiState);
+  if (exportEncoding) exportEncoding.addEventListener("change", updateUiState);
+  
+  if (exportDo) {
+    exportDo.addEventListener("click", async ev => {
+      ev.preventDefault();
+      exportDo.disabled = true;
+      try {
+        await performExport();
+      } finally {
+        exportDo.disabled = false;
+      }
+    });
+  }
+  
+  try { updateUiState(); } catch(e) {}
+}();

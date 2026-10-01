@@ -112,8 +112,7 @@
     const comments = normalizeComments(meta.comments || '');
 
     // Include File as first column and Scientific name next to Target species
-    const fileInputEl = q(FILE_INPUT_ID);
-    const exportFileName = (fileInputEl && fileInputEl.files && fileInputEl.files.length > 0 && fileInputEl.files[0] && fileInputEl.files[0].name) ? String(fileInputEl.files[0].name) : '';
+    const exportFileName = globalThis.latestSavedAudioFileName || 'export.wav';
 
     const headers = [
       'File',

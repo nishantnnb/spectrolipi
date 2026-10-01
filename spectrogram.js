@@ -282,6 +282,9 @@ self.onmessage = function(e) {
   }
 
   // Global state (sane defaults)
+  globalThis.isAudioDirty = false;
+  globalThis.isAnnotationsDirty = false;
+  globalThis.latestSavedAudioFileName = '';
   globalThis._spectroLastGen = globalThis._spectroLastGen || { fileId:null, pxpf:null, sampleRate:null, numFrames:null, fftSize:null, ymax:null };
   globalThis._spectroTiles = globalThis._spectroTiles || null;
   globalThis._spectroSpectra = globalThis._spectroSpectra || null;
@@ -650,6 +653,9 @@ self.onmessage = function(e) {
 
   // processFile: compute STFT and draw image; updates globals
   async function processFile(file, fftSize, overlapFactor, pxpf, cmap){
+    globalThis.latestSavedAudioFileName = file ? file.name : '';
+    globalThis.isAudioDirty = false;
+    globalThis.isAnnotationsDirty = false;
     globalThis._spectroTiles = null; globalThis._spectroSpectra = null; globalThis._spectroYMax = null;
     const arrayBuffer = await file.arrayBuffer();
 
@@ -2442,6 +2448,8 @@ self.onmessage = function(e) {
       } catch(e) { ann = null; }
       return {
         spectra: spec,
+        isAudioDirty: globalThis.isAudioDirty,
+        latestSavedAudioFileName: globalThis.latestSavedAudioFileName,
         numFrames: globalThis._spectroNumFrames,
         bins: globalThis._spectroBins,
         pxpf: globalThis._spectroPxPerFrame,
@@ -2703,6 +2711,7 @@ self.onmessage = function(e) {
   // Adjust annotation boxes to reflect the cut (clip/shift/remove), then dispatch event
     try { await adjustAnnotationsForCut(c1A, c2A); } catch(e) { console.warn('adjustAnnotationsForCut failed', e); }
     try { window.dispatchEvent(new CustomEvent('spectrogram-cut', { detail: { startSec: c1Sec, endSec: c2Sec, newDuration: globalThis._spectroDuration } })); } catch(e){}
+    globalThis.isAudioDirty = true;
     _scheduleAnnotationOverlaySync('cutSpectrogramRange');
     return true;
   }
@@ -3087,6 +3096,8 @@ self.onmessage = function(e) {
   async function restoreSnapshot(snap){
     if (!snap) return;
     try {
+      if (snap.hasOwnProperty('isAudioDirty')) globalThis.isAudioDirty = snap.isAudioDirty;
+      if (snap.hasOwnProperty('latestSavedAudioFileName')) globalThis.latestSavedAudioFileName = snap.latestSavedAudioFileName;
       if (snap.spectra) globalThis._spectroSpectra = new Float32Array(snap.spectra);
       globalThis._spectroNumFrames = snap.numFrames|0;
       globalThis._spectroBins = snap.bins|0;

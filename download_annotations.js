@@ -1,1 +1,214 @@
-!function(){if(window.__downloadAnnotationsInit)return;window.__downloadAnnotationsInit=!0;const e="saveAnnoBtn",t="file";function n(e){return document.getElementById(e)}function o(e,t){const n=URL.createObjectURL(e),o=document.createElement("a");o.href=n,o.download=t,document.body.appendChild(o),o.click(),o.remove(),setTimeout(()=>URL.revokeObjectURL(n),5e3)}function i(e){if(null==e)return"";if("object"==typeof e)try{return JSON.stringify(e)}catch(t){return String(e)}return String(e)}function a(e){if(null==e||""===e)return"";const t=Number(e);return isFinite(t)?t.toFixed(4):""}const r=["File","Selection","View","Channel","Begin Time (s)","End Time (s)","Low Freq (Hz)","High Freq (Hz)","Common name","Scientific name","Sex","Life stage","Sound type(s)","Notes"],c=new Set(["id","beginTime","begin_time","begin","endTime","end_time","end","lowFreq","low_freq","low","highFreq","high_freq","high","species","scientificName","sex","lifeStage","soundType","Sex","Life stage","Sound type(s)","file","File","notes","note","Selection","View","Channel","Begin Time (s)","End Time (s)","Low Freq (Hz)","High Freq (Hz)","Species","Notes","needsMetadata"]);function s(e){e=Array.isArray(e)?e:[];const o=n(t),s=o&&o.files&&o.files.length>0&&o.files[0]&&o.files[0].name?String(o.files[0].name):"",l=[],d=new Set;e.forEach(e=>{e&&"object"==typeof e&&Object.keys(e).forEach(e=>{c.has(e)||d.has(e)||(d.add(e),l.push(e))})});const f=[r.concat(l).filter(e=>"_select"!==e).join("\t")];return e.forEach(e=>{const t=e&&Object.prototype.hasOwnProperty.call(e,"Selection")?String(e.Selection):"",n=e&&Object.prototype.hasOwnProperty.call(e,"beginTime")?e.beginTime:e&&Object.prototype.hasOwnProperty.call(e,"begin")?e.begin:"",o=e&&Object.prototype.hasOwnProperty.call(e,"endTime")?e.endTime:e&&Object.prototype.hasOwnProperty.call(e,"end")?e.end:"",r=e&&Object.prototype.hasOwnProperty.call(e,"lowFreq")?e.lowFreq:e&&Object.prototype.hasOwnProperty.call(e,"low")?e.low:"",c=e&&Object.prototype.hasOwnProperty.call(e,"highFreq")?e.highFreq:e&&Object.prototype.hasOwnProperty.call(e,"high")?e.high:"",d=a(n),p=a(o),w=a(r),y=a(c),u=e&&Object.prototype.hasOwnProperty.call(e,"species")?i(e.species):"",h=e&&Object.prototype.hasOwnProperty.call(e,"scientificName")?i(e.scientificName):"",b=e&&Object.prototype.hasOwnProperty.call(e,"sex")?i(e.sex):"",g=e&&Object.prototype.hasOwnProperty.call(e,"lifeStage")?i(e.lifeStage):"",m=e&&Object.prototype.hasOwnProperty.call(e,"soundType")?i(e.soundType):"",O=e&&Object.prototype.hasOwnProperty.call(e,"notes")?i(e.notes):"",_=l.filter(e=>"_select"!==e).map(t=>e&&Object.prototype.hasOwnProperty.call(e,t)?i(e[t]):"");f.push([s,t,"1","1",d,p,w,y,u,h,b,g,m,O].concat(_).join("\t"))}),{content:f.join("\n")+"\n",filenameSuffix:"_annotations"}}function l(){try{const e=n(t);if(e&&e.files&&e.files.length>0&&e.files[0].name){const t=e.files[0].name,n=t.lastIndexOf(".");return n>0?t.slice(0,n):t}}catch(e){}return"export"}function d(){const o=n(e),i=n(t);if(o)try{const e=i&&i.files&&i.files.length>0;o.disabled=!e}catch(e){o.disabled=!0}}function f(){if(globalThis._annotations&&"function"==typeof globalThis._annotations.getAll)try{return globalThis._annotations.getAll()||[]}catch(e){return console.warn("Failed to read _annotations.getAll()",e),[]}return Array.isArray(window._annotationsArray)?window._annotationsArray:[]}try{window.__saveAnnotations&&"function"==typeof window.__saveAnnotations.saveNow&&(window.__saveAnnotations.__disabledBy="download_annotations.js",window.__saveAnnotations.saveNow=function(){console.warn("Legacy single-button saver disabled by download_annotations.js")})}catch(e){}function p(){const e=n(t);if(!e)return void setTimeout(p,120);d(),e.addEventListener("change",()=>d(),!0);new MutationObserver(()=>d()).observe(e,{attributes:!0,attributeFilter:["value"]})}function w(){!function(){const t=n(e);t&&(t.__downloadAnnoWired||(t.addEventListener("click",function(e){try{e&&e.preventDefault&&e.preventDefault()}catch(e){}if(!t.disabled)try{const e=f(),t=l(),n=s(e);o(new Blob([n.content],{type:"text/plain;charset=utf-8"}),`${t}${n.filenameSuffix}.txt`);try{Object.keys(localStorage).forEach(e=>{if(e.startsWith("annotations_backup::"))try{localStorage.removeItem(e)}catch(e){}})}catch(e){console.warn("Backup purge after export failed",e)}}catch(e){console.error("Download annotations failed",e);try{window.alert("Download annotations failed. See console for details.")}catch(e){}}},!0),t.__downloadAnnoWired=!0))}(),p(),setTimeout(()=>d(),200)}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",w):w(),window.__downloadAnnotations={downloadNow:function(){const e=f(),t=l(),n=s(e);o(new Blob([n.content],{type:"text/plain;charset=utf-8"}),`${t}${n.filenameSuffix}.txt`)}}}();
+!function() {
+  if (window.__downloadAnnotationsInit) return;
+  window.__downloadAnnotationsInit = true;
+
+  function triggerDownload(blob, filename) {
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
+  }
+
+  function safeStr(val) {
+    if (val == null) return "";
+    if (typeof val === "object") {
+      try { return JSON.stringify(val); } catch(e) { return String(val); }
+    }
+    return String(val);
+  }
+
+  function formatNum(val) {
+    if (val == null || val === "") return "";
+    const n = Number(val);
+    return isFinite(n) ? n.toFixed(4) : "";
+  }
+
+  const standardHeaders = [
+    "File", "Selection", "View", "Channel", "Begin Time (s)", "End Time (s)",
+    "Low Freq (Hz)", "High Freq (Hz)", "Common name", "Scientific name", "Sex",
+    "Life stage", "Sound type(s)", "Notes"
+  ];
+  const standardKeys = new Set([
+    "id", "beginTime", "begin_time", "begin", "endTime", "end_time", "end",
+    "lowFreq", "low_freq", "low", "highFreq", "high_freq", "high", "species",
+    "scientificName", "sex", "lifeStage", "soundType", "Sex", "Life stage",
+    "Sound type(s)", "file", "File", "notes", "note", "Selection", "View",
+    "Channel", "Begin Time (s)", "End Time (s)", "Low Freq (Hz)", "High Freq (Hz)",
+    "Species", "Notes", "needsMetadata"
+  ]);
+
+  function generateTsvData(annotations) {
+    annotations = Array.isArray(annotations) ? annotations : [];
+    
+    // File column uses the latestSavedAudioFileName
+    const fileColValue = globalThis.latestSavedAudioFileName || "export.wav";
+    
+    const extraHeaders = [];
+    const seenExtra = new Set();
+    
+    annotations.forEach(ann => {
+      if (ann && typeof ann === "object") {
+        Object.keys(ann).forEach(key => {
+          if (!standardKeys.has(key) && !seenExtra.has(key)) {
+            seenExtra.add(key);
+            extraHeaders.push(key);
+          }
+        });
+      }
+    });
+
+    const lines = [standardHeaders.concat(extraHeaders).filter(h => h !== "_select").join("\t")];
+
+    annotations.forEach(ann => {
+      const sel = ann && Object.prototype.hasOwnProperty.call(ann, "Selection") ? String(ann.Selection) : "";
+      const bTime = ann && Object.prototype.hasOwnProperty.call(ann, "beginTime") ? ann.beginTime : ann && Object.prototype.hasOwnProperty.call(ann, "begin") ? ann.begin : "";
+      const eTime = ann && Object.prototype.hasOwnProperty.call(ann, "endTime") ? ann.endTime : ann && Object.prototype.hasOwnProperty.call(ann, "end") ? ann.end : "";
+      const lFreq = ann && Object.prototype.hasOwnProperty.call(ann, "lowFreq") ? ann.lowFreq : ann && Object.prototype.hasOwnProperty.call(ann, "low") ? ann.low : "";
+      const hFreq = ann && Object.prototype.hasOwnProperty.call(ann, "highFreq") ? ann.highFreq : ann && Object.prototype.hasOwnProperty.call(ann, "high") ? ann.high : "";
+      
+      const u = ann && Object.prototype.hasOwnProperty.call(ann, "species") ? safeStr(ann.species) : "";
+      const h = ann && Object.prototype.hasOwnProperty.call(ann, "scientificName") ? safeStr(ann.scientificName) : "";
+      const b = ann && Object.prototype.hasOwnProperty.call(ann, "sex") ? safeStr(ann.sex) : "";
+      const g = ann && Object.prototype.hasOwnProperty.call(ann, "lifeStage") ? safeStr(ann.lifeStage) : "";
+      const m = ann && Object.prototype.hasOwnProperty.call(ann, "soundType") ? safeStr(ann.soundType) : "";
+      const O = ann && Object.prototype.hasOwnProperty.call(ann, "notes") ? safeStr(ann.notes) : "";
+      
+      const extraVals = extraHeaders.filter(h => h !== "_select").map(hdr => {
+        return ann && Object.prototype.hasOwnProperty.call(ann, hdr) ? safeStr(ann[hdr]) : "";
+      });
+      
+      lines.push([
+        fileColValue, sel, "1", "1", formatNum(bTime), formatNum(eTime), formatNum(lFreq), formatNum(hFreq),
+        u, h, b, g, m, O
+      ].concat(extraVals).join("\t"));
+    });
+
+    return { content: lines.join("\n") + "\n" };
+  }
+
+  function getActiveAnnotations() {
+    if (globalThis._annotations && typeof globalThis._annotations.getAll === "function") {
+      try { return globalThis._annotations.getAll() || []; } catch(e) {
+        console.warn("Failed to read _annotations.getAll()", e);
+        return [];
+      }
+    }
+    return Array.isArray(window._annotationsArray) ? window._annotationsArray : [];
+  }
+
+  function updateButtonState() {
+    const btn = document.getElementById("saveAnnoBtn");
+    const fileInput = document.getElementById("file");
+    if (btn) {
+      try {
+        const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+        const o = hasFile || globalThis.latestSavedAudioFileName;
+        const activeAnnos = getActiveAnnotations();
+        const hasAnnos = activeAnnos && activeAnnos.length > 0;
+        btn.disabled = !(o && (hasAnnos || globalThis.isAudioDirty || globalThis.isAnnotationsDirty));
+      } catch(e) {
+        btn.disabled = true;
+      }
+    }
+  }
+
+  try {
+    if (window.__saveAnnotations && typeof window.__saveAnnotations.saveNow === "function") {
+      window.__saveAnnotations.__disabledBy = "download_annotations.js";
+      window.__saveAnnotations.saveNow = function() {
+        console.warn("Legacy single-button saver disabled by download_annotations.js");
+      };
+    }
+  } catch(e) {}
+
+  function watchFile() {
+    const fileInput = document.getElementById("file");
+    if (!fileInput) {
+      setTimeout(watchFile, 120);
+      return;
+    }
+    updateButtonState();
+    fileInput.addEventListener("change", updateButtonState, true);
+    new MutationObserver(updateButtonState).observe(fileInput, { attributes: true, attributeFilter: ["value"] });
+    setInterval(updateButtonState, 500);
+  }
+
+  function performAnnotationSave() {
+    try {
+      const annotations = getActiveAnnotations();
+      
+      if ((!annotations || annotations.length === 0) && !globalThis.isAnnotationsDirty) {
+        if (typeof window.__onCompleteSaveAndOpenNewFile === "function") {
+          setTimeout(window.__onCompleteSaveAndOpenNewFile, 500);
+          window.__onCompleteSaveAndOpenNewFile = null;
+        }
+        return;
+      }
+
+      const tsvData = generateTsvData(annotations);
+      
+      // Filename should precisely match latestSavedAudioFileName but with .txt
+      let baseName = globalThis.latestSavedAudioFileName || "export.wav";
+      const filename = baseName.replace(/\.[^.]+$/, "") + ".txt";
+      
+      triggerDownload(new Blob([tsvData.content], { type: "text/plain;charset=utf-8" }), filename);
+      
+      globalThis.isAnnotationsDirty = false;
+      
+      try {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith("annotations_backup::")) {
+            try { localStorage.removeItem(key); } catch(e) {}
+          }
+        });
+      } catch(e) {
+        console.warn("Backup purge after export failed", e);
+      }
+      if (typeof window.__onCompleteSaveAndOpenNewFile === "function") {
+        setTimeout(window.__onCompleteSaveAndOpenNewFile, 500);
+        window.__onCompleteSaveAndOpenNewFile = null;
+      }
+    } catch(e) {
+      console.error("Download annotations failed", e);
+      try { window.alert("Download annotations failed. See console for details."); } catch(ex) {}
+    }
+  }
+
+  function init() {
+    const btn = document.getElementById("saveAnnoBtn");
+    if (btn && !btn.__downloadAnnoWired) {
+      btn.addEventListener("click", function(e) {
+        try { if (e && e.preventDefault) e.preventDefault(); } catch(ex) {}
+        if (!btn.disabled) {
+          if (globalThis.isAudioDirty) {
+            window.__onExportSuccess = () => {
+              setTimeout(performAnnotationSave, 600);
+            };
+            window.__onExportCancel = () => {};
+            const exportBtn = document.getElementById("exportBtn");
+            if (exportBtn) exportBtn.click();
+          } else {
+            performAnnotationSave();
+          }
+        }
+      }, true);
+      btn.__downloadAnnoWired = true;
+    }
+    watchFile();
+    setTimeout(updateButtonState, 200);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  window.__downloadAnnotations = {
+    downloadNow: performAnnotationSave
+  };
+}();

@@ -347,6 +347,7 @@
         }
       });
 
+      globalThis.isAudioDirty = true;
       try {
         window.dispatchEvent(new CustomEvent('spectrogram-normalized', {
           detail: {

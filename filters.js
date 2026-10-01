@@ -349,6 +349,7 @@
 
       // Replace global buffer
       globalThis._spectroAudioBuffer = newBuf;
+      globalThis.isAudioDirty = true;
       globalThis._spectroDuration = newBuf.length / Math.max(1, newBuf.sampleRate);
 
       // Notify listeners and update UI
@@ -646,6 +647,7 @@
           }
 
           globalThis._spectroAudioBuffer = newBuf;
+      globalThis.isAudioDirty = true;
           globalThis._spectroDuration = newDuration;
           globalThis._spectroNumFrames = newFrames;
           const intrinsicWidth = Math.max(0, newFrames * pxpf);
