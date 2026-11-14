@@ -305,6 +305,7 @@
             <span>Export Audio</span>
           </button>
           <button id="exportVideoBtn" type="button" class="left-menu-btn">
+
             <svg
               width="20"
               height="20"
@@ -336,6 +337,7 @@
             </svg>
             <span>Export Video</span>
           </button>
+
           <button id="generateClipsBtn" type="button" class="left-menu-btn">
             <svg
               width="20"
@@ -502,18 +504,38 @@
                   t = document.getElementById("xcMenuParent"),
                   n = document.getElementById("xcSubMenu"),
                   o = document.getElementById("createXcSetBtn"),
-                  d = document.getElementById("yourXcRecordingsBtn"),
-                  a = document.getElementById("importExtAnnoBtn"),
-                  i = document.getElementById("uploadXenoCantoBtn"),
-                  c = document.getElementById("exportVideoBtn"),
-                  r = document.getElementById("settingsMenuBtn");
-                r &&
-                  r.addEventListener("click", function (e) {
-                    (e.preventDefault(),
-                      e.stopPropagation(),
-                      "function" ==
-                        typeof window.__openSpectrolipiSettingsModal &&
-                        window.__openSpectrolipiSettingsModal());
+                    d = document.getElementById("yourXcRecordingsBtn"),
+                    a = document.getElementById("importExtAnnoBtn"),
+                    i = document.getElementById("uploadXenoCantoBtn"),
+                    c = document.getElementById("exportVideoBtn"),
+                    r = document.getElementById("settingsMenuBtn");
+
+                  o && o.addEventListener("click", function (e) {
+                      e.preventDefault(); e.stopPropagation();
+                      if (typeof window.__openXcCreateSetModal === "function") window.__openXcCreateSetModal();
+                      else alert("Create Set form not found. Ensure xc_create_set.js is loaded.");
+                  });
+                  d && d.addEventListener("click", function (e) {
+                      e.preventDefault(); e.stopPropagation();
+                      window.open("xc_user_recordings.html", "_blank");
+                  });
+                  i && i.addEventListener("click", function (e) {
+                      e.preventDefault(); e.stopPropagation();
+                      if (typeof window.__openUploadXcModal === "function") window.__openUploadXcModal();
+                      else alert("Upload form not found. Ensure upload_xc.js is loaded.");
+                  });
+                  a && a.addEventListener("click", function (e) {
+                      e.preventDefault(); e.stopPropagation();
+                      window.open("xc_import.html", "_blank");
+                  });
+                  c && c.addEventListener("click", function(e) {
+                      e.preventDefault(); e.stopPropagation();
+                      if (typeof window.__openVideoExportModal === "function") window.__openVideoExportModal();
+                      else alert("Video export function not found. Make sure video_export.js is loaded.");
+                  });
+                  r && r.addEventListener("click", function (e) {
+                      e.preventDefault(); e.stopPropagation();
+                      if (typeof window.__openSpectrolipiSettingsModal === "function") window.__openSpectrolipiSettingsModal();
                   });
                 const s = document.getElementById("helpMenuGroup"),
                   u = document.getElementById("helpMenuParent"),
@@ -562,48 +584,7 @@
                       }, 50),
                     ));
                 }
-                (o &&
-                  o.addEventListener("click", function (e) {
-                    (e.preventDefault(),
-                      e.stopPropagation(),
-                      "function" == typeof window.__openXcCreateSetModal
-                        ? window.__openXcCreateSetModal()
-                        : alert(
-                            "Create set function not found. Ensure xc_create_set.js is loaded.",
-                          ));
-                  }),
-                  d &&
-                    d.addEventListener("click", function (e) {
-                      (e.preventDefault(),
-                        e.stopPropagation(),
-                        window.open("xc_user_recordings.html", "_blank"));
-                    }),
-                  i &&
-                    i.addEventListener("click", function (e) {
-                      (e.preventDefault(),
-                        e.stopPropagation(),
-                        "function" == typeof window.__openUploadXcModal
-                          ? window.__openUploadXcModal()
-                          : alert(
-                              "Upload form not found. Ensure upload_xc.js is loaded.",
-                            ));
-                    }),
-                  a &&
-                    a.addEventListener("click", function (e) {
-                      (e.preventDefault(),
-                        e.stopPropagation(),
-                        window.open("xc_import.html", "_blank"));
-                    }),
-                  c &&
-                    c.addEventListener("click", function (e) {
-                      (e.preventDefault(),
-                        e.stopPropagation(),
-                        "function" == typeof window.__openVideoExportModal
-                          ? window.__openVideoExportModal()
-                          : alert(
-                              "Video export function not found. Make sure video_export.js is loaded.",
-                            ));
-                    }));
+                
               }),
                 "interactive" === document.readyState ||
                 "complete" === document.readyState
@@ -956,57 +937,7 @@
           <i class="fa-solid fa-play"></i> Play
         </button>
       </div>
-      <div
-        id="zoomToolbarPlaceholder"
-        class="zoom-toolbar toolbar-group"
-        role="toolbar"
-        aria-label="Zoom controls"
-      >
-        <div
-          id="zoomToolbar"
-          style="display: inline-flex; align-items: center; gap: 4px"
-          title="Zoom settings for spectrogram viewport"
-        >
-          <div
-            class="zoom-spinner"
-            data-which="y"
-            style="display: flex; align-items: center"
-            title="Zoom vertically (Frequency axis)"
-          >
-            <div
-              class="z-label"
-              style="font-size: 12px; font-weight: 600; margin: 0 4px"
-            >
-              Y
-            </div>
-            <select
-              id="yZoomSelect"
-              class="zoom-dropdown"
-              style="width: 60px; height: 24px; padding: 0 2px"
-              title="Zoom vertically (Frequency axis)"
-            ></select>
-          </div>
-          <div
-            class="zoom-spinner"
-            data-which="x"
-            style="display: flex; align-items: center"
-            title="Zoom horizontally (Time axis)"
-          >
-            <div
-              class="z-label"
-              style="font-size: 12px; font-weight: 600; margin: 0 4px"
-            >
-              X
-            </div>
-            <select
-              id="xZoomSelect"
-              class="zoom-dropdown"
-              style="width: 60px; height: 24px; padding: 0 2px"
-              title="Zoom horizontally (Time axis)"
-            ></select>
-          </div>
-        </div>
-        <div class="toolbar-divider"></div>
+
         <div
           style="
             display: flex;
@@ -1025,22 +956,6 @@
             Label:
             <span id="toggleNameBadge" class="mode-badge m-Common">Common</span>
           </button>
-        </div>
-      </div>
-      <div id="mousePosToolbar" class="toolbar-group" style="margin-left: auto">
-        <div
-          id="toolbarMouseTime"
-          class="toolbar-mouse"
-          title="Mouse position X axis (Time)"
-        >
-          T: -
-        </div>
-        <div
-          id="toolbarMouseFreq"
-          class="toolbar-mouse"
-          title="Mouse position Y axis (Frequency)"
-        >
-          F: -
         </div>
       </div>
     </div>
@@ -1244,14 +1159,24 @@
         aria-label="Frequency axis"
       ></canvas>
       <div id="scrollArea">
-        <canvas
-          id="spectrogramCanvas"
-          class="spectrogram"
-          width="800"
-          height="420"
-          role="img"
-          aria-label="Spectrogram"
-        ></canvas>
+        <div id="canvasLayerContainer" style="position: sticky; left: 0px; top: 0px; height: 100%; z-index: 1;">
+          <canvas
+            id="webglSpectrogramCanvas"
+            class="spectrogram"
+            width="800"
+            height="420"
+            style="position: absolute; left: 0px; top: 0px; z-index: 0; background: #000;"
+          ></canvas>
+          <canvas
+            id="spectrogramCanvas"
+            class="spectrogram"
+            width="800"
+            height="420"
+            role="img"
+            aria-label="Spectrogram"
+            style="position: absolute; left: 0px; top: 0px; z-index: 1; background: transparent;"
+          ></canvas>
+        </div>
       </div>
     </div>
     <div
@@ -1980,13 +1905,14 @@
           });
       } catch (e) {}
     </script>
+    <script src="webgl_renderer.js"></script>
     <script src="spectrogram.js"></script>
     <script src="export_sound.js"></script>
     <script src="filters.js"></script>
     <script src="normalize.js"></script>
     <script src="playback.js"></script>
     <script src="mouse.js"></script>
-    <script src="zoom_controls.js"></script>
+
     <script>
       !(function () {
         const e = document.getElementById("createEditToggle");
@@ -2729,7 +2655,9 @@
     <script src="magnifier.js"></script>
     <script src="magic_wand.js"></script>
     <script src="recent_species.js"></script>
-  </body>
+  
+      
+    </body>
 </html>
 <script>
   !(function () {

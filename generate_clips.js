@@ -1,1 +1,649 @@
-!function(){const e="genClipsModal";function t(){if(document.getElementById(e))return document.getElementById(e);const t=document.createElement("div");t.id=e,t.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2147483650;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);",t.innerHTML='\n      <div style="background:#111;color:#fff;width:90%;max-width:720px;padding:20px;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);font-family:system-ui,sans-serif;">\n        <h3 style="margin:0 0 16px 0;font-size:18px;font-weight:600;">Generate Clips</h3>\n        <div style="margin-bottom:12px;font-weight:bold;color:#ff4444;font-size:13px;">Note: When system prompts (twice since two folders), please allow editing the files in the selected folders. </div>\n        \n        <div style="display:flex;flex-direction:column;gap:12px;">\n          \n          \x3c!-- Clip Length --\x3e\n          <div>\n            <label style="display:block;font-size:13px;color:#ccc;margin-bottom:4px;">Required Clip length (sec)</label>\n            <input id="gc-length" type="number" min="1" max="99" step="1" value="3" style="width:60px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">\n            <div style="font-size:11px;color:#888;margin-top:2px;">Max 2 digits, no decimals.</div>\n          </div>\n\n          \x3c!-- Source Sound --\x3e\n          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">\n            <label style="font-size:13px;color:#ccc;white-space:nowrap;">Source folder (Sound files & Annotation files)</label>\n            <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;min-width:0;">\n              <div id="gc-sound-path" style="font-size:12px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Not selected</div>\n              <button id="gc-pick-sound" type="button" class="seg-btn" style="width:auto;padding:0 12px;white-space:nowrap;">Pick Folder</button>\n            </div>\n          </div>\n\n          \x3c!-- Destination --\x3e\n          <div>\n            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">\n              <label style="font-size:13px;color:#ccc;white-space:nowrap;">Destination folder</label>\n              <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;min-width:0;">\n                <div id="gc-dest-path" style="font-size:12px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Not selected</div>\n                <button id="gc-pick-dest" type="button" class="seg-btn" style="width:auto;padding:0 12px;white-space:nowrap;">Pick Folder</button>\n              </div>\n            </div>\n            <div style="font-size:11px;color:#888;margin-top:2px;">Note: New species folders (Scientific name_Common name) will be created here.</div>\n          </div>\n\n          \x3c!-- Naming Options --\x3e\n          <div>\n            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">\n              <label style="font-size:13px;color:#ccc;white-space:nowrap;">Naming of clips. Source file name followed by:</label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n                <input type="radio" name="gc-naming" value="serial" checked> Serial (_00001)\n              </label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n                <input type="radio" name="gc-naming" value="selection"> Selection number\n              </label>\n            </div>\n            <div style="font-size:11px;color:#888;margin-top:2px;">Note: If selection number is not available, Serial will be used.</div>\n          </div>\n\n          \x3c!-- Ignore last clip --\x3e\n          <div style="margin-top:4px;">\n            <label style="font-size:13px;color:#ccc;white-space:nowrap;">For the annotations &gt; Required clip length, after segmentation, ignore the last clip if balance annotation < <input id="gc-ignore-last" type="number" min="0" max="99" step="1" value="0" style="width:40px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">  sec</label>\n          </div>\n\n          \x3c!-- Merge Annotations --\x3e\n          <div style="margin-top:4px;">\n            <label style="font-size:13px;color:#ccc;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n              <input type="checkbox" id="gc-merge-annotations">\n              Merge annotations less than\n              <input id="gc-merge-secs" type="number" min="0" step="0.1" value="1.0" style="width:60px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">\n              secs apart.\n            </label>\n          </div>\n\n          \x3c!-- Conflict Resolution --\x3e\n          <div style="margin-top:4px;">\n            <label style="display:block;font-size:13px;color:#ccc;margin-bottom:6px;">Action if clips already present for a file:</label>\n            <div style="display:flex;flex-direction:column;gap:6px;">\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;">\n                <input type="radio" name="gc-conflict" value="delete" checked> Delete all existing clips & Add new\n              </label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;">\n                <input type="radio" name="gc-conflict" value="keep"> Keep existing clips and Add new\n              </label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;">\n                <input type="radio" name="gc-conflict" value="skip"> Skip processing of the source file\n              </label>\n            </div>\n          </div>\n\n          \x3c!-- Noise Sample Option --\x3e\n          <div style="margin-top:8px;">\n             <label style="font-size:13px;color:#ccc;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n                <input type="checkbox" id="gc-create-noise">\n                Create Noise samples from each file (if possible)?\n             </label>\n          </div>\n\n        </div>\n\n        <div style="margin-top:24px;display:flex;justify-content:flex-end;gap:10px;">\n          <button id="gc-cancel" type="button" style="background:transparent;border:1px solid #444;color:#ccc;padding:6px 16px;border-radius:4px;cursor:pointer;">Cancel</button>\n          <button id="gc-proceed" type="button" class="seg-btn" style="width:auto;padding:6px 20px;font-size:14px;white-space:nowrap;" disabled>Proceed</button>\n        </div>\n      </div>\n    ',document.body.appendChild(t);const d=document.getElementById("gc-pick-sound"),p=document.getElementById("gc-pick-dest"),f=document.getElementById("gc-cancel"),u=document.getElementById("gc-proceed");return d&&(d.onclick=async()=>{const e=await o("readwrite");e&&(n=e,document.getElementById("gc-sound-path").textContent=e.name,a())}),p&&(p.onclick=async()=>{const e=await o("readwrite");e&&(i=e,document.getElementById("gc-dest-path").textContent=e.name,a())}),f&&(f.onclick=()=>{document.getElementById(e).style.display="none"}),u&&(u.onclick=()=>{!async function(){const t=document.getElementById("gc-length");let a=parseFloat(t.value);if(isNaN(a)||a<=0||a>99)return void alert("Invalid clip length. Must be 1-99 seconds.");const o=document.getElementById("gc-ignore-last"),d=parseFloat(o.value)||0,p=document.getElementById("gc-merge-annotations").checked,f=parseFloat(document.getElementById("gc-merge-secs").value)||0;if(d>a)return void alert("Ignore last clip duration can't be > Required clip duration");if(p&&f>=a)return void alert("Merge duration must be less than the Required Clip length.");const u=(document.querySelector('input[name="gc-conflict"]:checked')||{}).value||"delete",g=(document.querySelector('input[name="gc-naming"]:checked')||{}).value||"serial",m=document.getElementById("gc-create-noise").checked;document.getElementById(e).style.display="none",window.__spectroWait&&window.__spectroWait.show({titleText:"Generating clips",bodyText:"Processing audio files & annotations, this may take a few mins",etaText:"Starting..."});const h=[],w=["Sr","Source folder","Source file","Selection","Clips","Partial?","Cut start","Cut end","Annotated species (Common name)","Annotated species (Scientific name)","Overlapping species (Common name)","Overlapping species (Scientific name)"];let x=[],y=1;try{let e=[];try{const t=await i.getFileHandle("Clips details.csv"),n=await t.getFile(),a=(await n.text()).split(/\r?\n/).filter(e=>e.trim());if(a.length>1){const t=a[0].split(",").map(e=>e.trim().replace(/^"|"$/g,"")),n=t.findIndex(e=>e.toLowerCase().includes("original file")||e.toLowerCase().includes("source file")),i=t.findIndex(e=>e.toLowerCase().includes("split file")||e.toLowerCase().includes("clips")),o=t.some(e=>e.toLowerCase().includes("source folder")),s=t.some(e=>"selection"===e.toLowerCase());if(n>=0)for(let t=1;t<a.length;t++){const l=(a[t].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)||a[t].split(",")).map(e=>e.trim().replace(/^"|"$/g,"").replace(/""/g,'"')),r=l[n]||"",c=i>=0&&l[i]||"";o||l.splice(1,0,""),s||l.splice(3,0,""),e.push({original:r,split:c,row:l})}}if("keep"===u&&e.length>0){y=e.reduce((e,t)=>{const n=parseInt(t.row[0]);return isNaN(n)?e:Math.max(e,n)},0)+1}}catch(t){e=[]}const t=[];for await(const e of n.values())"file"===e.kind&&e.name.toLowerCase().endsWith(".wav")&&t.push(e);const o=new(window.AudioContext||window.webkitAudioContext);for(let w=0;w<t.length;w++){const b=t[w],v=Math.round(w/t.length*100);window.__spectroWait&&window.__spectroWait.show({etaText:`${v}% - Processing ${b.name}`});const C=e.filter(e=>e.original===b.name);if(C.length>0){if("skip"===u)continue;if("delete"===u){for(const e of C)e.split;e=e.filter(e=>e.original!==b.name)}}const k=b.name.substring(0,b.name.lastIndexOf(".")),S=k+".txt";let E=null;try{E=await n.getFileHandle(S)}catch(e){h.push(`No annotation file found for ${b.name}`);continue}try{const e=await E.getFile(),t=(await e.text()).split(/\r?\n/).filter(e=>e.trim());if(t.length<2){h.push(`Annotation file empty or header only: ${S}`);continue}const w=t[0].split(/[\t,]/).map(e=>e.trim().toLowerCase().replace(/[^a-z0-9]/g,"")),v=w.indexOf("begintimes"),I=w.indexOf("endtimes"),N=w.findIndex(e=>"species"===e||"commonname"===e),$=w.indexOf("selection");if(-1===v||-1===I){h.push(`Missing time columns in ${S}`);continue}const M=[];for(let e=1;e<t.length;e++){const n=t[e].includes("\t")?"\t":",",i=t[e].split(n).map(e=>e.trim().replace(/^"|"$/g,"")),a=parseFloat(i[v]),o=parseFloat(i[I]),s=N>-1?i[N]:"",l=$>-1?i[$]:"";isNaN(a)||isNaN(o)||(a<0?h.push(`Invalid start time < 0 in ${S} row ${e+1}`):M.push({start:a,end:o,species:s,selection:l}))}if(0===M.length){h.push(`No valid annotations in ${S}`);continue}let B=M;p&&M.length>1&&(B=c(M,f));const F=await b.getFile(),U=await F.arrayBuffer();let _={bitDepth:16};try{_=await s(F)}catch(e){}const z=await o.decodeAudioData(U),A=z.duration,D=z.numberOfChannels,L=z.sampleRate,R=B.filter(e=>!(e.end>A)||(h.push(`Annotation end > EOF in ${S}: ${e.end} > ${A}`),!1));if(m)try{const e=R.slice().sort((e,t)=>e.start-t.start),t=[];if(e.length>0){let n={start:e[0].start,end:e[0].end};for(let i=1;i<e.length;i++)e[i].start<n.end?n.end=Math.max(n.end,e[i].end):(t.push(n),n={start:e[i].start,end:e[i].end});t.push(n)}const s=[];let r=0;for(const e of t)e.start>r&&s.push({start:r,end:e.start}),r=Math.max(r,e.end);r<A&&s.push({start:r,end:A});let c=null;for(const e of s){if(e.start>=1&&e.end-e.start>=a){c={start:e.start,end:e.start+a};break}if(e.start<1&&e.end>=1+a){c={start:1,end:1+a};break}}if(!c){const e=1,n=1+a;let i=!0;if(A>=n){for(const a of t)if(e<a.end&&n>a.start){i=!1;break}i&&(c={start:e,end:n})}}if(!c)for(const e of s)if(e.end-e.start>=a){c={start:e.start,end:e.start+a};break}if(c){const e=Math.floor(c.start*L),t=Math.floor(c.end*L),a=t-e,s=o.createBuffer(D,a,L);for(let n=0;n<D;n++)s.copyToChannel(z.getChannelData(n).subarray(e,t),n);const r=l(s,_.bitDepth),d=new Blob([r],{type:"audio/wav"}),p=await i.getDirectoryHandle("Noise",{create:!0}),f=await p.getFileHandle(b.name,{create:!0}),u=await f.createWritable();await u.write(d),await u.close(),x.push([y++,n.name,b.name,"",b.name,"no",c.start.toFixed(4),c.end.toFixed(4),"Noise","Noise","",""])}else h.push(`Noise sample not possible for ${b.name}`)}catch(e){console.error("Noise generation error",e),h.push(`Error generating noise for ${b.name}: ${e.message}`)}if(0===R.length)continue;const T=[];if(A<=a)for(const e of R)T.push({start:0,end:A,species:e.species,isPartial:!0,refAnn:e,selection:e.selection});else for(const e of R){if(e.end-e.start<=a){let t=(e.start+e.end)/2-a/2;t<0&&(t=0);let n=t+a;n>A&&(n=A,t=n-a,t<0&&(t=0)),T.push({start:t,end:n,species:e.species,isPartial:!1,refAnn:e,selection:e.selection})}else{let t=e.start;for(;t<e.end;){let n=t+a;if(n>=e.end){if(e.end-t<d){h.push(`Last clip ignored since balance annotation < Required clip length. ${b.name} - Segment: ${e.selection}`);break}}if(T.push({start:t,end:Math.min(n,A),species:e.species,isPartial:!1,refAnn:e,selection:e.selection}),n>=e.end)break;t=n}}}for(const e of T){const t=new Set;for(const n of T)n!==e&&Math.max(e.start,n.start)<Math.min(e.end,n.end)&&n.species&&n.species!==e.species&&t.add(n.species);e.overlapCommon=Array.from(t),e.overlapSci=e.overlapCommon.map(e=>r(e)).join(", "),e.overlapCommonStr=e.overlapCommon.join(", ")}let W=1;if("keep"===u){const e=C;let t=0;const n=new RegExp(`${k}_(\\d+)\\.wav$`);for(const i of e){const e=i.split.match(n);if(e){const n=parseInt(e[1],10);isNaN(n)||(t=Math.max(t,n))}}W=t+1}for(const e of T){const t=Math.floor(e.start*z.sampleRate),a=Math.floor(e.end*z.sampleRate),s=a-t;if(s<=0)continue;const c=o.createBuffer(z.numberOfChannels,s,z.sampleRate);for(let e=0;e<z.numberOfChannels;e++)c.copyToChannel(z.getChannelData(e).subarray(t,a),e);const d=l(c,_.bitDepth),p=new Blob([d],{type:"audio/wav"});let f=(e.species||"Unknown").trim();const u=r(f);u&&(f=`${u}_${f}`),f=f.replace(/[<>:"/\\|?*]/g,"_");const m=await i.getDirectoryHandle(f,{create:!0});let h="";if("selection"===g&&e.selection){const t=String(e.selection).trim().replace(/[<>:"/\\|?*]/g,"_");t&&(h="_"+t)}h||(h="_"+String(W).padStart(5,"0"));const w=`${k}${h}.wav`,v=await m.getFileHandle(w,{create:!0}),C=await v.createWritable();await C.write(p),await C.close(),x.push([y++,n.name,b.name,e.selection||"",w,e.isPartial?"yes":"no",e.start.toFixed(4),e.end.toFixed(4),e.species,u,e.overlapCommonStr,e.overlapSci]),W++}}catch(e){console.error(e),h.push(`Error processing ${b.name}: ${e.message}`)}await globalThis.fastYield()}const b=[...e.map(e=>e.row),...x];if(b.length>0){const e=[w.join(",")].concat(b.map(e=>e.map(e=>`"${String(e).replace(/"/g,'""')}"`).join(","))).join("\n"),t=await i.getFileHandle("Clips details.csv",{create:!0}),n=await t.createWritable();await n.write(e),await n.close()}if(h.length>0){const e=await i.getFileHandle("log.txt",{create:!0}),t=await e.createWritable();await t.write(h.join("\n")),await t.close()}window.__spectroWait&&window.__spectroWait.hide(),alert("Clip generation complete.")}catch(e){console.error(e),window.__spectroWait&&window.__spectroWait.hide(),alert("An error occurred: "+e.message)}}()}),t}let n=null,i=null;function a(){const e=document.getElementById("gc-proceed");e&&(e.disabled=!(n&&i))}async function o(e="read"){try{return await window.showDirectoryPicker({mode:e})}catch(e){return"AbortError"!==e.name&&alert("Folder access failed. Note: This feature requires a secure context (HTTPS/localhost) and a supported browser (Chrome/Edge)."),null}}async function s(e){const t=await e.slice(0,44).arrayBuffer(),n=new DataView(t);if(1380533830!==n.getUint32(0,!1))throw new Error("Not a RIFF file");if(1463899717!==n.getUint32(8,!1))throw new Error("Not a WAVE file");let i=12,a=!1,o=1,s=44100,l=16,r=1;const c=await e.slice(0,4096).arrayBuffer(),d=new DataView(c);for(i=12;i<d.byteLength-8;){const e=d.getUint32(i,!1),t=d.getUint32(i+4,!0);if(1718449184===e){a=!0,r=d.getUint16(i+8,!0),o=d.getUint16(i+10,!0),s=d.getUint32(i+12,!0),l=d.getUint16(i+22,!0);break}i+=8+t}if(!a)throw new Error("fmt chunk not found");return{sampleRate:s,numChannels:o,bitDepth:l,format:r}}function l(e,t){const n=e.numberOfChannels,i=e.sampleRate,a=e.length;let o=2,s=1;24===t?o=3:32===t?(o=4,s=3):o=2;const l=n*o,r=i*l,c=a*l,d=new ArrayBuffer(44+c),p=new DataView(d);p.setUint32(0,1380533830,!1),p.setUint32(4,36+c,!0),p.setUint32(8,1463899717,!1),p.setUint32(12,1718449184,!1),p.setUint32(16,16,!0),p.setUint16(20,s,!0),p.setUint16(22,n,!0),p.setUint32(24,i,!0),p.setUint32(28,r,!0),p.setUint16(32,l,!0),p.setUint16(34,24===t?24:32===t?32:16,!0),p.setUint32(36,1684108385,!1),p.setUint32(40,c,!0);let f=44;const u=[];for(let t=0;t<n;t++)u.push(e.getChannelData(t));if(3===s&&4===o)for(let e=0;e<a;e++)for(let t=0;t<n;t++)p.setFloat32(f,u[t][e],!0),f+=4;else if(3===o)for(let e=0;e<a;e++)for(let t=0;t<n;t++){const n=Math.max(-1,Math.min(1,u[t][e]));let i=n<0?8388608*n:8388607*n;i=Math.round(i),p.setUint8(f,255&i),p.setUint8(f+1,i>>8&255),p.setUint8(f+2,i>>16&255),f+=3}else for(let e=0;e<a;e++)for(let t=0;t<n;t++){const n=Math.max(-1,Math.min(1,u[t][e]));p.setInt16(f,n<0?32768*n:32767*n,!0),f+=2}return d}function r(e){if(!e)return"";const t=(window.__speciesRecords||[]).find(t=>(t.common||"").toLowerCase()===e.toLowerCase());return t&&t.scientific||""}function c(e,t){if(!e||e.length<=1)return e;const n=e.reduce((e,t)=>{const n=r(t.species)||t.species||"Unknown";return e[n]||(e[n]=[]),e[n].push(t),e},{}),i=[];for(const e in n){const a=n[e];if(a.length<=1){i.push(...a);continue}a.sort((e,t)=>e.start-t.start||e.end-t.end);const o=[];if(a.length>0){let e={...a[0]};for(let n=1;n<a.length;n++){const i=a[n];i.start-e.end<t?e.end=Math.max(e.end,i.end):(o.push(e),e={...i})}o.push(e)}i.push(...o)}return i.sort((e,t)=>e.start-t.start||e.end-t.end),i}function d(){const e=document.getElementById("generateClipsBtn");e&&e.addEventListener("click",()=>{t().style.display="flex"})}globalThis.fastYield||(globalThis.fastYield=function(){return new Promise(e=>{setTimeout(e,0)})}),"loading"===document.readyState?document.addEventListener("DOMContentLoaded",d):d()}();
+!(function () {
+  const e = "genClipsModal";
+  function t() {
+    if (document.getElementById(e)) return document.getElementById(e);
+    const t = document.createElement("div");
+    ((t.id = e),
+      (t.style.cssText =
+        "position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2147483650;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);"),
+      (t.innerHTML =
+        '\n      <div style="background:#111;color:#fff;width:90%;max-width:720px;padding:20px;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);font-family:system-ui,sans-serif;">\n        <h3 style="margin:0 0 16px 0;font-size:18px;font-weight:600;">Generate Clips</h3>\n        <div style="margin-bottom:12px;font-weight:bold;color:#ff4444;font-size:13px;">Note: When system prompts (twice since two folders), please allow editing the files in the selected folders. </div>\n        \n        <div style="display:flex;flex-direction:column;gap:12px;">\n          \n          \x3c!-- Clip Length --\x3e\n          <div>\n            <label style="display:block;font-size:13px;color:#ccc;margin-bottom:4px;">Required Clip length (sec)</label>\n            <input id="gc-length" type="number" min="1" max="99" step="1" value="3" style="width:60px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">\n            <div style="font-size:11px;color:#888;margin-top:2px;">Max 2 digits, no decimals.</div>\n          </div>\n\n          \x3c!-- Source Sound --\x3e\n          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">\n            <label style="font-size:13px;color:#ccc;white-space:nowrap;">Source folder (Sound files & Annotation files)</label>\n            <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;min-width:0;">\n              <div id="gc-sound-path" style="font-size:12px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Not selected</div>\n              <button id="gc-pick-sound" type="button" class="seg-btn" style="width:auto;padding:0 12px;white-space:nowrap;">Pick Folder</button>\n            </div>\n          </div>\n\n          \x3c!-- Destination --\x3e\n          <div>\n            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">\n              <label style="font-size:13px;color:#ccc;white-space:nowrap;">Destination folder</label>\n              <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;min-width:0;">\n                <div id="gc-dest-path" style="font-size:12px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Not selected</div>\n                <button id="gc-pick-dest" type="button" class="seg-btn" style="width:auto;padding:0 12px;white-space:nowrap;">Pick Folder</button>\n              </div>\n            </div>\n            <div style="font-size:11px;color:#888;margin-top:2px;">Note: New species folders (Scientific name_Common name) will be created here.</div>\n          </div>\n\n          \x3c!-- Naming Options --\x3e\n          <div>\n            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">\n              <label style="font-size:13px;color:#ccc;white-space:nowrap;">Naming of clips. Source file name followed by:</label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n                <input type="radio" name="gc-naming" value="serial" checked> Serial (_00001)\n              </label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n                <input type="radio" name="gc-naming" value="selection"> Selection number\n              </label>\n            </div>\n            <div style="font-size:11px;color:#888;margin-top:2px;">Note: If selection number is not available, Serial will be used.</div>\n          </div>\n\n          \x3c!-- Ignore last clip --\x3e\n          <div style="margin-top:4px;">\n            <label style="font-size:13px;color:#ccc;white-space:nowrap;">For the annotations &gt; Required clip length, after segmentation, ignore the last clip if balance annotation < <input id="gc-ignore-last" type="number" min="0" max="99" step="1" value="0" style="width:40px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">  sec</label>\n          </div>\n\n          \x3c!-- Merge Annotations --\x3e\n          <div style="margin-top:4px;">\n            <label style="font-size:13px;color:#ccc;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n              <input type="checkbox" id="gc-merge-annotations">\n              Merge annotations less than\n              <input id="gc-merge-secs" type="number" min="0" step="0.1" value="1.0" style="width:60px;background:#222;border:1px solid #444;color:#fff;padding:8px;border-radius:4px;">\n              secs apart.\n            </label>\n          </div>\n\n          \x3c!-- Conflict Resolution --\x3e\n          <div style="margin-top:4px;">\n            <label style="display:block;font-size:13px;color:#ccc;margin-bottom:6px;">Action if clips already present for a file:</label>\n            <div style="display:flex;flex-direction:column;gap:6px;">\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;">\n                <input type="radio" name="gc-conflict" value="delete" checked> Delete all existing clips & Add new\n              </label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;">\n                <input type="radio" name="gc-conflict" value="keep"> Keep existing clips and Add new\n              </label>\n              <label style="font-size:13px;color:#ddd;display:flex;align-items:center;gap:6px;">\n                <input type="radio" name="gc-conflict" value="skip"> Skip processing of the source file\n              </label>\n            </div>\n          </div>\n\n          \x3c!-- Noise Sample Option --\x3e\n          <div style="margin-top:8px;">\n             <label style="font-size:13px;color:#ccc;display:flex;align-items:center;gap:6px;white-space:nowrap;">\n                <input type="checkbox" id="gc-create-noise">\n                Create Noise samples from each file (if possible)?\n             </label>\n          </div>\n\n        </div>\n\n        <div style="margin-top:24px;display:flex;justify-content:flex-end;gap:10px;">\n          <button id="gc-cancel" type="button" style="background:transparent;border:1px solid #444;color:#ccc;padding:6px 16px;border-radius:4px;cursor:pointer;">Cancel</button>\n          <button id="gc-proceed" type="button" class="seg-btn" style="width:auto;padding:6px 20px;font-size:14px;white-space:nowrap;" disabled>Proceed</button>\n        </div>\n      </div>\n    '),
+      document.body.appendChild(t));
+    const d = document.getElementById("gc-pick-sound"),
+      p = document.getElementById("gc-pick-dest"),
+      f = document.getElementById("gc-cancel"),
+      u = document.getElementById("gc-proceed");
+    return (
+      d &&
+        (d.onclick = async () => {
+          const e = await o("readwrite");
+          e &&
+            ((n = e),
+            (document.getElementById("gc-sound-path").textContent = e.name),
+            a());
+        }),
+      p &&
+        (p.onclick = async () => {
+          const e = await o("readwrite");
+          e &&
+            ((i = e),
+            (document.getElementById("gc-dest-path").textContent = e.name),
+            a());
+        }),
+      f &&
+        (f.onclick = () => {
+          document.getElementById(e).style.display = "none";
+        }),
+      u &&
+        (u.onclick = () => {
+          !(async function () {
+            const t = document.getElementById("gc-length");
+            let a = parseFloat(t.value);
+            if (isNaN(a) || a <= 0 || a > 99)
+              return void alert("Invalid clip length. Must be 1-99 seconds.");
+            const o = document.getElementById("gc-ignore-last"),
+              d = parseFloat(o.value) || 0,
+              p = document.getElementById("gc-merge-annotations").checked,
+              f =
+                parseFloat(document.getElementById("gc-merge-secs").value) || 0;
+            if (d > a)
+              return void alert(
+                "Ignore last clip duration can't be > Required clip duration",
+              );
+            if (p && f >= a)
+              return void alert(
+                "Merge duration must be less than the Required Clip length.",
+              );
+            const u =
+                (
+                  document.querySelector('input[name="gc-conflict"]:checked') ||
+                  {}
+                ).value || "delete",
+              g =
+                (
+                  document.querySelector('input[name="gc-naming"]:checked') ||
+                  {}
+                ).value || "serial",
+              m = document.getElementById("gc-create-noise").checked;
+            ((document.getElementById(e).style.display = "none"),
+              window.__spectroWait &&
+                window.__spectroWait.show({
+                  titleText: "Generating clips",
+                  bodyText:
+                    "Processing audio files & annotations, this may take a few mins",
+                  etaText: "Starting...",
+                }));
+            const h = [],
+              w = [
+                "Sr",
+                "Source folder",
+                "Source file",
+                "Selection",
+                "Clips",
+                "Partial?",
+                "Cut start",
+                "Cut end",
+                "Annotated species (Common name)",
+                "Annotated species (Scientific name)",
+                "Overlapping species (Common name)",
+                "Overlapping species (Scientific name)",
+              ];
+            let x = [],
+              y = 1;
+            try {
+              let e = [];
+              try {
+                const t = await i.getFileHandle("Clips details.csv"),
+                  n = await t.getFile(),
+                  a = (await n.text()).split(/\r?\n/).filter((e) => e.trim());
+                if (a.length > 1) {
+                  const t = a[0]
+                      .split(",")
+                      .map((e) => e.trim().replace(/^"|"$/g, "")),
+                    n = t.findIndex(
+                      (e) =>
+                        e.toLowerCase().includes("original file") ||
+                        e.toLowerCase().includes("source file"),
+                    ),
+                    i = t.findIndex(
+                      (e) =>
+                        e.toLowerCase().includes("split file") ||
+                        e.toLowerCase().includes("clips"),
+                    ),
+                    o = t.some((e) =>
+                      e.toLowerCase().includes("source folder"),
+                    ),
+                    s = t.some((e) => "selection" === e.toLowerCase());
+                  if (n >= 0)
+                    for (let t = 1; t < a.length; t++) {
+                      const l = (
+                          a[t].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) ||
+                          a[t].split(",")
+                        ).map((e) =>
+                          e.trim().replace(/^"|"$/g, "").replace(/""/g, '"'),
+                        ),
+                        r = l[n] || "",
+                        c = (i >= 0 && l[i]) || "";
+                      (o || l.splice(1, 0, ""),
+                        s || l.splice(3, 0, ""),
+                        e.push({ original: r, split: c, row: l }));
+                    }
+                }
+                if ("keep" === u && e.length > 0) {
+                  y =
+                    e.reduce((e, t) => {
+                      const n = parseInt(t.row[0]);
+                      return isNaN(n) ? e : Math.max(e, n);
+                    }, 0) + 1;
+                }
+              } catch (t) {
+                e = [];
+              }
+              const t = [];
+              for await (const e of n.values())
+                "file" === e.kind &&
+                  e.name.toLowerCase().endsWith(".wav") &&
+                  t.push(e);
+              
+              for (let w = 0; w < t.length; w++) {
+                const b = t[w],
+                  v = Math.round((w / t.length) * 100);
+                window.__spectroWait &&
+                  window.__spectroWait.show({
+                    etaText: `${v}% - Processing ${b.name}`,
+                  });
+                const C = e.filter((e) => e.original === b.name);
+                if (C.length > 0) {
+                  if ("skip" === u) continue;
+                  if ("delete" === u) {
+                    for (const e of C) e.split;
+                    e = e.filter((e) => e.original !== b.name);
+                  }
+                }
+                const k = b.name.substring(0, b.name.lastIndexOf(".")),
+                  S = k + ".txt";
+                let E = null;
+                try {
+                  E = await n.getFileHandle(S);
+                } catch (e) {
+                  h.push(`No annotation file found for ${b.name}`);
+                  continue;
+                }
+                try {
+                  const e = await E.getFile(),
+                    t = (await e.text()).split(/\r?\n/).filter((e) => e.trim());
+                  if (t.length < 2) {
+                    h.push(`Annotation file empty or header only: ${S}`);
+                    continue;
+                  }
+                  const w = t[0].split(/[\t,]/).map((e) =>
+                      e
+                        .trim()
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]/g, ""),
+                    ),
+                    v = w.indexOf("begintimes"),
+                    I = w.indexOf("endtimes"),
+                    N = w.findIndex(
+                      (e) => "species" === e || "commonname" === e,
+                    ),
+                    $ = w.indexOf("selection");
+                  if (-1 === v || -1 === I) {
+                    h.push(`Missing time columns in ${S}`);
+                    continue;
+                  }
+                  const M = [];
+                  for (let e = 1; e < t.length; e++) {
+                    const n = t[e].includes("\t") ? "\t" : ",",
+                      i = t[e]
+                        .split(n)
+                        .map((e) => e.trim().replace(/^"|"$/g, "")),
+                      a = parseFloat(i[v]),
+                      o = parseFloat(i[I]),
+                      s = N > -1 ? i[N] : "",
+                      l = $ > -1 ? i[$] : "";
+                    isNaN(a) ||
+                      isNaN(o) ||
+                      (a < 0
+                        ? h.push(`Invalid start time < 0 in ${S} row ${e + 1}`)
+                        : M.push({
+                            start: a,
+                            end: o,
+                            species: s,
+                            selection: l,
+                          }));
+                  }
+                  if (0 === M.length) {
+                    h.push(`No valid annotations in ${S}`);
+                    continue;
+                  }
+                  let B = M;
+                  p && M.length > 1 && (B = c(M, f));
+                  const F = await b.getFile(),
+                    U = await F.arrayBuffer();
+                  let _ = { bitDepth: 16 };
+                  try {
+                    _ = await s(F);
+                  } catch (e) {}
+                  const decodeCtx = window.OfflineAudioContext ? new window.OfflineAudioContext(1, 1, 44100) : new (window.AudioContext || window.webkitAudioContext)();
+                  const z = await decodeCtx.decodeAudioData(U);
+                  if (decodeCtx.close && typeof decodeCtx.close === "function" && decodeCtx.constructor.name !== "OfflineAudioContext" && decodeCtx.constructor.name !== "webkitOfflineAudioContext") { try { await decodeCtx.close(); } catch(e){} }
+                  const
+                    A = z.duration,
+                    D = z.numberOfChannels,
+                    L = z.sampleRate,
+                    R = B.filter(
+                      (e) =>
+                        !(e.end > A) ||
+                        (h.push(
+                          `Annotation end > EOF in ${S}: ${e.end} > ${A}`,
+                        ),
+                        !1),
+                    );
+                  if (m)
+                    try {
+                      const e = R.slice().sort((e, t) => e.start - t.start),
+                        t = [];
+                      if (e.length > 0) {
+                        let n = { start: e[0].start, end: e[0].end };
+                        for (let i = 1; i < e.length; i++)
+                          e[i].start < n.end
+                            ? (n.end = Math.max(n.end, e[i].end))
+                            : (t.push(n),
+                              (n = { start: e[i].start, end: e[i].end }));
+                        t.push(n);
+                      }
+                      const s = [];
+                      let r = 0;
+                      for (const e of t)
+                        (e.start > r && s.push({ start: r, end: e.start }),
+                          (r = Math.max(r, e.end)));
+                      r < A && s.push({ start: r, end: A });
+                      let c = null;
+                      for (const e of s) {
+                        if (e.start >= 1 && e.end - e.start >= a) {
+                          c = { start: e.start, end: e.start + a };
+                          break;
+                        }
+                        if (e.start < 1 && e.end >= 1 + a) {
+                          c = { start: 1, end: 1 + a };
+                          break;
+                        }
+                      }
+                      if (!c) {
+                        const e = 1,
+                          n = 1 + a;
+                        let i = !0;
+                        if (A >= n) {
+                          for (const a of t)
+                            if (e < a.end && n > a.start) {
+                              i = !1;
+                              break;
+                            }
+                          i && (c = { start: e, end: n });
+                        }
+                      }
+                      if (!c)
+                        for (const e of s)
+                          if (e.end - e.start >= a) {
+                            c = { start: e.start, end: e.start + a };
+                            break;
+                          }
+                      if (c) {
+                        const e = Math.floor(c.start * L),
+                          t = Math.floor(c.end * L),
+                          a = t - e,
+                          s = new AudioBuffer({ numberOfChannels: D, length: a, sampleRate: L });
+                        for (let n = 0; n < D; n++)
+                          s.copyToChannel(
+                            z.getChannelData(n).subarray(e, t),
+                            n,
+                          );
+                        const r = l(s, _.bitDepth),
+                          d = new Blob([r], { type: "audio/wav" }),
+                          p = await i.getDirectoryHandle("Noise", {
+                            create: !0,
+                          }),
+                          f = await p.getFileHandle(b.name, { create: !0 }),
+                          u = await f.createWritable();
+                        (await u.write(d),
+                          await u.close(),
+                          x.push([
+                            y++,
+                            n.name,
+                            b.name,
+                            "",
+                            b.name,
+                            "no",
+                            c.start.toFixed(4),
+                            c.end.toFixed(4),
+                            "Noise",
+                            "Noise",
+                            "",
+                            "",
+                          ]));
+                      } else h.push(`Noise sample not possible for ${b.name}`);
+                    } catch (e) {
+                      (console.error("Noise generation error", e),
+                        h.push(
+                          `Error generating noise for ${b.name}: ${e.message}`,
+                        ));
+                    }
+                  if (0 === R.length) continue;
+                  const T = [];
+                  if (A <= a)
+                    for (const e of R)
+                      T.push({
+                        start: 0,
+                        end: A,
+                        species: e.species,
+                        isPartial: !0,
+                        refAnn: e,
+                        selection: e.selection,
+                      });
+                  else
+                    for (const e of R) {
+                      if (e.end - e.start <= a) {
+                        let t = (e.start + e.end) / 2 - a / 2;
+                        t < 0 && (t = 0);
+                        let n = t + a;
+                        (n > A && ((n = A), (t = n - a), t < 0 && (t = 0)),
+                          T.push({
+                            start: t,
+                            end: n,
+                            species: e.species,
+                            isPartial: !1,
+                            refAnn: e,
+                            selection: e.selection,
+                          }));
+                      } else {
+                        let t = e.start;
+                        for (; t < e.end;) {
+                          let n = t + a;
+                          if (n >= e.end) {
+                            if (e.end - t < d) {
+                              h.push(
+                                `Last clip ignored since balance annotation < Required clip length. ${b.name} - Segment: ${e.selection}`,
+                              );
+                              break;
+                            }
+                          }
+                          if (
+                            (T.push({
+                              start: t,
+                              end: Math.min(n, A),
+                              species: e.species,
+                              isPartial: !1,
+                              refAnn: e,
+                              selection: e.selection,
+                            }),
+                            n >= e.end)
+                          )
+                            break;
+                          t = n;
+                        }
+                      }
+                    }
+                  for (const e of T) {
+                    const t = new Set();
+                    for (const n of T)
+                      n !== e &&
+                        Math.max(e.start, n.start) < Math.min(e.end, n.end) &&
+                        n.species &&
+                        n.species !== e.species &&
+                        t.add(n.species);
+                    ((e.overlapCommon = Array.from(t)),
+                      (e.overlapSci = e.overlapCommon
+                        .map((e) => r(e))
+                        .join(", ")),
+                      (e.overlapCommonStr = e.overlapCommon.join(", ")));
+                  }
+                  let W = 1;
+                  if ("keep" === u) {
+                    const e = C;
+                    let t = 0;
+                    const n = new RegExp(`${k}_(\\d+)\\.wav$`);
+                    for (const i of e) {
+                      const e = i.split.match(n);
+                      if (e) {
+                        const n = parseInt(e[1], 10);
+                        isNaN(n) || (t = Math.max(t, n));
+                      }
+                    }
+                    W = t + 1;
+                  }
+                  for (const e of T) {
+                    const t = Math.floor(e.start * z.sampleRate),
+                      a = Math.floor(e.end * z.sampleRate),
+                      s = a - t;
+                    if (s <= 0) continue;
+                    const c = new AudioBuffer({ numberOfChannels: z.numberOfChannels, length: s, sampleRate: z.sampleRate });
+                    for (let e = 0; e < z.numberOfChannels; e++)
+                      c.copyToChannel(z.getChannelData(e).subarray(t, a), e);
+                    const d = l(c, _.bitDepth),
+                      p = new Blob([d], { type: "audio/wav" });
+                    let f = (e.species || "Unknown").trim();
+                    const u = r(f);
+                    (u && (f = `${u}_${f}`),
+                      (f = f.replace(/[<>:"/\\|?*]/g, "_")));
+                    const m = await i.getDirectoryHandle(f, { create: !0 });
+                    let h = "";
+                    if ("selection" === g && e.selection) {
+                      const t = String(e.selection)
+                        .trim()
+                        .replace(/[<>:"/\\|?*]/g, "_");
+                      t && (h = "_" + t);
+                    }
+                    h || (h = "_" + String(W).padStart(5, "0"));
+                    const w = `${k}${h}.wav`,
+                      v = await m.getFileHandle(w, { create: !0 }),
+                      C = await v.createWritable();
+                    (await C.write(p),
+                      await C.close(),
+                      x.push([
+                        y++,
+                        n.name,
+                        b.name,
+                        e.selection || "",
+                        w,
+                        e.isPartial ? "yes" : "no",
+                        e.start.toFixed(4),
+                        e.end.toFixed(4),
+                        e.species,
+                        u,
+                        e.overlapCommonStr,
+                        e.overlapSci,
+                      ]),
+                      W++);
+                  }
+                } catch (e) {
+                  (console.error(e),
+                    h.push(`Error processing ${b.name}: ${e.message}`));
+                }
+                await globalThis.fastYield();
+              }
+              const b = [...e.map((e) => e.row), ...x];
+              if (b.length > 0) {
+                const e = [w.join(",")]
+                    .concat(
+                      b.map((e) =>
+                        e
+                          .map((e) => `"${String(e).replace(/"/g, '""')}"`)
+                          .join(","),
+                      ),
+                    )
+                    .join("\n"),
+                  t = await i.getFileHandle("Clips details.csv", {
+                    create: !0,
+                  }),
+                  n = await t.createWritable();
+                (await n.write(e), await n.close());
+              }
+              if (h.length > 0) {
+                const e = await i.getFileHandle("log.txt", { create: !0 }),
+                  t = await e.createWritable();
+                (await t.write(h.join("\n")), await t.close());
+              }
+              (window.__spectroWait && window.__spectroWait.hide(),
+                alert("Clip generation complete."));
+            } catch (e) {
+              (console.error(e),
+                window.__spectroWait && window.__spectroWait.hide(),
+                alert("An error occurred: " + e.message));
+            }
+          })();
+        }),
+      t
+    );
+  }
+  let n = null,
+    i = null;
+  function a() {
+    const e = document.getElementById("gc-proceed");
+    e && (e.disabled = !(n && i));
+  }
+  async function o(e = "read") {
+    try {
+      return await window.showDirectoryPicker({ mode: e });
+    } catch (e) {
+      return (
+        "AbortError" !== e.name &&
+          alert(
+            "Folder access failed. Note: This feature requires a secure context (HTTPS/localhost) and a supported browser (Chrome/Edge).",
+          ),
+        null
+      );
+    }
+  }
+  async function s(e) {
+    const t = await e.slice(0, 44).arrayBuffer(),
+      n = new DataView(t);
+    if (1380533830 !== n.getUint32(0, !1)) throw new Error("Not a RIFF file");
+    if (1463899717 !== n.getUint32(8, !1)) throw new Error("Not a WAVE file");
+    let i = 12,
+      a = !1,
+      o = 1,
+      s = 44100,
+      l = 16,
+      r = 1;
+    const c = await e.slice(0, 4096).arrayBuffer(),
+      d = new DataView(c);
+    for (i = 12; i < d.byteLength - 8;) {
+      const e = d.getUint32(i, !1),
+        t = d.getUint32(i + 4, !0);
+      if (1718449184 === e) {
+        ((a = !0),
+          (r = d.getUint16(i + 8, !0)),
+          (o = d.getUint16(i + 10, !0)),
+          (s = d.getUint32(i + 12, !0)),
+          (l = d.getUint16(i + 22, !0)));
+        break;
+      }
+      i += 8 + t;
+    }
+    if (!a) throw new Error("fmt chunk not found");
+    return { sampleRate: s, numChannels: o, bitDepth: l, format: r };
+  }
+  function l(e, t) {
+    const n = e.numberOfChannels,
+      i = e.sampleRate,
+      a = e.length;
+    let o = 2,
+      s = 1;
+    24 === t ? (o = 3) : 32 === t ? ((o = 4), (s = 3)) : (o = 2);
+    const l = n * o,
+      r = i * l,
+      c = a * l,
+      d = new ArrayBuffer(44 + c),
+      p = new DataView(d);
+    (p.setUint32(0, 1380533830, !1),
+      p.setUint32(4, 36 + c, !0),
+      p.setUint32(8, 1463899717, !1),
+      p.setUint32(12, 1718449184, !1),
+      p.setUint32(16, 16, !0),
+      p.setUint16(20, s, !0),
+      p.setUint16(22, n, !0),
+      p.setUint32(24, i, !0),
+      p.setUint32(28, r, !0),
+      p.setUint16(32, l, !0),
+      p.setUint16(34, 24 === t ? 24 : 32 === t ? 32 : 16, !0),
+      p.setUint32(36, 1684108385, !1),
+      p.setUint32(40, c, !0));
+    let f = 44;
+    const u = [];
+    for (let t = 0; t < n; t++) u.push(e.getChannelData(t));
+    if (3 === s && 4 === o)
+      for (let e = 0; e < a; e++)
+        for (let t = 0; t < n; t++) (p.setFloat32(f, u[t][e], !0), (f += 4));
+    else if (3 === o)
+      for (let e = 0; e < a; e++)
+        for (let t = 0; t < n; t++) {
+          const n = Math.max(-1, Math.min(1, u[t][e]));
+          let i = n < 0 ? 8388608 * n : 8388607 * n;
+          ((i = Math.round(i)),
+            p.setUint8(f, 255 & i),
+            p.setUint8(f + 1, (i >> 8) & 255),
+            p.setUint8(f + 2, (i >> 16) & 255),
+            (f += 3));
+        }
+    else
+      for (let e = 0; e < a; e++)
+        for (let t = 0; t < n; t++) {
+          const n = Math.max(-1, Math.min(1, u[t][e]));
+          (p.setInt16(f, n < 0 ? 32768 * n : 32767 * n, !0), (f += 2));
+        }
+    return d;
+  }
+  function r(e) {
+    if (!e) return "";
+    const t = (window.__speciesRecords || []).find(
+      (t) => (t.common || "").toLowerCase() === e.toLowerCase(),
+    );
+    return (t && t.scientific) || "";
+  }
+  function c(e, t) {
+    if (!e || e.length <= 1) return e;
+    const n = e.reduce((e, t) => {
+        const n = r(t.species) || t.species || "Unknown";
+        return (e[n] || (e[n] = []), e[n].push(t), e);
+      }, {}),
+      i = [];
+    for (const e in n) {
+      const a = n[e];
+      if (a.length <= 1) {
+        i.push(...a);
+        continue;
+      }
+      a.sort((e, t) => e.start - t.start || e.end - t.end);
+      const o = [];
+      if (a.length > 0) {
+        let e = { ...a[0] };
+        for (let n = 1; n < a.length; n++) {
+          const i = a[n];
+          i.start - e.end < t
+            ? (e.end = Math.max(e.end, i.end))
+            : (o.push(e), (e = { ...i }));
+        }
+        o.push(e);
+      }
+      i.push(...o);
+    }
+    return (i.sort((e, t) => e.start - t.start || e.end - t.end), i);
+  }
+  function d() {
+    const e = document.getElementById("generateClipsBtn");
+    e &&
+      e.addEventListener("click", () => {
+        t().style.display = "flex";
+      });
+  }
+  (globalThis.fastYield ||
+    (globalThis.fastYield = function () {
+      return new Promise((e) => {
+        setTimeout(e, 0);
+      });
+    }),
+    "loading" === document.readyState
+      ? document.addEventListener("DOMContentLoaded", d)
+      : d());
+})();

@@ -116,7 +116,14 @@ self.onmessage = function(e) {
   const scrollArea = document.getElementById('scrollArea') || document.body;
   const viewportWrapper = document.getElementById('viewportWrapper');
   const canvas = document.getElementById('spectrogramCanvas');
-  const ctx = canvas && canvas.getContext ? canvas.getContext('2d', { alpha:false }) : null;
+  const ctx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+  if (!globalThis.webglRenderer) {
+    try {
+      globalThis.webglRenderer = new WebGLSpectrogramRenderer('webglSpectrogramCanvas');
+    } catch (e) {
+      console.error("WebGL Renderer failed to initialize", e);
+    }
+  }
 
   // Layout constants
   const AXIS_TOP = 12;
@@ -124,92 +131,6 @@ self.onmessage = function(e) {
   const VIEWPORT_H = (axisCanvas && axisCanvas.height) ? axisCanvas.height : 240;
   const IMAGE_H = VIEWPORT_H - AXIS_TOP - AXIS_BOTTOM;
   function getFFTSize() { try { const s = localStorage.getItem('spectrolipi.settings.v1'); if (s) return parseInt(JSON.parse(s).fftSize) || 1024; } catch(e){} return 1024; }
-
-  // Toolbar mouse readout elements live in the main action bar; keep references here so
-  // they can reuse the existing helpers (px-to-sec, ymax resolution, etc.).
-  let mouseTimeField = document.getElementById('toolbarMouseTime');
-  let mouseFreqField = document.getElementById('toolbarMouseFreq');
-
-  function ensureMouseReadoutTargets() {
-    if (!mouseTimeField) mouseTimeField = document.getElementById('toolbarMouseTime');
-    if (!mouseFreqField) mouseFreqField = document.getElementById('toolbarMouseFreq');
-    return !!(mouseTimeField || mouseFreqField);
-  }
-
-  function formatFreqForReadout(v) {
-    if (!isFinite(v)) return '-';
-    return Math.round(v) + ' Hz';
-  }
-
-  function clearMouseReadout() {
-    if (!ensureMouseReadoutTargets()) return;
-    if (mouseTimeField) mouseTimeField.textContent = 'T: -';
-    if (mouseFreqField) mouseFreqField.textContent = 'F: -';
-  }
-
-  function formatTimeMinSecMs(sec) {
-    if (!isFinite(sec) || sec < 0) return '-';
-    const totalMs = Math.max(0, Math.round(sec * 1000));
-    const minutes = Math.floor(totalMs / 60000);
-    const seconds = Math.floor((totalMs % 60000) / 1000);
-    // Show milliseconds as a single digit (hundreds place) per user request.
-    const ms = totalMs % 1000;
-    const msHundreds = Math.floor(ms / 100); // 0..9
-    const secStr = String(seconds).padStart(2, '0');
-    return `${minutes}:${secStr}:${msHundreds}`;
-  }
-
-  function onSpectrogramPointerMove(ev) {
-    if (!ensureMouseReadoutTargets() || !viewportWrapper) return;
-    try {
-      const rect = viewportWrapper.getBoundingClientRect();
-      const axisLeft = globalThis._spectroAxisLeft || (axisCanvas && typeof axisCanvas.clientWidth === 'number' ? axisCanvas.clientWidth : 60);
-      const imgH = globalThis._spectroImageHeight || IMAGE_H;
-      const imgW = globalThis._spectroImageWidth || 0;
-      const viewportWidth = Math.max(1, (scrollArea && scrollArea.clientWidth) ? scrollArea.clientWidth : (rect.width - axisLeft));
-      const xViewport = ev.clientX - rect.left - axisLeft;
-      const yViewport = ev.clientY - rect.top - AXIS_TOP;
-
-      if (xViewport < 0 || xViewport > viewportWidth || yViewport < 0 || yViewport > imgH) {
-        clearMouseReadout();
-        return;
-      }
-
-      const scrollLeft = scrollArea && typeof scrollArea.scrollLeft === 'number' ? scrollArea.scrollLeft : 0;
-      const effectiveImgW = imgW > 0 ? imgW : viewportWidth;
-      const absX = Math.max(0, Math.min(effectiveImgW, Math.round(xViewport + scrollLeft)));
-      const mapper = (globalThis._spectroMap && typeof globalThis._spectroMap.pxToSec === 'function') ? globalThis._spectroMap : null;
-      const sec = mapper ? mapper.pxToSec(absX) : NaN;
-      const userY = readUserYmaxHz();
-      const ymax = (isFinite(userY) && userY > 0) ? userY : _resolveCurrentYMax();
-      const ymin = globalThis._spectroYMin || 0;
-      const freq = Math.max(ymin, Math.min(ymax, ymax - (yViewport / Math.max(1, imgH)) * (ymax - ymin)));
-
-      if (mouseTimeField) {
-        if (isFinite(sec)) {
-          mouseTimeField.textContent = 'T: ' + formatTimeMinSecMs(sec);
-        } else {
-          mouseTimeField.textContent = 'T: -';
-        }
-      }
-      if (mouseFreqField) {
-        if (isFinite(freq)) {
-          mouseFreqField.textContent = 'F: ' + Math.round(freq) + ' Hz';
-        } else {
-          mouseFreqField.textContent = 'F: -';
-        }
-      }
-    } catch (err) {
-      clearMouseReadout();
-    }
-  }
-
-  if (viewportWrapper) {
-    try {
-      viewportWrapper.addEventListener('pointermove', onSpectrogramPointerMove, { passive: true });
-      viewportWrapper.addEventListener('pointerleave', clearMouseReadout, { passive: true });
-    } catch (e) {}
-  }
 
   function $(id){ return document.getElementById(id); }
   function currentPxpf(){ return Number(globalThis._spectroPxPerFrame || 0) || 2; }
@@ -286,7 +207,7 @@ self.onmessage = function(e) {
   globalThis.isAnnotationsDirty = false;
   globalThis.latestSavedAudioFileName = '';
   globalThis._spectroLastGen = globalThis._spectroLastGen || { fileId:null, pxpf:null, sampleRate:null, numFrames:null, fftSize:null, ymax:null };
-  globalThis._spectroTiles = globalThis._spectroTiles || null;
+  
   globalThis._spectroSpectra = globalThis._spectroSpectra || null;
   globalThis._spectroSampleRate = globalThis._spectroSampleRate || 44100;
   globalThis._spectroNumFrames = globalThis._spectroNumFrames || 0;
@@ -325,11 +246,11 @@ self.onmessage = function(e) {
     const duration = globalThis._spectroDuration;
     const framesPerSec = Math.max(0, globalThis._spectroFramesPerSec || 0);
     const pxpfIntrinsic = Math.max(0, globalThis._spectroPxPerFrame || 0);
-    if (isFinite(duration) && duration > 0 && metrics.displayed > 0) {
-      globalThis._spectroPxPerSec = metrics.displayed / duration;
-    } else if (framesPerSec && pxpfIntrinsic) {
-      const scale = metrics.scale && metrics.scale > 0 ? metrics.scale : 1;
+    const scale = metrics.scale && metrics.scale > 0 ? metrics.scale : 1;
+    if (framesPerSec && pxpfIntrinsic) {
       globalThis._spectroPxPerSec = framesPerSec * pxpfIntrinsic * scale;
+    } else if (isFinite(duration) && duration > 0 && metrics.displayed > 0) {
+      globalThis._spectroPxPerSec = metrics.displayed / duration;
     }
     return metrics;
   }
@@ -534,17 +455,19 @@ self.onmessage = function(e) {
   }
 
   // draw X ticks into axisCanvas (axisCanvas stays fixed left column)
+  // draw X ticks into the main canvas overlay
   function drawXTicksAxis(sampleRate, totalFrames, imgW, imgH, framesPerSec, pxpf, visibleStartSec = 0){
-    if(!axisCtx) return;
-    const axisLeft = 0;
+    if(!ctx) return;
     const tickY = AXIS_TOP + imgH;
-    axisCtx.clearRect(0, 0, axisCanvas.width, axisCanvas.height);
-    axisCtx.fillStyle = '#000';
-    axisCtx.fillRect(0, 0, axisCanvas.width, axisCanvas.height);
-    axisCtx.fillStyle = '#111';
-    axisCtx.fillRect(0, AXIS_TOP, axisCanvas.width, imgH);
+    
+    // Clear just the bottom axis area in the main overlay
+    ctx.clearRect(0, tickY, canvas.width, AXIS_BOTTOM);
+    
+    // Fill bottom axis background
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, tickY, canvas.width, AXIS_BOTTOM);
 
-    axisCtx.strokeStyle = '#666'; axisCtx.lineWidth = 1; axisCtx.fillStyle = '#fff'; axisCtx.font = '12px sans-serif';
+    ctx.strokeStyle = '#666'; ctx.lineWidth = 1; ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
     const pxPerSec = Math.max(1, effectivePxPerSec());
     const vp = viewportWidthPx();
     const visibleDuration = Math.max(0, vp / pxPerSec);
@@ -562,18 +485,23 @@ self.onmessage = function(e) {
     const startSec = Math.max(0, visibleStartSec);
     const endSec = startSec + visibleDuration;
     const firstTick = Math.ceil(startSec / step) * step;
-    axisCtx.textAlign = 'center'; axisCtx.textBaseline = 'top';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
 
     for (let t = firstTick; t <= endSec + 1e-9; t += step) {
       const xPxFloat = (t - visibleStartSec) * pxPerSec;
-      const markerX = axisCanvas.clientWidth - 6;
-      axisCtx.beginPath(); axisCtx.moveTo(markerX + 0.5, AXIS_TOP); axisCtx.lineTo(markerX + 0.5, AXIS_TOP + 8); axisCtx.stroke();
+      const markerX = Math.round(xPxFloat);
+      
+      // Draw tick line
+      ctx.beginPath(); ctx.moveTo(markerX + 0.5, tickY); ctx.lineTo(markerX + 0.5, tickY + 8); ctx.stroke();
+      
+      // Draw label
       let decimals = 0;
       if (step % 1 !== 0) decimals = step.toString().split('.')[1].length;
       const label = (t >= 60 && step >= 60) ? ((t / 60).toFixed(0) + 'm') : (t.toFixed(decimals) + 's');
-      axisCtx.fillText(label, axisCanvas.clientWidth / 2, AXIS_TOP + imgH + 2);
+      ctx.fillText(label, markerX, tickY + 12);
     }
 
+    // Still need to trigger Y axis redraw on scroll to keep it in sync
     drawYAxis(sampleRate, imgH, globalThis._spectroYMax, globalThis._spectroYMin || 0);
   }
 
@@ -656,15 +584,20 @@ self.onmessage = function(e) {
     globalThis.latestSavedAudioFileName = file ? file.name : '';
     globalThis.isAudioDirty = false;
     globalThis.isAnnotationsDirty = false;
-    globalThis._spectroTiles = null; globalThis._spectroSpectra = null; globalThis._spectroYMax = null;
+     globalThis._spectroSpectra = null; globalThis._spectroYMax = null;
     const arrayBuffer = await file.arrayBuffer();
 
     // --- Determine original sample rate before AudioContext resampling ---
     try {
       let origSr = null;
       const view = new DataView(arrayBuffer);
+      let id3Offset = 0;
+      if (view.byteLength > 10 && view.getUint8(0) === 0x49 && view.getUint8(1) === 0x44 && view.getUint8(2) === 0x33) {
+        id3Offset = 10 + ((view.getUint8(6) << 21) | (view.getUint8(7) << 14) | (view.getUint8(8) << 7) | view.getUint8(9));
+      }
+
       if (view.byteLength > 44 && view.getUint32(0, false) === 0x52494646 && view.getUint32(8, false) === 0x57415645) {
-        // WAV (RIFF/WAVE)
+        // WAV (RIFF/WAVE) - unaffected
         let offset = 12;
         while (offset < view.byteLength - 8) {
           const chunkId = view.getUint32(offset, false);
@@ -675,30 +608,43 @@ self.onmessage = function(e) {
           }
           offset += 8 + chunkSize;
         }
-      } else if (view.byteLength > 24 && view.getUint32(0, false) === 0x664C6143) {
-        // FLAC ('fLaC')
-        const b18 = view.getUint8(18), b19 = view.getUint8(19), b20 = view.getUint8(20);
-        origSr = (b18 << 12) | (b19 << 4) | (b20 >> 4);
       } else {
-        // MP3 (Scan for frame sync, skipping ID3v2 if present)
-        let offset = 0;
-        if (view.byteLength > 10 && view.getUint8(0) === 0x49 && view.getUint8(1) === 0x44 && view.getUint8(2) === 0x33) {
-          offset = 10 + ((view.getUint8(6) << 21) | (view.getUint8(7) << 14) | (view.getUint8(8) << 7) | view.getUint8(9));
+        let isFlac = false;
+        // FLAC ('fLaC')
+        if (view.byteLength > id3Offset + 24 && view.getUint32(id3Offset, false) === 0x664C6143) {
+          isFlac = true;
+          const blockType = view.getUint8(id3Offset + 4) & 0x7F;
+          if (blockType === 0) { // STREAMINFO
+            const b1 = view.getUint8(id3Offset + 18);
+            const b2 = view.getUint8(id3Offset + 19);
+            const b3 = view.getUint8(id3Offset + 20);
+            origSr = (b1 << 12) | (b2 << 4) | (b3 >> 4);
+          }
         }
-        for (let i = offset; i < Math.min(view.byteLength - 4, offset + 100000); i++) {
-          if (view.getUint8(i) === 0xFF && (view.getUint8(i+1) & 0xE0) === 0xE0) {
-            const header = view.getUint32(i, false);
-            const version = (header >> 19) & 0x3;
-            const srIndex = (header >> 10) & 0x3;
-            if (srIndex !== 3) {
-              if (version === 3) origSr = srIndex === 0 ? 44100 : srIndex === 1 ? 48000 : 32000;
-              else if (version === 2) origSr = srIndex === 0 ? 22050 : srIndex === 1 ? 24000 : 16000;
-              else if (version === 0) origSr = srIndex === 0 ? 11025 : srIndex === 1 ? 12000 : 8000;
+        
+        if (!isFlac) {
+          // MP3 (Scan for frame sync)
+          for (let i = id3Offset; i < Math.min(view.byteLength - 4, id3Offset + 100000); i++) {
+            if (view.getUint8(i) === 0xFF && (view.getUint8(i+1) & 0xE0) === 0xE0) {
+              const header = view.getUint32(i, false);
+              const version = (header >> 19) & 0x3;
+              const srIndex = (header >> 10) & 0x3;
+              if (srIndex !== 3) {
+                if (version === 3) origSr = srIndex === 0 ? 44100 : srIndex === 1 ? 48000 : 32000;
+                else if (version === 2) origSr = srIndex === 0 ? 22050 : srIndex === 1 ? 24000 : 16000;
+                else if (version === 0) origSr = srIndex === 0 ? 11025 : srIndex === 1 ? 12000 : 8000;
+              }
+              if (origSr) break;
             }
-            if (origSr) break;
           }
         }
       }
+
+      // Sanity check sample rate to prevent AudioContext initialization failures
+      if (origSr && (origSr < 8000 || origSr > 384000)) {
+        origSr = null;
+      }
+
       if (origSr) {
         globalThis._spectroOriginalNyquist = origSr / 2;
       } else {
@@ -892,114 +838,76 @@ self.onmessage = function(e) {
   // Fill background up to displayed spectrogram width after stretching (avoid unused gap)
   ctx.fillRect(0, Math.round(AXIS_TOP * mainScaleY), Math.round(imageW * mainScaleX * displayScaleX), Math.round(imageH * mainScaleY));
 
-    const lut = buildLUT(cmap);
-    const MAX_TILE_W = 8192;
-    const tileW = Math.min(MAX_TILE_W, imageW);
-    const tiles = [];
-    const gain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
+  const lut = buildLUT(cmap);
+  const gain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
+  let firstTilePainted = false;
+  const nyqDecoded = sr / 2;
+  const initialYMax = globalThis._spectroOriginalNyquist || nyqDecoded;
+  const initialYMin = 0;
+  globalThis._spectroYMin = initialYMin;
+  globalThis._spectroYMax = initialYMax;
+  const safeDenom = denom || 1e-12;
 
-    // We'll draw tiles; after the first tile(s) that fill visible left region are drawn,
-    // dispatch completion and hide overlay immediately so UI can proceed.
-    let firstTilePainted = false;
-    const nyqDecoded = sr / 2;
-    const initialYMax = globalThis._spectroOriginalNyquist || nyqDecoded;
-    const initialYMin = 0;
-    globalThis._spectroYMin = initialYMin;
-    const safeDenom = denom || 1e-12;
-
-    // Precompute Y-axis mappings (Frequency doesn't change over time)
-    const yMapIdxA = new Int32Array(imageH);
-    const yMapIdxB = new Int32Array(imageH);
-    const yMapFrac = new Float32Array(imageH);
-    for (let y = 0; y < imageH; y++) {
-      const ty = y / (imageH - 1);
-      const freq = initialYMax - ty * (initialYMax - initialYMin);
-      const fracBin = (freq / nyqDecoded) * (bins - 1);
-      const fIdx = Math.floor(fracBin);
-      yMapIdxA[y] = Math.max(0, Math.min(bins - 1, fIdx));
-      yMapIdxB[y] = Math.max(0, Math.min(bins - 1, fIdx + 1));
-      yMapFrac[y] = fracBin - fIdx;
-    }
-
-    for (let tileX = 0, tileIndex = 0; tileX < imageW; tileX += tileW, tileIndex++){
-      const w = Math.min(tileW, imageW - tileX);
-      const tilePixels = new Uint8ClampedArray(w * imageH * 4);
-
-      for (let localX = 0; localX < w; localX++){
-        const globalX = tileX + localX;
-        const frameIdx = Math.floor(globalX / pxpf);
-        const baseFrame = Math.min(numFrames - 1, Math.max(0, frameIdx));
-        const frameBaseIdx = baseFrame * bins;
-        for (let y = 0; y < imageH; y++){
-          const a = spectra[frameBaseIdx + yMapIdxA[y]];
-          const b = spectra[frameBaseIdx + yMapIdxB[y]];
-          const mag = a + (b - a) * yMapFrac[y];
-          const magAdj = mag * gain;
-          const db = 20 * Math.log10(magAdj + 1e-12);
-          let v = (db - bottom) / safeDenom; 
-          if (v < 0) v = 0; else if (v > 1) v = 1; else if (v !== v) v = 0;
-		  //v = Math.pow(v, 1.5);
-          const lutIdx = (v * 255) | 0;
-          const rgbBase = lutIdx * 3;
-          const idx = (y * w + localX) * 4;
-          tilePixels[idx] = lut[rgbBase]; tilePixels[idx+1] = lut[rgbBase+1]; tilePixels[idx+2] = lut[rgbBase+2]; tilePixels[idx+3] = 255;
-        }
+  // WebGL Data Upload Phase
+    if (globalThis.webglRenderer) {
+      const MAX_TEX_WIDTH = 4096;
+      if (typeof globalThis.webglRenderer.reset === 'function') {
+        globalThis.webglRenderer.reset();
+      } else {
+        globalThis.webglRenderer.dataTextures = [];
+        globalThis.webglRenderer.chunkWidths = [];
       }
-
-      try {
-        const tileImage = new ImageData(tilePixels, w, imageH);
-        // Create tiles at 1:1 logical pixels to guarantee consistent vertical mapping across renders.
-        const tcanvas = document.createElement('canvas');
-        tcanvas.width = w; tcanvas.height = imageH;
-        const tctx = tcanvas.getContext('2d', { alpha:false });
-        tctx.putImageData(tileImage, 0, 0);
-
-        // Draw into main canvas using scaled destination rects
-        const dx = Math.round(tileX * mainScaleX);
-        const dy = Math.round(AXIS_TOP * mainScaleY);
-  // Apply horizontal stretch if needed so the full duration fills viewport width
-  const dw = Math.max(1, Math.round(w * mainScaleX * displayScaleX));
-        const dh = Math.max(1, Math.round(imageH * mainScaleY));
-        ctx.drawImage(tcanvas, 0, 0, tcanvas.width, tcanvas.height, dx, dy, dw, dh);
-
-        // mark that at least one tile has been painted
-        if (!firstTilePainted) {
-          firstTilePainted = true;
-          // visible content is now present; inform listeners and hide overlay immediately (defensive)
-          try {
-            const durationSec = length / sr;
-            const pxPerSecMeta = (displayMetrics && displayMetrics.displayed && durationSec > 0)
-              ? (displayMetrics.displayed / durationSec)
-              : (framesPerSec * pxpf * displayScaleX);
-            const meta = { duration: durationSec, pxPerSec: pxPerSecMeta, imageHeight: imageH, sampleRate: sr, cmap: cmap, fileName: file.name };
-            
-            // Bypass event listener race conditions: Ingest XC annotations synchronously right before the UI unlocks
-            if (globalThis._pendingXcAnnotations) {
-              if (globalThis._annotations && typeof globalThis._annotations.addMany === 'function') {
-                globalThis._annotations.addMany(globalThis._pendingXcAnnotations, 'import');
-              }
-              globalThis._pendingXcAnnotations = null;
+      const lutUint8 = buildLUT(cmap);
+      globalThis.webglRenderer.setColormap(lutUint8);
+      
+      const chunkCount = Math.ceil(numFrames / MAX_TEX_WIDTH);
+      for (let i = 0; i < chunkCount; i++) {
+        const startFrame = i * MAX_TEX_WIDTH;
+        const framesInChunk = Math.min(MAX_TEX_WIDTH, numFrames - startFrame);
+        const chunkData = spectra.subarray(startFrame * bins, (startFrame + framesInChunk) * bins);
+        // Important: Float32Array has contiguous frequency bins per time frame.
+        // So WebGL texture width = bins, height = framesInChunk
+        globalThis.webglRenderer.setSpectrogramData(chunkData, bins, framesInChunk, i);
+      }
+      
+      // Update Uniforms
+      globalThis.webglRenderer.updateUniforms(
+        0.0, // viewX
+        1.0, // viewWidth
+        0.0, // viewY
+        1.0, // viewHeight
+        gain, 
+        bottom, 
+        top
+      );
+      
+      // Request initial WebGL draw
+      globalThis.webglRenderer.draw();
+      
+      // Inform UI listeners
+      if (!firstTilePainted) {
+        firstTilePainted = true;
+        try {
+          const durationSec = length / sr;
+          const pxPerSecMeta = (displayMetrics && displayMetrics.displayed && durationSec > 0)
+            ? (displayMetrics.displayed / durationSec)
+            : (framesPerSec * pxpf * displayScaleX);
+          
+          if (globalThis._pendingXcAnnotations) {
+            if (globalThis._annotations && typeof globalThis._annotations.addMany === 'function') {
+              globalThis._annotations.addMany(globalThis._pendingXcAnnotations, 'import');
             }
-            
-            try { window.dispatchEvent(new CustomEvent('spectrogram-generated', { detail: { meta } })); } catch (e) {}
-          } catch (e) {}
-          try { window.__spectroWait && window.__spectroWait.hide(); } catch (e) {}
-        }
-
-        const leftFrameIdx = Math.floor(tileX / pxpf);
-        const startTime = Math.max(0, Math.min((numFrames - 1) / framesPerSec, leftFrameIdx / framesPerSec));
-        const endTime = Math.min((numFrames - 1) / framesPerSec, ((tileX + w - 1) / pxpf) / framesPerSec);
-
-        tiles.push({ bitmap: tcanvas, cols: w, startCol: tileX, startTime, endTime, colorVersion: globalThis._spectroColorVersion, lutName: cmap, gain, ymax: globalThis._spectroYMax });
-      } catch(e){
-        console.error('paint tile failed', e);
+            globalThis._pendingXcAnnotations = null;
+          }
+          
+          try { window.dispatchEvent(new CustomEvent('spectrogram-generated', { detail: { meta } })); } catch (e) {}
+        } catch (e) {}
+        try { window.__spectroWait && window.__spectroWait.hide(); } catch (e) {}
       }
-
-      if ((tileIndex & 1) === 0) await globalThis.fastYield();
     }
 
     // update globals (authoritative)
-    globalThis._spectroTiles = tiles;
+    
     globalThis._spectroAudioBuffer = decoded;
     globalThis._spectroDuration = length / sr;
     globalThis._spectroFramesPerSec = framesPerSec;
@@ -1037,8 +945,8 @@ self.onmessage = function(e) {
 
     if (ymaxInput) ymaxInput.max = Math.round(sr / 1000);
 
-    globalThis._spectroPageCols = Math.max(1, tileW);
-    globalThis._spectroPages = tiles.length;
+    globalThis._spectroPageCols = 1;
+    globalThis._spectroPages = 1;
 
     alignCanvasLeft();
     drawYAxis(sr, imageH, globalThis._spectroYMax, globalThis._spectroYMin || 0);
@@ -1056,14 +964,7 @@ self.onmessage = function(e) {
         spacer.style.width = (globalThis._spectroImageWidth || imageW) + 'px';
         spacer.style.height = (AXIS_TOP + (globalThis._spectroImageHeight || imageH) + AXIS_BOTTOM) + 'px';
         spacer.style.pointerEvents = 'none';
-        // Position the canvas absolutely over the spacer
-        if (canvas && canvas.style) {
-          canvas.style.position = 'sticky';
-          canvas.style.left = '0px';
-          canvas.style.top = '0px';
-          canvas.style.zIndex = '1';
-          canvas.style.zIndex = '1';
-        }
+        // Position the canvas container using CSS from index.html
         if (scrollArea && scrollArea.style && !scrollArea.style.position) scrollArea.style.position = 'relative';
       }
     } catch (e) {}
@@ -1094,158 +995,28 @@ self.onmessage = function(e) {
   // re-render from spectra (ymax in Hz)
   async function reRenderFromSpectra(ymax, ymin = 0){
     if (!globalThis._spectroSpectra) return;
-    const spectra = globalThis._spectroSpectra;
-    const bins = globalThis._spectroBins;
-    const N = globalThis._spectroFFTSize;
-    const top = globalThis._spectroTopDB;
-    const bottom = globalThis._spectroBottomDB;
-    const denom = globalThis._spectroDenom;
+    
     const sr = globalThis._spectroSampleRate;
-    const framesPerSec = globalThis._spectroFramesPerSec;
-    const pxpf = globalThis._spectroPxPerFrame;
-    const imageW = globalThis._spectroImageWidth;
-    const imageH = globalThis._spectroImageHeight;
-
-    const dpr = window.devicePixelRatio || 1;
-    const nyq = sr / 2; // Decoded nyquist (for bin math mapping)
+    const nyq = sr ? sr / 2 : 22050;
     const origNyq = globalThis._spectroOriginalNyquist || nyq;
     const ymaxClamped = Math.max(1, Math.min(origNyq, Number(ymax) || origNyq));
     
     let tempYMin = Number(ymin) || 0;
     if (tempYMin >= ymaxClamped) tempYMin = ymaxClamped - 100;
     const yminClamped = Math.max(0, tempYMin);
+    
     globalThis._spectroYMax = ymaxClamped;
     globalThis._spectroYMin = yminClamped;
-    const lut = buildLUT(cmapSelect.value || 'custom');
-    const gain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
-    const safeDenom = denom || 1e-12;
 
-    // Precompute Y-axis mappings (Frequency doesn't change over time)
-    const yMapIdxA = new Int32Array(imageH);
-    const yMapIdxB = new Int32Array(imageH);
-    const yMapFrac = new Float32Array(imageH);
-    for (let y = 0; y < imageH; y++) {
-      const ty = y / (imageH - 1);
-      const freq = ymaxClamped - ty * (ymaxClamped - yminClamped);
-      const fracBin = (freq / nyq) * (bins - 1);
-      const fIdx = Math.floor(fracBin);
-      yMapIdxA[y] = Math.max(0, Math.min(bins - 1, fIdx));
-      yMapIdxB[y] = Math.max(0, Math.min(bins - 1, fIdx + 1));
-      yMapFrac[y] = fracBin - fIdx;
-    }
-
-    // Prefer updating existing tiles in-place so viewport rendering stays perfectly aligned to the axis.
-    const tiles = Array.isArray(globalThis._spectroTiles) ? globalThis._spectroTiles : null;
-    const dprLocal = window.devicePixelRatio || 1;
-
-    async function buildTileBitmap(w, h, tilePixels) {
-      const tileImage = new ImageData(tilePixels, w, h);
-      const tcanvas = document.createElement('canvas');
-      tcanvas.width = w; tcanvas.height = h;
-      const tctx = tcanvas.getContext('2d', { alpha:false });
-      tctx.putImageData(tileImage, 0, 0);
-      return tcanvas;
-    }
-
-    if (tiles && tiles.length) {
-      // Update each tile's bitmap with the new LUT/gain/ymax mapping.
-      for (let idxTile = 0; idxTile < tiles.length; idxTile++) {
-        const t = tiles[idxTile];
-        if (!t) continue;
-        const w = t.cols;
-        const tileX = t.startCol;
-        const tilePixels = new Uint8ClampedArray(w * imageH * 4);
-
-        for (let localX = 0; localX < w; localX++) {
-          const globalX = tileX + localX;
-          const frameIdx = Math.floor(globalX / pxpf);
-          const baseFrame = Math.min(globalThis._spectroNumFrames - 1, Math.max(0, frameIdx));
-          const frameBaseIdx = baseFrame * bins;
-          for (let y = 0; y < imageH; y++) {
-            const a = spectra[frameBaseIdx + yMapIdxA[y]];
-            const b = spectra[frameBaseIdx + yMapIdxB[y]];
-            const mag = a + (b - a) * yMapFrac[y];
-            const magAdj = mag * gain;
-            const db = 20 * Math.log10(magAdj + 1e-12);
-            let v = (db - bottom) / safeDenom;
-            if (v < 0) v = 0; else if (v > 1) v = 1; else if (v !== v) v = 0;
-			//v = Math.pow(v, 1.5);
-            const lutIdx = (v * 255) | 0; const rgbBase = lutIdx * 3;
-            const pi = (y * w + localX) * 4;
-            tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
-          }
-        }
-        try { t.bitmap = await buildTileBitmap(w, imageH, tilePixels); t.colorVersion = (globalThis._spectroColorVersion|0); t.lutName = (cmapSelect && cmapSelect.value) ? cmapSelect.value : 'custom'; t.gain = gain; t.ymax = ymaxClamped; } catch(e) { console.error('tile rebuild failed', e); }
-        if ((idxTile & 1) === 0) await globalThis.fastYield();
-      }
-    } else {
-      // Fallback: no tiles available (unlikely). Do a direct draw like before.
-      const MAX_TILE_W = 8192;
-      const effectiveTileW = Math.min(MAX_TILE_W, imageW);
-      const cssWidth = imageW; const cssHeight = AXIS_TOP + imageH + AXIS_BOTTOM;
-      const scaleX = (canvas && canvas.width ? (canvas.width / Math.max(1, cssWidth)) : 1);
-      const scaleY = (canvas && canvas.height ? (canvas.height / Math.max(1, cssHeight)) : 1);
-      for (let tileX = 0; tileX < imageW; tileX += effectiveTileW) {
-        const w = Math.min(effectiveTileW, imageW - tileX);
-        const tilePixels = new Uint8ClampedArray(w * imageH * 4);
-        for (let localX = 0; localX < w; localX++){
-          const globalX = tileX + localX;
-          const frameIdx = Math.floor(globalX / pxpf);
-          const baseFrame = Math.min(globalThis._spectroNumFrames - 1, Math.max(0, frameIdx));
-          const frameBaseIdx = baseFrame * bins;
-          for (let y = 0; y < imageH; y++){
-            const a = spectra[frameBaseIdx + yMapIdxA[y]];
-            const b = spectra[frameBaseIdx + yMapIdxB[y]];
-            const mag = a + (b - a) * yMapFrac[y];
-            const magAdj = mag * gain;
-            const db = 20 * Math.log10(magAdj + 1e-12);
-            let v = (db - bottom) / safeDenom;
-            if (v < 0) v = 0; else if (v > 1) v = 1; else if (v !== v) v = 0;
-			//v = Math.pow(v, 1.5);
-            const lutIdx = (v * 255) | 0; const rgbBase = lutIdx * 3;
-            const pi = (y * w + localX) * 4;
-            tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
-          }
-        }
-        const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = imageH;
-        const tmpCtx = tmp.getContext('2d', { alpha:false }); tmpCtx.putImageData(new ImageData(tilePixels, w, imageH), 0, 0);
-        const dx = Math.round(tileX * scaleX); const dy = Math.round(AXIS_TOP * scaleY);
-        const dw = Math.max(1, Math.round(w * scaleX)); const dh = Math.max(1, Math.round(imageH * scaleY));
-        ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, dx, dy, dw, dh);
-        await globalThis.fastYield();
-      }
-    }
-
-  try { if (globalThis._spectroLastGen) globalThis._spectroLastGen.ymax = ymaxClamped; } catch(e){}
-  alignCanvasLeft();
-  // Redraw axes and repaint viewport from updated tiles to ensure perfect alignment with Y=0.
-  drawYAxis(sr, imageH, ymaxClamped, yminClamped);
-  updateXTicksFromScroll();
-  try { drawViewportFromTiles && drawViewportFromTiles(); } catch(e) {}
-    try {
-      if (scrollArea) {
-        let spacer = document.getElementById('spectroSpacer');
-        if (!spacer) {
-          spacer = document.createElement('div');
-          spacer.id = 'spectroSpacer';
-          scrollArea.appendChild(spacer);
-        }
-        spacer.style.display = 'block';
-        spacer.style.width = (globalThis._spectroImageWidth || imageW) + 'px';
-        spacer.style.height = (AXIS_TOP + (globalThis._spectroImageHeight || imageH) + AXIS_BOTTOM) + 'px';
-        spacer.style.pointerEvents = 'none';
-        if (canvas && canvas.style) {
-          canvas.style.position = 'sticky';
-          canvas.style.left = '0px';
-          canvas.style.top = '0px';
-        }
-        if (scrollArea && scrollArea.style && !scrollArea.style.position) scrollArea.style.position = 'relative';
-      }
-    } catch (e) {}
-  try { drawViewportFromTiles && drawViewportFromTiles(); } catch(e) {}
-
-  _scheduleAnnotationOverlaySync('reRenderFromSpectra');
-
+    try { if (globalThis._spectroLastGen) globalThis._spectroLastGen.ymax = ymaxClamped; } catch(e){}
+    alignCanvasLeft();
+    
+    const imageH = globalThis._spectroImageHeight || IMAGE_H;
+    drawYAxis(sr, imageH, ymaxClamped, yminClamped);
+    updateXTicksFromScroll();
+    
+    try { drawViewportFromTiles && drawViewportFromTiles(); } catch(e) {}
+    
     try { window.dispatchEvent(new CustomEvent('spectrogram-generated', { detail: { meta: { ymax: ymaxClamped } } })); } catch(e){}
     try { window.__spectroWait && window.__spectroWait.hide(); } catch(e){}
   }
@@ -1253,221 +1024,114 @@ self.onmessage = function(e) {
   // Draw only the visible portion of the spectrogram from precomputed tiles.
   function drawViewportFromTiles() {
     try {
-      if (!Array.isArray(globalThis._spectroTiles) || !globalThis._spectroTiles.length) return;
-      const tiles = globalThis._spectroTiles;
+      if (!globalThis.webglRenderer || !globalThis._spectroSpectra) return;
       const imageW = globalThis._spectroImageWidth || 0;
       const imageH = globalThis._spectroImageHeight || 0;
       if (!imageW || !imageH) return;
-  const cssHeight = AXIS_TOP + imageH + AXIS_BOTTOM;
-  const viewWidth = Math.max(1, scrollArea.clientWidth || 0);
+      
+      const cssHeight = AXIS_TOP + imageH + AXIS_BOTTOM;
+      const viewWidth = Math.max(1, scrollArea.clientWidth || 0);
       if (!viewWidth) return;
-  const leftPx = Math.max(0, Math.round(scrollArea && typeof scrollArea.scrollLeft === 'number' ? scrollArea.scrollLeft : 0));
-      const dpr = window.devicePixelRatio || 1;
-      const curVersion = globalThis._spectroColorVersion|0;
-      const curYmax = _resolveCurrentYMax();
-      const curGain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
-      const curLutName = (cmapSelect && cmapSelect.value) ? cmapSelect.value : 'custom';
-      const curLut = buildLUT(curLutName);
 
-      // Ensure internal buffer matches viewport
-      const SAFE_MAX_MAIN_PIXELS = 32768;
-  const internalW = Math.max(1, Math.round(Math.min(dpr, SAFE_MAX_MAIN_PIXELS / Math.max(1, viewWidth)) * viewWidth));
-      const internalH = Math.max(1, Math.round(Math.min(dpr, SAFE_MAX_MAIN_PIXELS / Math.max(1, cssHeight)) * cssHeight));
+      const leftPx = Math.max(0, Math.round(scrollArea && typeof scrollArea.scrollLeft === 'number' ? scrollArea.scrollLeft : 0));
+      const dpr = window.devicePixelRatio || 1;
+
+      // Sync 2D Canvas size (now just an overlay)
+      const internalW = Math.max(1, Math.round(viewWidth * dpr));
+      const internalH = Math.max(1, Math.round(cssHeight * dpr));
       if (canvas.width !== internalW || canvas.height !== internalH) {
         canvas.width = internalW; canvas.height = internalH;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
-  if (canvas.style.width !== (viewWidth + 'px')) canvas.style.width = viewWidth + 'px';
+      if (canvas.style.width !== (viewWidth + 'px')) canvas.style.width = viewWidth + 'px';
       if (canvas.style.height !== (cssHeight + 'px')) canvas.style.height = cssHeight + 'px';
 
-  const scaleX = internalW / viewWidth;
-      const scaleY = internalH / cssHeight;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      // Clear the transparent overlay
       ctx.clearRect(0, 0, internalW, internalH);
-  ctx.fillStyle = '#111';
-  // Fill only up to the visible portion of the spectrogram (avoid black beyond image end)
-  const displayedW = globalThis._spectroImageWidth || 0;
-  const intrinsicW = globalThis._spectroImageIntrinsicWidth || displayedW;
-  const scaleTilesX = (displayedW > 0 && intrinsicW > 0) ? (displayedW / intrinsicW) : 1;
-  const maxFillCss = Math.min(viewWidth, Math.max(0, displayedW - leftPx));
-  ctx.fillRect(0, Math.round(AXIS_TOP * scaleY), Math.round(maxFillCss * scaleX), Math.round(imageH * scaleY));
 
-  // leftPx computed above for background fill
-  const rightPx = Math.min(displayedW, leftPx + viewWidth);
+      // Sync WebGL Canvas size and position
+      const glCanvas = document.getElementById('webglSpectrogramCanvas');
+      if (glCanvas) {
+        if (glCanvas.width !== internalW) glCanvas.width = internalW;
+        if (glCanvas.height !== Math.round(imageH * dpr)) glCanvas.height = Math.round(imageH * dpr);
+        
+        glCanvas.style.width = viewWidth + 'px';
+        glCanvas.style.height = imageH + 'px';
+        // Position it exactly where the image is supposed to be (below AXIS_TOP)
+        glCanvas.style.top = AXIS_TOP + 'px';
+        
+        // Calculate view coordinates
+        const viewWidthFrac = viewWidth / imageW;
+        const viewXFrac = leftPx / imageW;
+        
+        const gain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
+        const top = globalThis._spectroTopDB || 0;
+        const bottom = globalThis._spectroBottomDB || -100;
 
-      for (const t of tiles) {
-        if (!t || !t.bitmap) continue;
-  const tx0 = t.startCol * scaleTilesX;
-  const tx1 = (t.startCol + t.cols) * scaleTilesX;
-        if (tx1 <= leftPx || tx0 >= rightPx) continue;
-        // Ensure tile colorization matches current settings before drawing
-        if ((t.colorVersion|0) !== curVersion || t.lutName !== curLutName || Math.abs((t.gain||1) - curGain) > 1e-6 || Math.abs((t.ymax||curYmax) - curYmax) > 1e-3) {
-          try { _rebuildTileBitmapSync(t, curYmax, curLut, curGain); t.colorVersion = curVersion; t.lutName = curLutName; t.gain = curGain; t.ymax = curYmax; } catch(e){}
-        }
-        const interL = Math.max(leftPx, tx0);
-        const interR = Math.min(rightPx, tx1);
-        const interW = Math.max(0, interR - interL);
-        if (interW <= 0) continue;
-  const sxCssDisplayed = interL - tx0;
-  const swCssDisplayed = interW;
-  const sxIntrinsic = sxCssDisplayed / Math.max(1e-9, scaleTilesX);
-  const swIntrinsic = swCssDisplayed / Math.max(1e-9, scaleTilesX);
-        const dxCss = interL - leftPx;
-        const dwCss = interW;
-  const pxPerCol = t.bitmap.width / Math.max(1, t.cols);
-  const sx = Math.round(sxIntrinsic * pxPerCol);
-  const sw = Math.max(1, Math.round(swIntrinsic * pxPerCol));
-        const dx = Math.round(dxCss * scaleX);
-        const dy = Math.round(AXIS_TOP * scaleY);
-        const dw = Math.max(1, Math.round(dwCss * scaleX));
-        const dh = Math.max(1, Math.round(imageH * scaleY));
-        try { ctx.drawImage(t.bitmap, sx, 0, sw, t.bitmap.height, dx, dy, dw, dh); } catch(e) {}
+        const nyq = globalThis._spectroOriginalNyquist || (globalThis._spectroSampleRate ? globalThis._spectroSampleRate / 2 : 22050);
+        const yMin = globalThis._spectroYMin || 0;
+        const yMax = globalThis._spectroYMax || nyq;
+        const viewYFrac = yMin / nyq;
+        const viewHeightFrac = (yMax - yMin) / nyq;
+
+        // Update uniforms and draw
+        globalThis.webglRenderer.updateUniforms(
+          viewXFrac,
+          viewWidthFrac,
+          viewYFrac,
+          viewHeightFrac, 
+          gain, 
+          bottom, 
+          top
+        );
+        globalThis.webglRenderer.draw();
+        if (typeof updateXTicksFromScroll === 'function') updateXTicksFromScroll();
       }
-    } catch (e) { /* non-fatal */ }
+    } catch (e) {
+      console.error('WebGL drawViewportFromTiles error:', e);
+    }
   }
+  globalThis.drawViewportFromTiles = drawViewportFromTiles;
 
   // Synchronous tile recolor used during drawing to avoid mixed colormaps on scroll.
-  function _rebuildTileBitmapSync(tile, ymaxHz, lut, gain){
-    if (!tile) return;
-    const spectra = globalThis._spectroSpectra; if (!spectra) return;
-    const bins = globalThis._spectroBins; const sr = globalThis._spectroSampleRate;
-    const nyq = sr / 2; const imageH = globalThis._spectroImageHeight; const pxpf = globalThis._spectroPxPerFrame;
-    const origNyq = globalThis._spectroOriginalNyquist || nyq;
-    const ymaxClamped = Math.max(1, Math.min(origNyq, Number(ymaxHz) || origNyq));
-    const yminClamped = globalThis._spectroYMin || 0;
-    const bottom = globalThis._spectroBottomDB; const denom = globalThis._spectroDenom || 1e-12;
-    const safeDenom = denom || 1e-12;
-    const w = tile.cols; const tileX = tile.startCol;
+  
+
+  function uploadSpectraToWebGL(startFrame = 0, endFrame = -1) {
+    if (!globalThis.webglRenderer || !globalThis._spectroSpectra) return;
+    const numFrames = globalThis._spectroNumFrames | 0;
+    if (numFrames <= 0) return;
+    const bins = globalThis._spectroBins | 0;
+    const MAX_TEX_WIDTH = 4096;
     
-    const yMapIdxA = new Int32Array(imageH);
-    const yMapIdxB = new Int32Array(imageH);
-    const yMapFrac = new Float32Array(imageH);
-    for (let y = 0; y < imageH; y++) {
-      const ty = y / (imageH - 1);
-      const freq = ymaxClamped - ty * (ymaxClamped - yminClamped);
-      const fracBin = (freq / nyq) * (bins - 1);
-      const fIdx = Math.floor(fracBin);
-      yMapIdxA[y] = Math.max(0, Math.min(bins - 1, fIdx));
-      yMapIdxB[y] = Math.max(0, Math.min(bins - 1, fIdx + 1));
-      yMapFrac[y] = fracBin - fIdx;
+    const actualEndFrame = endFrame >= 0 ? Math.min(numFrames - 1, endFrame) : numFrames - 1;
+    if (startFrame > actualEndFrame) return;
+    
+    const startChunk = Math.floor(startFrame / MAX_TEX_WIDTH);
+    const endChunk = Math.floor(actualEndFrame / MAX_TEX_WIDTH);
+    const totalRequiredChunks = Math.ceil(numFrames / MAX_TEX_WIDTH);
+
+    if (actualEndFrame >= numFrames - 1 && typeof globalThis.webglRenderer.trimChunks === 'function') {
+      globalThis.webglRenderer.trimChunks(totalRequiredChunks);
     }
-
-    const tilePixels = new Uint8ClampedArray(w * imageH * 4);
-    for (let localX=0; localX<w; localX++){
-      const globalX = tileX + localX;
-      const frameIdx = Math.floor(globalX / pxpf);
-      const baseFrame = Math.min(globalThis._spectroNumFrames - 1, Math.max(0, frameIdx));
-      const frameBaseIdx = baseFrame * bins;
-      for (let y=0; y<imageH; y++){
-        const a = spectra[frameBaseIdx + yMapIdxA[y]];
-        const b = spectra[frameBaseIdx + yMapIdxB[y]];
-        const mag = a + (b - a) * yMapFrac[y];
-        const magAdj = mag * gain;
-        const db = 20 * Math.log10(magAdj + 1e-12);
-        let v = (db - bottom) / safeDenom;
-        if (v < 0) v = 0; else if (v > 1) v = 1; else if (v !== v) v = 0;
-		//v = Math.pow(v, 1.5);
-        const lutIdx = (v * 255) | 0; const rgbBase = lutIdx * 3;
-        const pi = (y * w + localX) * 4;
-        tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
-      }
+    
+    for (let i = startChunk; i <= endChunk; i++) {
+      const chunkStartFrame = i * MAX_TEX_WIDTH;
+      const framesInChunk = Math.min(MAX_TEX_WIDTH, numFrames - chunkStartFrame);
+      const chunkData = globalThis._spectroSpectra.subarray(chunkStartFrame * bins, (chunkStartFrame + framesInChunk) * bins);
+      globalThis.webglRenderer.setSpectrogramData(chunkData, bins, framesInChunk, i);
     }
-    const tcanvas = document.createElement('canvas');
-    tcanvas.width = w; tcanvas.height = imageH;
-    const tctx = tcanvas.getContext('2d', { alpha:false });
-    tctx.putImageData(new ImageData(tilePixels, w, imageH), 0, 0);
-    tile.bitmap = tcanvas;
   }
-
-  // Rebuild a single tile's bitmap in-place using current spectra, LUT, gain, and ymax.
-  async function _rebuildTileBitmapInPlace(tile, ymaxHz, lut, gain){
-    try {
-      if (!tile) return;
-      const spectra = globalThis._spectroSpectra; if (!spectra) return;
-      const bins = globalThis._spectroBins; const sr = globalThis._spectroSampleRate;
-      const nyq = sr / 2; const imageH = globalThis._spectroImageHeight; const pxpf = globalThis._spectroPxPerFrame;
-      const origNyq = globalThis._spectroOriginalNyquist || nyq;
-      const ymaxClamped = Math.max(1, Math.min(origNyq, Number(ymaxHz) || origNyq));
-      const yminClamped = globalThis._spectroYMin || 0;
-      const bottom = globalThis._spectroBottomDB; const denom = globalThis._spectroDenom || 1e-12;
-      const safeDenom = denom || 1e-12;
-      const w = tile.cols; const tileX = tile.startCol;
-
-      const yMapIdxA = new Int32Array(imageH);
-      const yMapIdxB = new Int32Array(imageH);
-      const yMapFrac = new Float32Array(imageH);
-      for (let y = 0; y < imageH; y++) {
-        const ty = y / (imageH - 1);
-        const freq = ymaxClamped - ty * (ymaxClamped - yminClamped);
-        const fracBin = (freq / nyq) * (bins - 1);
-        const fIdx = Math.floor(fracBin);
-        yMapIdxA[y] = Math.max(0, Math.min(bins - 1, fIdx));
-        yMapIdxB[y] = Math.max(0, Math.min(bins - 1, fIdx + 1));
-        yMapFrac[y] = fracBin - fIdx;
-      }
-
-      const tilePixels = new Uint8ClampedArray(w * imageH * 4);
-      for (let localX=0; localX<w; localX++){
-        const globalX = tileX + localX;
-        const frameIdx = Math.floor(globalX / pxpf);
-        const baseFrame = Math.min(globalThis._spectroNumFrames - 1, Math.max(0, frameIdx));
-        const frameBaseIdx = baseFrame * bins;
-        for (let y=0; y<imageH; y++){
-          const a = spectra[frameBaseIdx + yMapIdxA[y]];
-          const b = spectra[frameBaseIdx + yMapIdxB[y]];
-          const mag = a + (b - a) * yMapFrac[y];
-          const magAdj = mag * gain;
-          const db = 20 * Math.log10(magAdj + 1e-12);
-          let v = (db - bottom) / safeDenom;
-          if (v < 0) v = 0; else if (v > 1) v = 1; else if (v !== v) v = 0;
-		  //v = Math.pow(v, 1.5);
-          const lutIdx = (v * 255) | 0; const rgbBase = lutIdx * 3;
-          const pi = (y * w + localX) * 4;
-          tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
-        }
-      }
-      // Build a bitmap canvas similar to the generation path to avoid DPI-size issues
-      const tcanvas = document.createElement('canvas');
-      tcanvas.width = w; tcanvas.height = imageH;
-      const tctx = tcanvas.getContext('2d', { alpha:false });
-      const img = new ImageData(tilePixels, w, imageH);
-      tctx.putImageData(img, 0, 0);
-      tile.bitmap = tcanvas;
-    } catch(e) { /* non-fatal */ }
-  }
-
-  // Recolor only tiles in the visible horizontal range; fast path for very long images.
-  async function _recolorVisibleTiles(ymaxHz){
-    if (!Array.isArray(globalThis._spectroTiles) || !globalThis._spectroTiles.length) return;
-    const lut = buildLUT(cmapSelect.value || 'custom');
-    const gain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
-    const viewWidth = viewportWidthPx();
-    const leftPx = Math.max(0, Math.round(scrollArea && typeof scrollArea.scrollLeft === 'number' ? scrollArea.scrollLeft : 0));
-    const rightPx = leftPx + viewWidth;
-    const tiles = globalThis._spectroTiles;
-    for (let i=0;i<tiles.length;i++){
-      const t = tiles[i]; if (!t || !t.bitmap) continue;
-      const tx0 = t.startCol, tx1 = t.startCol + t.cols;
-      if (tx1 <= leftPx || tx0 >= rightPx) continue; // not visible
-      await _rebuildTileBitmapInPlace(t, ymaxHz, lut, gain);
-      if ((i & 1) === 0) await new Promise(r => setTimeout(r,0));
-    }
-    globalThis._spectroYMax = ymaxHz;
-    try { drawViewportFromTiles && drawViewportFromTiles(); } catch(e) {}
-  }
-  // Expose full rebuild helper for external modules
-  try { globalThis._rebuildAllTilesFromSpectra = _rebuildAllTilesFromSpectra; } catch(e){}
+  globalThis._uploadSpectraToWebGL = uploadSpectraToWebGL;
 
   // Recompute spectra for a sub-range of frames and rebuild only the tiles that overlap that range.
   // startFrame and endFrame are inclusive frame indices.
   // options: { progressCb: function(percent) }
-  async function _spectrogram_recomputeFrames(startFrame, endFrame, options = {}){
+  async function spectrogramRecomputeFFTAndUpload(startFrame, endFrame, options = {}){
     try {
       if (!globalThis._spectroSpectra) return;
       const bins = globalThis._spectroBins | 0;
       const N = globalThis._spectroFFTSize | 0;
       if (!N || !bins) return;
-      const pxpf = Math.max(1, globalThis._spectroPxPerFrame || 1);
-      const framesPerSec = globalThis._spectroFramesPerSec || 1;
       const totalFrames = globalThis._spectroNumFrames | 0;
       startFrame = Math.max(0, Math.min(totalFrames - 1, startFrame | 0));
       endFrame = Math.max(startFrame, Math.min(totalFrames - 1, endFrame | 0));
@@ -1475,87 +1139,126 @@ self.onmessage = function(e) {
       const frameCount = endFrame - startFrame + 1;
       if (frameCount <= 0) return;
 
-      // Heuristic: if large fraction of frames affected, fallback to full rebuild for simplicity/perf
-      const FRACTION_FALLBACK = 0.25; // 25%
-      if (frameCount / Math.max(1, totalFrames) >= FRACTION_FALLBACK) {
-        try { await _rebuildAllTilesFromSpectra(); return; } catch(e){}
-      }
-
       const hop = Math.max(1, Math.floor(N / 2));
       const audioBuf = globalThis._spectroAudioBuffer;
-      const sr = (globalThis._spectroSampleRate || (audioBuf && audioBuf.sampleRate) || 44100);
       const chCount = audioBuf ? audioBuf.numberOfChannels : 1;
       const channels = audioBuf ? Array.from({length: chCount}, (_,i)=> audioBuf.getChannelData(i)) : null;
-
-      // allocate per-frame FFT buffers once
-      const re = new Float32Array(N);
-      const im = new Float32Array(N);
-      const window = hannWindow(N);
-
       const spectra = globalThis._spectroSpectra;
 
-      // Compute frames in batches and write into spectra
-      const BATCH = 32;
-      for (let base = startFrame; base <= endFrame; base += BATCH) {
-        const to = Math.min(endFrame, base + BATCH - 1);
-        for (let f = base; f <= to; f++){
-          const off = f * hop;
-          // build windowed mono frame into re[]
-          for (let n = 0; n < N; n++){
-            const idx = off + n;
-            let s = 0;
-            if (channels) {
-              for (let c = 0; c < chCount; c++) { s += (channels[c][idx] || 0); }
-              s = s / Math.max(1, chCount);
-            } else {
-              s = 0;
+      // Phase 1: Overhead Guard
+      if (frameCount <= 100 || typeof Worker === 'undefined' || !audioBuf || typeof _workerBlobUrl === 'undefined') {
+        // Fallback to fast single-threaded loop for tiny chunks
+        const re = new Float32Array(N);
+        const im = new Float32Array(N);
+        const window = hannWindow(N);
+        const BATCH = 32;
+        for (let base = startFrame; base <= endFrame; base += BATCH) {
+          const to = Math.min(endFrame, base + BATCH - 1);
+          for (let f = base; f <= to; f++){
+            const off = f * hop;
+            for (let n = 0; n < N; n++){
+              const idx = off + n;
+              let s = 0;
+              if (channels) {
+                for (let c = 0; c < chCount; c++) { s += (channels[c][idx] || 0); }
+                s = s / Math.max(1, chCount);
+              }
+              re[n] = s * window[n]; im[n] = 0;
             }
-            re[n] = s * window[n]; im[n] = 0;
+            try { fft(re, im); } catch(e){}
+            const baseIdx = f * bins;
+            for (let b = 0; b < bins; b++){
+              const r = re[b], i = im[b]; const mag = Math.sqrt(r*r + i*i) / N;
+              spectra[baseIdx + b] = mag;
+            }
           }
-          // FFT in-place
-          try { fft(re, im); } catch(e){ console.error('FFT failed in incremental recompute', e); }
-          // compute magnitudes into spectra array
-          const baseIdx = f * bins;
-          for (let b = 0; b < bins; b++){
-            const r = re[b], i = im[b]; const mag = Math.sqrt(r*r + i*i) / N;
-            spectra[baseIdx + b] = mag;
-          }
+          await globalThis.fastYield();
+          try { if (options.progressCb) options.progressCb(Math.round(100 * (to - startFrame + 1) / frameCount)); } catch(e){}
         }
-        // yield to UI thread
-        await globalThis.fastYield();
-        // progress callback
-        try { if (options.progressCb) options.progressCb(Math.round(100 * (to - startFrame + 1) / Math.max(1, frameCount))); } catch(e){}
+      } else {
+        // Phase 1: Multi-Core Preparation
+        const numCores = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 8) : 4;
+        const framesPerWorker = Math.ceil(frameCount / numCores);
+        
+        // Downmix affected sample range
+        const totalSamples = audioBuf.length;
+        const startSample = startFrame * hop;
+        const endSample = Math.min(totalSamples, endFrame * hop + N);
+        const sampleCount = endSample - startSample;
+        
+        const monoDownmix = new Float32Array(sampleCount);
+        if (channels) {
+            for (let i = 0; i < sampleCount; i++) {
+                let s = 0;
+                for (let c = 0; c < chCount; c++) { s += (channels[c][startSample + i] || 0); }
+                monoDownmix[i] = s / chCount;
+            }
+        }
+
+        // Phase 2: Spawning the Worker Pool
+        let workers = [];
+        try {
+            const promises = [];
+            let completedFrames = 0;
+            
+            for (let i = 0; i < numCores; i++) {
+                const chunkStartFrame = startFrame + i * framesPerWorker;
+                if (chunkStartFrame > endFrame) break;
+                
+                const chunkEndFrame = Math.min(chunkStartFrame + framesPerWorker - 1, endFrame);
+                const numWorkerFrames = chunkEndFrame - chunkStartFrame + 1;
+                
+                // Calculate bounds relative to the downmix buffer
+                const sliceStart = (chunkStartFrame * hop) - startSample;
+                const sliceEnd = Math.min(monoDownmix.length, sliceStart + (numWorkerFrames - 1) * hop + N);
+                const monoSlice = monoDownmix.slice(sliceStart, sliceEnd);
+                
+                const worker = new Worker(_workerBlobUrl || 'spectro_worker.js');
+                workers.push(worker);
+                
+                promises.push(new Promise((resolve, reject) => {
+                    worker.onmessage = (e) => {
+                        completedFrames += numWorkerFrames;
+                        try { if (options.progressCb) options.progressCb(Math.round(100 * completedFrames / frameCount)); } catch(e){}
+                        resolve({ data: e.data, chunkStartFrame });
+                    };
+                    worker.onerror = reject;
+                    worker.postMessage({
+                        mono: monoSlice,
+                        fftSize: N,
+                        hop: hop,
+                        startFrame: 0, 
+                        numFrames: numWorkerFrames
+                    }, [monoSlice.buffer]);
+                }));
+            }
+            
+            // Phase 3: Merging
+            const results = await Promise.all(promises);
+            results.forEach(res => {
+                // Deliberately discard minDB and maxDB returned by workers
+                const workerSpectra = res.data.spectra;
+                spectra.set(workerSpectra, res.chunkStartFrame * bins);
+            });
+        } catch (err) {
+            console.error("Multi-core rebuild failed", err);
+        } finally {
+            workers.forEach(w => w.terminate());
+        }
       }
 
-      // Now rebuild tiles overlapping the affected pixel range
-      const pxStart = startFrame * pxpf;
-      const pxEnd = (endFrame + 1) * pxpf;
-      const tiles = Array.isArray(globalThis._spectroTiles) ? globalThis._spectroTiles : [];
-      const lut = buildLUT((typeof cmapSelect !== 'undefined' && cmapSelect && cmapSelect.value) ? cmapSelect.value : 'custom');
-      const gainVal = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
-      const ymaxClamped = _resolveCurrentYMax();
-
-      let rebuilt = 0; const totalTiles = tiles.length;
-      for (let i = 0; i < tiles.length; i++){
-        const t = tiles[i]; if (!t) continue;
-        const tx0 = t.startCol; const tx1 = t.startCol + t.cols;
-        if (tx1 <= pxStart || tx0 >= pxEnd) continue;
-        // rebuild in-place using existing helper
-        try { await _rebuildTileBitmapInPlace(t, ymaxClamped, lut, gainVal); } catch(e){ try { _rebuildTileBitmapSync(t, ymaxClamped, lut, gainVal); } catch(e2){} }
-        rebuilt++;
-        // yield & progress
-        if ((rebuilt & 3) === 0) await globalThis.fastYield();
-        try { if (options.progressCb) options.progressCb(Math.round(100 * rebuilt / Math.max(1, totalTiles))); } catch(e){}
+      // Phase 3: GPU Upload
+      if (typeof globalThis._uploadSpectraToWebGL === 'function') {
+        globalThis._uploadSpectraToWebGL(startFrame, endFrame);
       }
 
       // Repaint
       try { drawViewportFromTiles && drawViewportFromTiles(); } catch(e){}
       try { updateXTicksFromScroll && updateXTicksFromScroll(); } catch(e){}
-
       try { window.dispatchEvent(new CustomEvent('spectrogram-frames-recomputed', { detail: { startFrame, endFrame } })); } catch(e){}
     } catch(err){ console.error('recomputeFrames failed', err); }
   }
-  globalThis._spectrogram_recomputeFrames = _spectrogram_recomputeFrames;
+  globalThis.spectrogramRecomputeFFTAndUpload = spectrogramRecomputeFFTAndUpload;
 
   // reset playback helpers (pause/seek to 0) but we will align view to captured start time later
   function resetPlaybackState() {
@@ -1611,15 +1314,17 @@ self.onmessage = function(e) {
         // Prefer user-provided Y max when present (kHz input -> Hz)
         const userY = readUserYmaxHz();
         const useY = (isFinite(userY) && userY > 0) ? userY : _resolveCurrentYMax();
-        const useYMin = globalThis._spectroYMin || 0;
         const lutName = (cmapSelect && cmapSelect.value) ? cmapSelect.value : 'custom';
         const gainVal = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
         _bumpRenderParams(lutName, gainVal, useY);
-        if (globalThis._spectroImageWidth && globalThis._spectroImageWidth > LARGE_IMAGE_W) {
-          await _recolorVisibleTiles(useY);
-        } else {
-          await reRenderFromSpectra(useY, useYMin);
+        
+        if (globalThis.webglRenderer) {
+          const lutUint8 = buildLUT(lutName);
+          globalThis.webglRenderer.setColormap(lutUint8);
         }
+        
+        try { drawViewportFromTiles && drawViewportFromTiles(); } catch(e) {}
+        
         updateXTicksFromScroll();
         try { window.dispatchEvent(new CustomEvent('spectrogram-generated', { detail: { meta: { ymax: useY } } })); } catch(e) {}
         return;
@@ -1995,7 +1700,7 @@ self.onmessage = function(e) {
         pxPerSec: (globalThis._spectroMap && globalThis._spectroMap.pxPerSec && globalThis._spectroMap.pxPerSec()) || globalThis._spectroPxPerSec,
         axisLeft: globalThis._spectroAxisLeft,
         yMax: _resolveCurrentYMax(),
-        tiles: Array.isArray(globalThis._spectroTiles) ? globalThis._spectroTiles.length : 0,
+        
         lastGen: globalThis._spectroLastGen,
         selection: globalThis._spectroCurrentSelection || null,
         scrollLeft: scrollArea && scrollArea.scrollLeft,
@@ -2095,13 +1800,11 @@ self.onmessage = function(e) {
       pendingYMin = null;
       pendingYMax = null;
       try {
-        if (typeof globalThis._spectrogram_reRenderFromSpectra === 'function') {
-          await globalThis._spectrogram_reRenderFromSpectra(targetMax, targetMin);
-          const yZoomSelect = document.getElementById('yZoomSelect');
-          if (yZoomSelect && targetMin === 0) {
-            const closest = Array.from(yZoomSelect.options).reduce((prev, curr) => Math.abs(curr.value - targetMax) < Math.abs(prev.value - targetMax) ? curr : prev);
-            yZoomSelect.value = closest.value;
-          }
+        drawViewportFromTiles();
+        const yZoomSelect = document.getElementById('yZoomSelect');
+        if (yZoomSelect && targetMin === 0) {
+          const closest = Array.from(yZoomSelect.options).reduce((prev, curr) => Math.abs(curr.value - targetMax) < Math.abs(prev.value - targetMax) ? curr : prev);
+          yZoomSelect.value = closest.value;
         }
       } catch(e) { console.error(e); }
 
@@ -2212,6 +1915,70 @@ self.onmessage = function(e) {
       
       scheduleYAxisUpdate(0, finalYMax);
     });
+    // X-axis wheel zoom (hovering over the bottom timeline axis)
+    const viewForWheel = document.getElementById('viewportWrapper');
+    if (viewForWheel) {
+      viewForWheel.addEventListener('wheel', (e) => {
+        if (!globalThis._spectroSpectra) return;
+        const rect = viewForWheel.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const imgH = globalThis._spectroImageHeight || IMAGE_H;
+        
+        // Check if mouse is over the bottom axis
+        if (y > AXIS_TOP + imgH && y <= AXIS_TOP + imgH + AXIS_BOTTOM) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const MAX_PXPF = 16;
+          const currentPxpf = Number(globalThis._spectroPxPerFrame || 0) || 2;
+          
+          let delta = e.deltaY;
+          if (e.deltaMode === 1) delta *= 16;
+          
+          const zoomFactor = delta > 0 ? (1 / 1.15) : 1.15;
+          let newPxpf = currentPxpf * zoomFactor;
+          newPxpf = Math.max(0.01, Math.min(newPxpf, MAX_PXPF));
+          
+          if (Math.abs(newPxpf - currentPxpf) < 0.001) return;
+          
+          const axisLeft = globalThis._spectroAxisLeft || (document.getElementById('axisCanvas') ? document.getElementById('axisCanvas').clientWidth : 70);
+          const x = e.clientX - rect.left - axisLeft;
+          const scrollArea = document.getElementById('scrollArea');
+          if (scrollArea) {
+            const virtualX = scrollArea.scrollLeft + x;
+            
+            const numFrames = Number(globalThis._spectroNumFrames || 0);
+            const imageW = Math.max(1, Math.round(numFrames * newPxpf));
+            
+            globalThis._spectroPxPerFrame = newPxpf;
+            if (typeof globalThis._spectroApplyDisplayScaleFromIntrinsic === 'function') {
+              globalThis._spectroApplyDisplayScaleFromIntrinsic(imageW);
+            } else {
+              globalThis._spectroImageWidth = imageW;
+              globalThis._spectroImageIntrinsicWidth = imageW;
+            }
+            
+            if (typeof globalThis._scheduleAnnotationOverlaySync === 'function') {
+              globalThis._scheduleAnnotationOverlaySync('x-zoom-wheel');
+            }
+            
+            const spacer = document.getElementById('spectroSpacer');
+            if (spacer) {
+              const fullDur = globalThis._spectroDuration || 0;
+              const totalW = Math.max(imageW, Math.ceil(fullDur * (globalThis._spectroPxPerSec || 1)));
+              spacer.style.width = totalW + 'px';
+            }
+            
+            scrollArea.scrollLeft = (virtualX * (newPxpf / currentPxpf)) - x;
+            
+            if (typeof globalThis.drawViewportFromTiles === 'function') {
+              globalThis.drawViewportFromTiles();
+            }
+            window.dispatchEvent(new Event('resize'));
+          }
+        }
+      }, { passive: false });
+    }
   }
 
 })();
@@ -2426,7 +2193,7 @@ self.onmessage = function(e) {
   function snapshotSpectrogramState(){
     try {
       const spec = globalThis._spectroSpectra ? new Float32Array(globalThis._spectroSpectra) : null;
-      const tiles = Array.isArray(globalThis._spectroTiles) ? globalThis._spectroTiles.slice() : null;
+      
       const buf = globalThis._spectroAudioBuffer || null;
       const scroll = (document.getElementById('scrollArea') && typeof document.getElementById('scrollArea').scrollLeft==='number') ? document.getElementById('scrollArea').scrollLeft : 0;
       // Capture annotations snapshot as well so Undo restores boxes
@@ -2458,7 +2225,7 @@ self.onmessage = function(e) {
   imgIntrinsic: globalThis._spectroImageIntrinsicWidth,
   displayScaleX: globalThis._spectroDisplayScaleX,
         imgH: globalThis._spectroImageHeight,
-        tiles,
+        
         pageCols: globalThis._spectroPageCols,
         pages: globalThis._spectroPages,
         sr: globalThis._spectroSampleRate,
@@ -2472,106 +2239,6 @@ self.onmessage = function(e) {
   globalThis.snapshotSpectrogramState = snapshotSpectrogramState;
 
   // Helper: rebuild tiles fully from current spectra (no FFT), honoring current Y max/gain/cmap
-  async function _rebuildAllTilesFromSpectra(){
-    const spectra = globalThis._spectroSpectra; if (!spectra) return;
-    const bins = globalThis._spectroBins|0; const sr = globalThis._spectroSampleRate|0;
-    const imageW = globalThis._spectroImageWidth|0; const imageH = globalThis._spectroImageHeight|0; if (!imageW||!imageH) return;
-    const pxpf = globalThis._spectroPxPerFrame|0; const numFrames = globalThis._spectroNumFrames|0; const nyq = sr/2;
-    const lutName = (document.getElementById('cmap') && document.getElementById('cmap').value) ? document.getElementById('cmap').value : 'custom';
-    const gainInput = document.getElementById('gain');
-    const gain = Math.max(0.0001, parseFloat(gainInput && gainInput.value) || 1);
-    const lut = (function buildLUTLocal(name){
-      const lut=new Uint8ClampedArray(256*3);
-      function map(t){
-        t=Math.max(0,Math.min(1,t));
-        switch(name){
-          case 'viridis': return [Math.round(68+187*Math.pow(t,1.0)), Math.round(1+210*Math.pow(t,0.8)), Math.round(84+170*(1-t))];
-		  case 'magma': return [Math.round(10+245*Math.pow(t,0.9)), Math.round(5+160*Math.pow(t,1.2)), Math.round(20+120*(1-t))];
-          case 'grayscale': { const v=Math.round(255*t); return [v,v,v]; }
-		  case 'jet': { const rj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t-1)))); const gj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t)))); const bj=Math.round(255*Math.max(0,Math.min(1,1.5-Math.abs(2*t+1)))); return [rj,gj,bj]; }
-          //case 'SpectroFlare': return [Math.round(32+180*t), Math.round(69+130*Math.pow(t,0.9)), Math.round(92+60*(1-t))];
-		  case 'SpectroFlare': {
-			let r, g, b;
-			if (t < 0.3) { const u = t / 0.3; r = Math.round(120 * u); g = 0; b = Math.round(150 * u); }
-			else if (t < 0.6) { const u = (t - 0.3) / 0.3; r = Math.round(120 + 100 * u); g = Math.round(50 * u); b = Math.round(150 - 100 * u); }
-			else if (t < 0.8) { const u = (t - 0.6) / 0.2; r = Math.round(220 + 35 * u); g = Math.round(50 + 150 * u); b = Math.round(50 - 50 * u); }
-			else { const u = (t - 0.8) / 0.2; r = 255; g = Math.round(200 + 55 * u); b = Math.round(255 * u); }
-			return [r, g, b];
-			}
-		  
-		  
-		  
-		  
-          default: {
-            let r=0,g=0,b=0;
-            if(t<0.25){ const u=t/0.25; r=0; g=Math.round(30*u); b=Math.round(80+175*u); }
-            else if(t<0.5){ const u=(t-0.25)/0.25; r=0; g=Math.round(30+200*u); b=Math.round(255-55*u); }
-            else if(t<0.75){ const u=(t-0.5)/0.25; r=Math.round(255*u); g=Math.round(230-100*u); b=Math.round(200-200*u); }
-            else { const u=(t-0.75)/0.25; r=Math.round(255-20*(1-u)); g=Math.round(130+125*u); b=Math.round(0+255*u); }
-            return [r,g,b];
-          }
-        }
-      }
-      for(let i=0;i<256;i++){ const rgb=map(i/255); lut[i*3]=rgb[0]; lut[i*3+1]=rgb[1]; lut[i*3+2]=rgb[2]; }
-      return lut;
-    })(lutName);
-    const ymax = _resolveCurrentYMaxSafe();
-    const ymin = globalThis._spectroYMin || 0;
-    const bottom = globalThis._spectroBottomDB; const denom = globalThis._spectroDenom || 1e-12; const nyqHz = sr/2;
-
-    const MAX_TILE_W = 8192;
-    const tileW = Math.max(1, Math.min(MAX_TILE_W, (globalThis._spectroPageCols||MAX_TILE_W), imageW));
-    const tiles = [];
-    const safeDenom = denom || 1e-12;
-    
-    const yMapIdxA = new Int32Array(imageH);
-    const yMapIdxB = new Int32Array(imageH);
-    const yMapFrac = new Float32Array(imageH);
-    for (let y = 0; y < imageH; y++) {
-      const ty = y / Math.max(1, (imageH - 1));
-      const freq = ymax - ty * (ymax - ymin);
-      const fracBin = (freq / nyqHz) * (bins - 1);
-      const fIdx = Math.floor(fracBin);
-      yMapIdxA[y] = Math.max(0, Math.min(bins - 1, fIdx));
-      yMapIdxB[y] = Math.max(0, Math.min(bins - 1, fIdx + 1));
-      yMapFrac[y] = fracBin - fIdx;
-    }
-
-    for (let tileX=0, idx=0; tileX<imageW; tileX+=tileW, idx++){
-      const w = Math.min(tileW, imageW - tileX);
-      const tilePixels = new Uint8ClampedArray(w * imageH * 4);
-      for (let localX=0; localX<w; localX++){
-        const globalX = tileX + localX;
-        const frameIdx = Math.max(0, Math.min(numFrames-1, Math.floor(globalX / Math.max(1, pxpf))));
-        const frameBaseIdx = frameIdx * bins;
-        for (let y=0; y<imageH; y++){
-          const a = spectra[frameBaseIdx + yMapIdxA[y]];
-          const b = spectra[frameBaseIdx + yMapIdxB[y]];
-          const mag = a + (b - a) * yMapFrac[y];
-          const magAdj = mag * gain;
-          const db = 20 * Math.log10(magAdj + 1e-12);
-          let v = (db - bottom) / safeDenom;
-          if (v < 0) v = 0; else if (v > 1) v = 1; else if (v !== v) v = 0;
-		  //v = Math.pow(v, 1.5);
-          const lutIdx = (v * 255) | 0; const rgbBase = lutIdx * 3;
-          const pi = (y * w + localX) * 4;
-          tilePixels[pi] = lut[rgbBase]; tilePixels[pi+1] = lut[rgbBase+1]; tilePixels[pi+2] = lut[rgbBase+2]; tilePixels[pi+3] = 255;
-        }
-      }
-      const tcanvas = document.createElement('canvas'); tcanvas.width = w; tcanvas.height = imageH;
-      const tctx = tcanvas.getContext('2d', { alpha:false }); tctx.putImageData(new ImageData(tilePixels, w, imageH), 0, 0);
-      // Estimate time span for the tile
-      const leftFrameIdx = Math.floor(tileX / Math.max(1, pxpf));
-      const framesPerSec = globalThis._spectroFramesPerSec || ((globalThis._spectroSampleRate||44100) / (globalThis._spectroFFTSize ? (globalThis._spectroFFTSize/2) : 1024));
-      const startTime = Math.max(0, Math.min((numFrames - 1) / Math.max(1, framesPerSec), leftFrameIdx / Math.max(1, framesPerSec)));
-      const endTime = Math.min((numFrames - 1) / Math.max(1, framesPerSec), ((tileX + w - 1) / Math.max(1, pxpf)) / Math.max(1, framesPerSec));
-      tiles.push({ bitmap:tcanvas, cols:w, startCol:tileX, startTime, endTime, colorVersion:(globalThis._spectroColorVersion|0), lutName:lutName, gain, ymax });
-      if ((idx & 1) === 0) await new Promise(r => setTimeout(r,0));
-    }
-    globalThis._spectroTiles = tiles;
-    globalThis._spectroPageCols = Math.max(1, tileW);
-    globalThis._spectroPages = tiles.length;
-  }
 
   // Splice decoded audio buffer between c1Sec..c2Sec (must be paused). Returns new duration (seconds).
   async function cutAudioBuffer(c1Sec, c2Sec){
@@ -2582,31 +2249,12 @@ self.onmessage = function(e) {
   const s2 = Math.max(s1, Math.min(len, Math.ceil(c2Sec * sr)));
   if (s2 <= s1) { globalThis._spectroDuration = len / Math.max(1,sr); return globalThis._spectroDuration; }
     const newLen = Math.max(0, len - (s2 - s1));
-    const getCtx = () => {
-      const OfflineCtx = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
-      if (OfflineCtx) {
-        try { return new OfflineCtx(1, 1, Math.max(1,sr)); } catch(e){}
-      }
-      const AcCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
-      if (AcCtx) {
-        try { return new AcCtx({ sampleRate: Math.max(1,sr) }); } catch(e){}
-        return new AcCtx();
-      }
-      return null;
-    };
-
     if (newLen <= 0) {
       // Edge: cutting entire buffer
-      const ctx = getCtx(); if (!ctx) { globalThis._spectroAudioBuffer = null; globalThis._spectroDuration = 0; return 0; }
-      const empty = ctx.createBuffer(Math.max(1,ch), 1, Math.max(1,sr)); if (ctx.close) try { await ctx.close(); } catch(e){}
+      const empty = new AudioBuffer({ length: 1, numberOfChannels: Math.max(1,ch), sampleRate: Math.max(1,sr) });
       globalThis._spectroAudioBuffer = empty; globalThis._spectroDuration = empty.length / sr; return globalThis._spectroDuration;
     }
-    const ctx = getCtx(); if (!ctx) {
-      // Fallback: store channel arrays only
-      const chans = []; for (let c=0;c<ch;c++){ const data = buf.getChannelData(c); const out = new Float32Array(newLen); out.set(data.subarray(0, s1), 0); out.set(data.subarray(s2), s1); chans.push(out); }
-      globalThis._spectroAudioChannelData = chans; globalThis._spectroAudioBuffer = null; globalThis._spectroDuration = newLen / Math.max(1,sr); return globalThis._spectroDuration;
-    }
-    const newBuf = ctx.createBuffer(Math.max(1,ch), Math.max(1,newLen), Math.max(1,sr));
+    const newBuf = new AudioBuffer({ length: Math.max(1,newLen), numberOfChannels: Math.max(1,ch), sampleRate: Math.max(1,sr) });
     for (let c=0; c<ch; c++){
       const src = buf.getChannelData(c);
       const out = new Float32Array(newLen);
@@ -2615,14 +2263,14 @@ self.onmessage = function(e) {
       try { newBuf.copyToChannel(out, c, 0); } catch(e){ const dst = newBuf.getChannelData(c); dst.set(out, 0); }
       if ((c & 1) === 0) await globalThis.fastYield();
     }
-    if (ctx.close) try { await ctx.close(); } catch(e){}
+    
     globalThis._spectroAudioBuffer = newBuf;
     globalThis._spectroDuration = newBuf.length / Math.max(1, sr);
     return globalThis._spectroDuration;
   }
   globalThis.cutAudioBuffer = cutAudioBuffer;
 
-  // Atomic cut operation: splice spectra and audio, rebuild tiles, update UI
+  // Atomic cut operation: splice spectra and audio, rebuild  update UI
   async function cutSpectrogramRange(c1Sec, c2Sec){
     // Validate readiness
     if (!globalThis._spectroSpectra || !globalThis._spectroBins || !globalThis._spectroNumFrames) throw new Error('Spectrogram not ready');
@@ -2644,6 +2292,18 @@ self.onmessage = function(e) {
     // Aligned seconds used for audio and annotations
     const c1A = i1 / fps;
     const c2A = i2 / fps;
+
+    // Anchor viewport to correct timestamp after cut
+    const scrollArea = document.getElementById('scrollArea');
+    const vpLeftPx = scrollArea && typeof scrollArea.scrollLeft === 'number' ? scrollArea.scrollLeft : 0;
+    const vpLeftSec = (globalThis._spectroPxPerSec > 0) ? vpLeftPx / globalThis._spectroPxPerSec : 0;
+    const cutDurSec = c2A - c1A;
+    let targetLeftSec = vpLeftSec;
+    if (c2A <= vpLeftSec) {
+        targetLeftSec = Math.max(0, vpLeftSec - cutDurSec);
+    } else if (c1A < vpLeftSec) {
+        targetLeftSec = c1A;
+    }
 
     // Snapshot (undo)
     lastSnapshot = snapshotSpectrogramState();
@@ -2675,9 +2335,10 @@ self.onmessage = function(e) {
         globalThis._spectroImageIntrinsicWidth = intrinsicWidthAfterCut;
         globalThis._spectroDisplayScaleX = 1;
         const durNow = globalThis._spectroDuration;
-        globalThis._spectroPxPerSec = (isFinite(durNow) && durNow > 0 && intrinsicWidthAfterCut > 0)
-          ? (intrinsicWidthAfterCut / durNow)
-          : (fpsNowFallback * pxpfNowFallback);
+        const scaleCut = (globalThis._spectroDisplayScaleX && globalThis._spectroDisplayScaleX > 0) ? globalThis._spectroDisplayScaleX : 1;
+        globalThis._spectroPxPerSec = (fpsNowFallback && pxpfNowFallback)
+          ? (fpsNowFallback * pxpfNowFallback * scaleCut)
+          : ((isFinite(durNow) && durNow > 0 && intrinsicWidthAfterCut > 0) ? (intrinsicWidthAfterCut / durNow) : 1);
       }
       if (window.__updateSimpleTimeDebug) { try { window.__updateSimpleTimeDebug('[recalc after cut]'); } catch(e){} }
     } catch(e){}
@@ -2687,21 +2348,19 @@ self.onmessage = function(e) {
     try { const vpW = (scrollArea && scrollArea.clientWidth) || 0; const maxScroll = Math.max(0, (globalThis._spectroImageWidth||0) - vpW); if (scrollArea) scrollArea.scrollLeft = Math.max(0, Math.min(maxScroll, scrollArea.scrollLeft||0)); } catch(e){}
 
     // Rebuild tiles from spectra (full), redraw viewport and ticks
-    await _rebuildAllTilesFromSpectra();
+    if (typeof globalThis._uploadSpectraToWebGL === 'function') { globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1); }
     // Prefer invoking the exported re-render so internal drawing helpers are called inside the original module scope
     try {
       if (typeof globalThis._spectrogram_reRenderFromSpectra === 'function') {
         await globalThis._spectrogram_reRenderFromSpectra(_resolveCurrentYMaxSafe());
       }
     } catch(e){}
-    // Force a tiny scroll nudge to trigger viewport redraw if needed (in case re-render stub is unavailable)
+    // Restore timeline position mathematically
     try {
-      const cur = Math.round(scrollArea && typeof scrollArea.scrollLeft==='number' ? scrollArea.scrollLeft : 0);
-      const maxScroll = Math.max(0, (globalThis._spectroImageWidth||0) - ((scrollArea && scrollArea.clientWidth) || 0));
-      const target = Math.min(maxScroll, cur + 1);
       if (scrollArea) {
-        scrollArea.scrollLeft = target;
-        setTimeout(()=>{ try { scrollArea.scrollLeft = cur; } catch(e){} }, 0);
+        const newPx = targetLeftSec * (globalThis._spectroPxPerSec || 1);
+        scrollArea.scrollLeft = Math.round(newPx);
+        setTimeout(()=>{ try { if(scrollArea) scrollArea.scrollLeft = Math.round(newPx); } catch(e){} }, 0);
       }
     } catch(e){}
     // Best-effort direct call if accessible (may be undefined in this scope)
@@ -2712,6 +2371,7 @@ self.onmessage = function(e) {
     try { await adjustAnnotationsForCut(c1A, c2A); } catch(e) { console.warn('adjustAnnotationsForCut failed', e); }
     try { window.dispatchEvent(new CustomEvent('spectrogram-cut', { detail: { startSec: c1Sec, endSec: c2Sec, newDuration: globalThis._spectroDuration } })); } catch(e){}
     globalThis.isAudioDirty = true;
+    try { updateCutButtonEnabled(); } catch(e){}
     _scheduleAnnotationOverlaySync('cutSpectrogramRange');
     return true;
   }
@@ -2967,6 +2627,16 @@ self.onmessage = function(e) {
   }
   globalThis.adjustAnnotationsForSilence = adjustAnnotationsForSilence;
 
+  function clearCutSelection() {
+    clearSelectionOverlay();
+    hasSelection = false;
+    isDragging = false;
+    dragStartX = 0; dragEndX = 0;
+    try { globalThis._spectroCurrentSelection = null; globalThis._spectroSelectionAbsPx = null; } catch(e){}
+    try { updateCutButtonEnabled(); } catch(e){}
+  }
+  globalThis.clearCutSelection = clearCutSelection;
+
   function disarmCutMode(cancelled=false){
     cutArmed = false; isDragging = false;
     glass.style.display = 'none'; glass.style.cursor = '';
@@ -3005,34 +2675,84 @@ self.onmessage = function(e) {
   const axisLeft = globalThis._spectroAxisLeft || 60; const imgH = globalThis._spectroImageHeight || 0; const vpW = (scrollArea && scrollArea.clientWidth) ? scrollArea.clientWidth : viewportWrapper.clientWidth;
     glass.style.left = axisLeft + 'px'; glass.style.top = '12px'; glass.style.width = vpW + 'px'; glass.style.height = imgH + 'px'; glass.style.display = 'block'; glass.style.cursor = 'crosshair';
     clearSelectionOverlay();
-  glass.onpointerdown = (ev)=>{ ev.preventDefault(); if (ev.button===2) { // right-click: cancel selection mode
-    try { disarmCutMode(true); updateCutButtonEnabled(); } catch(e){}; return; }
-      isDragging = true; glass.setPointerCapture(ev.pointerId); const rect = glass.getBoundingClientRect(); dragStartX = Math.max(0, Math.min(rect.width, ev.clientX - rect.left)); dragEndX = dragStartX; renderSelectionWithTimes(); };
-    glass.onpointermove = (ev)=>{ if (!isDragging) return; const rect = glass.getBoundingClientRect(); dragEndX = Math.max(0, Math.min(rect.width, ev.clientX - rect.left)); renderSelectionWithTimes(); };
-    glass.onpointerup = (ev)=>{
-      if (!isDragging) return;
-      const rect = glass.getBoundingClientRect();
-      dragEndX = Math.max(0, Math.min(rect.width, ev.clientX - rect.left));
-      // If the pointer moved only a few pixels and it was the primary button,
-      // treat this as a single click (no-drag) and cancel selection (like right-click).
-      try {
-        const movePx = Math.abs(dragEndX - dragStartX);
-        const CLICK_THRESHOLD_PX = 6;
-        if ((ev.button === 0 || ev.button === undefined) && movePx <= CLICK_THRESHOLD_PX) {
-          isDragging = false;
-          try { disarmCutMode(true); updateCutButtonEnabled(); } catch(e){}
-          try { if (glass.releasePointerCapture) glass.releasePointerCapture(ev.pointerId); } catch(e){}
-          return;
+  let resizeMode = false;
+  let clickStartX = 0;
+  glass.onpointerdown = (ev)=>{ 
+    ev.preventDefault(); 
+    if (ev.button===2) { // right-click: cancel selection mode
+      try { disarmCutMode(true); updateCutButtonEnabled(); } catch(e){}; return; 
+    }
+    isDragging = true; 
+    resizeMode = false;
+    glass.setPointerCapture(ev.pointerId); 
+    const rect = glass.getBoundingClientRect(); 
+    const clickX = Math.max(0, Math.min(rect.width, ev.clientX - rect.left)); 
+    clickStartX = clickX;
+    if (hasSelection) {
+      const leftEdge = Math.min(dragStartX, dragEndX);
+      const rightEdge = Math.max(dragStartX, dragEndX);
+      const EDGE_TOLERANCE_PX = 15;
+      if (Math.abs(clickX - leftEdge) <= EDGE_TOLERANCE_PX) {
+        resizeMode = true;
+        dragStartX = rightEdge;
+        dragEndX = clickX;
+        return;
+      } else if (Math.abs(clickX - rightEdge) <= EDGE_TOLERANCE_PX) {
+        resizeMode = true;
+        dragStartX = leftEdge;
+        dragEndX = clickX;
+        return;
+      }
+    }
+    dragStartX = clickX; 
+    dragEndX = dragStartX; 
+    renderSelectionWithTimes(); 
+  };
+  glass.onpointermove = (ev)=>{ 
+    const rect = glass.getBoundingClientRect(); 
+    const mouseX = Math.max(0, Math.min(rect.width, ev.clientX - rect.left)); 
+    if (!isDragging) {
+      if (hasSelection) {
+        const leftEdge = Math.min(dragStartX, dragEndX);
+        const rightEdge = Math.max(dragStartX, dragEndX);
+        const EDGE_TOLERANCE_PX = 15;
+        if (Math.abs(mouseX - leftEdge) <= EDGE_TOLERANCE_PX || Math.abs(mouseX - rightEdge) <= EDGE_TOLERANCE_PX) {
+          glass.style.cursor = 'ew-resize';
+        } else {
+          glass.style.cursor = 'crosshair';
         }
-      } catch(e){}
-      isDragging = false;
-          try { glass.releasePointerCapture(ev.pointerId); } catch(e){}
-      renderSelectionWithTimes();
-    };
-        glass.onpointercancel = (ev)=>{ 
-          isDragging = false; 
-          try { glass.releasePointerCapture(ev.pointerId); } catch(e){} 
-        };
+      } else {
+        glass.style.cursor = 'crosshair';
+      }
+      return; 
+    }
+    dragEndX = mouseX; 
+    renderSelectionWithTimes(); 
+  };
+  glass.onpointerup = (ev)=>{
+    if (!isDragging) return;
+    const rect = glass.getBoundingClientRect();
+    dragEndX = Math.max(0, Math.min(rect.width, ev.clientX - rect.left));
+    try {
+      const movePx = Math.abs(dragEndX - clickStartX);
+      const CLICK_THRESHOLD_PX = 6;
+      if (!resizeMode && (ev.button === 0 || ev.button === undefined) && movePx <= CLICK_THRESHOLD_PX) {
+        isDragging = false;
+        try { disarmCutMode(true); updateCutButtonEnabled(); } catch(e){}
+        try { if (glass.releasePointerCapture) glass.releasePointerCapture(ev.pointerId); } catch(e){}
+        return;
+      }
+    } catch(e){}
+    isDragging = false;
+    resizeMode = false;
+    try { glass.releasePointerCapture(ev.pointerId); } catch(e){}
+    renderSelectionWithTimes();
+  };
+  glass.onpointercancel = (ev)=>{ 
+    isDragging = false; 
+    resizeMode = false;
+    try { glass.releasePointerCapture(ev.pointerId); } catch(e){} 
+  };
     // also capture contextmenu directly on glass to confirm
   glass.oncontextmenu = (ev)=>{ ev.preventDefault(); try { disarmCutMode(true); updateCutButtonEnabled(); } catch(e){} };
     window.addEventListener('keydown', onKeyDown, true);
@@ -3066,7 +2786,7 @@ self.onmessage = function(e) {
   const clLeft = Math.max(0, Math.min(imgW, absLeft)); const clRight = Math.max(0, Math.min(imgW, absRight));
   const c1Sec = pxToSec(clLeft); const c2Sec = pxToSec(clRight);
   const fps = globalThis._spectroFramesPerSec || 1; const i1 = Math.max(0, Math.floor(c1Sec * fps)); const i2 = Math.max(i1+1, Math.min(globalThis._spectroNumFrames||0, Math.ceil(c2Sec * fps)));
-    if (i2 <= i1) { disarmCutMode(true); return; }
+    if (i2 <= i1) { clearCutSelection(); return; }
     try {
       if (window.__spectroWait) window.__spectroWait.show({ titleText: 'Cutting audio...', bodyText: 'Removing selected region and updating spectrogram. Please wait...' });
       await new Promise(r => setTimeout(r, 20));
@@ -3082,7 +2802,7 @@ self.onmessage = function(e) {
       if (lastSnapshot) try { await restoreSnapshot(lastSnapshot); toast('Restored previous state after failure'); } catch(_){}
     } finally { 
       if (window.__spectroWait) window.__spectroWait.hide();
-      disarmCutMode(false); updateCutButtonEnabled(); }
+      clearCutSelection(); updateCutButtonEnabled(); }
   }
 
   function toast(msg){
@@ -3105,7 +2825,7 @@ self.onmessage = function(e) {
       globalThis._spectroPxPerFrame = snap.pxpf||globalThis._spectroPxPerFrame;
       const intrinsicWidth = (typeof snap.imgIntrinsic === 'number') ? snap.imgIntrinsic : (snap.imgW || globalThis._spectroImageIntrinsicWidth || globalThis._spectroImageWidth || 0);
       globalThis._spectroImageHeight = snap.imgH||globalThis._spectroImageHeight;
-      globalThis._spectroTiles = Array.isArray(snap.tiles) ? snap.tiles.slice() : null;
+      
       globalThis._spectroPageCols = snap.pageCols||globalThis._spectroPageCols;
       globalThis._spectroPages = snap.pages||globalThis._spectroPages;
       globalThis._spectroSampleRate = snap.sr||globalThis._spectroSampleRate;
@@ -3121,18 +2841,19 @@ self.onmessage = function(e) {
           const fpsNow = Math.max(1e-9, globalThis._spectroFramesPerSec||1);
           const pxpfNow = Math.max(1, globalThis._spectroPxPerFrame||1);
           const durNow = globalThis._spectroDuration;
-          globalThis._spectroPxPerSec = (isFinite(durNow) && durNow > 0 && intrinsicWidth > 0)
-            ? (intrinsicWidth / durNow)
-            : (fpsNow * pxpfNow);
+          const scaleSnap = (globalThis._spectroDisplayScaleX && globalThis._spectroDisplayScaleX > 0) ? globalThis._spectroDisplayScaleX : 1;
+          globalThis._spectroPxPerSec = (fpsNow && pxpfNow)
+            ? (fpsNow * pxpfNow * scaleSnap)
+            : ((isFinite(durNow) && durNow > 0 && intrinsicWidth > 0) ? (intrinsicWidth / durNow) : 1);
         }
         if (window.__updateSimpleTimeDebug) { try { window.__updateSimpleTimeDebug('[recalc after undo]'); } catch(e){} }
       } catch(_){}
       const spacer = document.getElementById('spectroSpacer'); if (spacer) { spacer.style.width = (globalThis._spectroImageWidth||0) + 'px'; spacer.style.height = (12 + (globalThis._spectroImageHeight||0) + 44) + 'px'; }
       // Rebuild tiles from the already-restored spectra snapshot.
-      // IMPORTANT: Do NOT use _spectrogram_recomputeFrames here — it re-runs FFT
+      // IMPORTANT: Do NOT use spectrogramRecomputeFFTAndUpload here — it re-runs FFT
       // on the audio buffer and would overwrite the restored spectra.
-      // _rebuildAllTilesFromSpectra renders tiles directly from the spectra array.
-      await _rebuildAllTilesFromSpectra();
+      
+      if (typeof globalThis._uploadSpectraToWebGL === 'function') { globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1); }
       try { await (typeof reRenderFromSpectra==='function' ? reRenderFromSpectra(_resolveCurrentYMaxSafe()) : Promise.resolve()); } catch(e){}
       if (typeof drawViewportFromTiles==='function') drawViewportFromTiles();
       if (typeof updateXTicksFromScroll==='function') updateXTicksFromScroll();
@@ -3159,6 +2880,16 @@ self.onmessage = function(e) {
       ev.preventDefault();
       if (!lastSnapshot) return;
       try {
+        let wasPlaying = false;
+        try {
+          if (globalThis._playbackScrollJump && typeof globalThis._playbackScrollJump.status === 'function') {
+            wasPlaying = !!globalThis._playbackScrollJump.status().playing;
+          }
+          if (wasPlaying && globalThis._playbackScrollJump && typeof globalThis._playbackScrollJump.pause === 'function') {
+            await globalThis._playbackScrollJump.pause();
+          }
+        } catch(e){}
+
         if (window.__spectroWait) {
           window.__spectroWait.show({ 
             titleText: 'Undoing last edit...', 
@@ -3663,3 +3394,18 @@ self.onmessage = function(e) {
     checkUrlAutoLoad();
   }
 })();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

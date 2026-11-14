@@ -63,9 +63,18 @@
   let reachedEOF = false; // tracks natural EOF
   const EPS = 1e-6;
   const dpr = window.devicePixelRatio || 1;
-  const SAMPLE_RATE = globalThis._spectroSampleRate || 44100;
+  function getSampleRate() {
+    if (globalThis._spectroAudioBuffer && globalThis._spectroAudioBuffer.sampleRate) {
+      return globalThis._spectroAudioBuffer.sampleRate;
+    }
+    return globalThis._spectroSampleRate || 44100;
+  }
 
-  function quantizeToSample(sec) { const frames = Math.round(sec * SAMPLE_RATE); return frames / SAMPLE_RATE; }
+  function quantizeToSample(sec) {
+    const sr = getSampleRate();
+    const frames = Math.round(sec * sr);
+    return frames / sr;
+  }
 
   function readAudioTimestamp() {
     if (!audioCtx) return { ok: false };
@@ -89,7 +98,7 @@
 
   function spectro() {
     return {
-      tiles: Array.isArray(globalThis._spectroTiles) ? globalThis._spectroTiles : [],
+      
       pxPerSec: globalThis._spectroPxPerSec || 0,
       imageWidth: globalThis._spectroImageWidth || 0,
       duration: globalThis._spectroDuration || (globalThis._spectroAudioBuffer ? globalThis._spectroAudioBuffer.duration : 0),
@@ -137,7 +146,7 @@
   }
   function isSpectroReady() {
     const s = spectro();
-    return Array.isArray(s.tiles) && s.tiles.length && s.pxPerSec && s.imageWidth;
+    return s.pxPerSec && s.imageWidth && globalThis._spectroAudioBuffer;
   }
 
   // Start hidden
@@ -153,7 +162,7 @@
     try {
       const pxPerSec = s.pxPerSec || 0;
       if (pxPerSec > 1000 || viewWidth <= 0 || !s.imageWidth) {
-        console.warn('[playback] resizeOverlayToSpectrogram diagnostic', { pxPerSec, viewWidth, viewHeight, imageWidth: s.imageWidth, imageHeight: s.imageHeight, tiles: (s.tiles||[]).length });
+        console.warn('[playback] resizeOverlayToSpectrogram diagnostic', { pxPerSec, viewWidth, viewHeight, imageWidth: s.imageWidth, imageHeight: s.imageHeight, tiles: 0 });
       }
     } catch (e) { console.warn('[playback] diagnostic log failed', e); }
 
@@ -181,11 +190,17 @@
     footer.height = 28;
   }
 
-  function drawPlayheadAt(screenX) {
+  function clearPlayhead() {
     overlayCtx.clearRect(0, 0, overlay.width / dpr, overlay.height / dpr);
+  }
+
+  function drawPlayheadAt(screenX) {
+    clearPlayhead();
+    const viewWidth = overlay.width / dpr;
+    if (screenX < 0 || screenX >= viewWidth) return;
     overlayCtx.strokeStyle = '#ff6b6b';
     overlayCtx.lineWidth = Math.max(1, 2);
-    const x = Math.max(0, Math.min(overlay.width / dpr - 1, Math.round(screenX)));
+    const x = Math.round(screenX);
     overlayCtx.beginPath();
     overlayCtx.moveTo(x + 0.5, 0);
     overlayCtx.lineTo(x + 0.5, overlay.height / dpr);
@@ -317,7 +332,7 @@
   function frame() {
     if (!isPlaying) return;
     const s = spectro();
-    if (!s.tiles.length || !s.pxPerSec || !s.imageWidth) {
+    if (!s.pxPerSec || !s.imageWidth) {
       info && (info.textContent = 'Playback: missing spectrogram or mapping');
       stopAndCleanup(true);
       return;
@@ -346,8 +361,11 @@
       drawTimeFooter(currentScroll / s.pxPerSec);
     }
 
-    const screenXClamped = clamp(screenX, 0, viewWidth - 1);
-    drawPlayheadAt(screenXClamped);
+    if (screenX >= 0 && screenX < viewWidth) {
+      drawPlayheadAt(screenX);
+    } else {
+      clearPlayhead();
+    }
     renderXAxisTicks();
 
     rafId = requestAnimationFrame(frame);
@@ -449,7 +467,6 @@
 
   async function startPlayback() {
     const s = spectro();
-    if (!s.tiles.length) { info && (info.textContent = 'Playback: no tiles available (generate spectrogram first)'); return; }
     if (!globalThis._spectroAudioBuffer) { info && (info.textContent = 'Playback: missing audio buffer'); return; }
 
     // If we are about to start play after reaching EOF and the play offset is at start,
@@ -600,7 +617,7 @@
       ev.preventDefault();
       // If axis not ready, ignore pointer interactions
       if (!axisReady) return;
-      xAxisCanvas.setPointerCapture(ev.pointerId);
+      try { xAxisCanvas.setPointerCapture(ev.pointerId); } catch (e) {}
       isPointerDown = true;
       lastClientX = ev.clientX;
       wasPlayingBeforeDrag = isPlaying;
@@ -619,14 +636,18 @@
       }
     });
 
+    let justHandledPointerUp = false;
+
     xAxisCanvas.addEventListener('pointerup', async (ev) => {
       ev.preventDefault();
       if (!axisReady) return;
-      xAxisCanvas.releasePointerCapture(ev.pointerId);
+      try { xAxisCanvas.releasePointerCapture(ev.pointerId); } catch (e) {}
       isPointerDown = false;
       xAxisCanvas.style.cursor = 'pointer';
       lastClientX = ev.clientX;
-      await handleAxisSeekPreview(ev.clientX, /*commit*/ true);
+      justHandledPointerUp = true;
+      setTimeout(() => { justHandledPointerUp = false; }, 100);
+      handleAxisSeekPreview(ev.clientX, /*commit*/ true);
       if (wasPlayingBeforeDrag) {
         if (!isPlaying && !reachedEOF) await startPlayback(); // ensure playback resumes
       } else {
@@ -638,6 +659,7 @@
     xAxisCanvas.addEventListener('click', async (ev) => {
       ev.preventDefault();
       if (!axisReady) return;
+      if (justHandledPointerUp) return; // already handled by pointerup
       const clickedTime = clientXToTime_onAxis(ev.clientX);
       const commitTime = quantizeToSample(clickedTime);
 
@@ -670,7 +692,7 @@
       }
     });
 
-    async function handleAxisSeekPreview(clientX, commit) {
+    function handleAxisSeekPreview(clientX, commit) {
       const s = spectro();
       if (!s.pxPerSec || !s.duration) return;
       const desiredTime = clientXToTime_onAxis(clientX);
@@ -701,7 +723,7 @@
             try { source.onended = null; source.stop(0); source.disconnect(); } catch (e) {}
             source = null;
           }
-          await startPlayback();
+          startPlayback().catch(() => {});
         }
       }
     }
@@ -720,7 +742,7 @@
       if (!axisReady) return;
       if (!isPointerDown) return;
       isPointerDown = false;
-      xAxisCanvas.releasePointerCapture(ev.pointerId);
+      try { xAxisCanvas.releasePointerCapture(ev.pointerId); } catch (e) {}
       await handleAxisSeekPreview(lastClientX, true);
       renderXAxisTicks();
       drawTimeFooter((scrollArea.scrollLeft || 0) / Math.max(1, spectro().pxPerSec || 1));
@@ -736,6 +758,17 @@
     if (scrollTickRAF) cancelAnimationFrame(scrollTickRAF);
     scrollTickRAF = requestAnimationFrame(() => {
       if (!axisReady) return;
+      if (!isPlaying) {
+        const s = spectro();
+        const globalX = Math.round(pausedAt * (s.pxPerSec || 1));
+        const screenX = globalX - Math.round(scrollArea.scrollLeft || 0);
+        const viewWidth = Math.max(1, scrollArea.clientWidth);
+        if (screenX >= 0 && screenX < viewWidth) {
+          drawPlayheadAt(screenX);
+        } else {
+          clearPlayhead();
+        }
+      }
       renderXAxisTicks();
       const s = spectro();
       drawTimeFooter((scrollArea.scrollLeft || 0) / Math.max(1, s.pxPerSec || 1));
@@ -906,7 +939,13 @@
         }
       }
     },
-    status: () => ({ playing: isPlaying, pausedAt, playbackMeta, audioState: audioCtx ? audioCtx.state : 'none' })
+    status: () => ({
+      playing: isPlaying,
+      pausedAt,
+      currentTime: isPlaying ? computePlayedTimeFromMeta() : pausedAt,
+      playbackMeta,
+      audioState: audioCtx ? audioCtx.state : 'none'
+    })
   };
 
   // Called when spectrogram generator finishes and spectro() becomes ready.
@@ -930,7 +969,7 @@
       onSpectrogramReady();
       return;
     }
-    info && (info.textContent = 'No tiles found. Waiting for spectrogram...');
+    info && (info.textContent = 'Waiting for spectrogram...');
     const pollId = setInterval(() => {
       if (isSpectroReady()) {
         clearInterval(pollId);
@@ -943,6 +982,18 @@
     if (!axisReady) return;
     resizeOverlayToSpectrogram();
     renderXAxisTicks();
+    if (!isPlaying) {
+      const s = spectro();
+      const globalX = Math.round(pausedAt * (s.pxPerSec || 1));
+      const screenX = globalX - Math.round(scrollArea.scrollLeft || 0);
+      const viewWidth = Math.max(1, scrollArea.clientWidth);
+      if (screenX >= 0 && screenX < viewWidth) {
+        drawPlayheadAt(screenX);
+      } else {
+        clearPlayhead();
+      }
+      drawTimeFooter((scrollArea.scrollLeft || 0) / Math.max(1, s.pxPerSec || 1));
+    }
   });
 
 })();

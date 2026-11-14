@@ -267,15 +267,15 @@
             
             // Visual Refresh
             const totalFrames = globalThis._spectroNumFrames || 0;
-            if (totalFrames > 0 && typeof globalThis._spectrogram_recomputeFrames === 'function') {
+            if (totalFrames > 0 && typeof globalThis.spectrogramRecomputeFFTAndUpload === 'function') {
                 const sr = globalThis._spectroSampleRate || 44100;
                 const N = globalThis._spectroFFTSize || 2048;
                 const hop = Math.max(1, Math.floor(N / 2));
                 const frameStart = Math.max(0, Math.floor((destRegion.startSec * sr - N) / hop));
                 const frameEnd = Math.min(totalFrames - 1, Math.ceil(((destRegion.startSec + destRegion.duration) * sr + N) / hop));
-                await globalThis._spectrogram_recomputeFrames(frameStart, frameEnd);
-            } else if (typeof globalThis._rebuildAllTilesFromSpectra === 'function') {
-                await globalThis._rebuildAllTilesFromSpectra();
+                await globalThis.spectrogramRecomputeFFTAndUpload(frameStart, frameEnd);
+            } else if (typeof globalThis._uploadSpectraToWebGL === 'function') {
+                await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1);
             }
             
             // Force the native toolbar manager to sync its state and light up the Undo button
@@ -315,13 +315,14 @@
         if (finalNumSamples <= 0) return;
 
         // --- NEW: Deep clone the audio buffer so the Undo Snapshot holds the unmodified state ---
-        const CtxClass = window.AudioContext || window.webkitAudioContext;
-        const tempCtx = new CtxClass();
-        const newAudioBuf = tempCtx.createBuffer(audioBuf.numberOfChannels, audioBuf.length, audioBuf.sampleRate);
+        const newAudioBuf = new AudioBuffer({
+            length: audioBuf.length,
+            numberOfChannels: audioBuf.numberOfChannels,
+            sampleRate: audioBuf.sampleRate || 44100
+        });
         for (let c = 0; c < audioBuf.numberOfChannels; c++) {
             newAudioBuf.copyToChannel(audioBuf.getChannelData(c), c);
         }
-        try { if (typeof tempCtx.close === 'function') tempCtx.close(); } catch (e) {}
 
         function reverseBits(x, bits) {
             let y = 0;

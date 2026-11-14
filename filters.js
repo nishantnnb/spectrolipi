@@ -316,12 +316,7 @@
 
       // Build mid AudioBuffer representing the segment
       const midLen = s2 - s1;
-      const CtxClass = window.AudioContext || window.webkitAudioContext;
-      let tempCtx = null;
-      try { tempCtx = new CtxClass(); } catch(e) { tempCtx = null; }
-      // If no AudioContext available, throw
-      if (!tempCtx) { alert('AudioContext not available'); return; }
-      const midBuf = tempCtx.createBuffer(ch, midLen, sr);
+      const midBuf = new AudioBuffer({ length: midLen, numberOfChannels: ch, sampleRate: sr });
       for (let c=0;c<ch;c++){ const src = audioBuf.getChannelData(c); const dst = midBuf.getChannelData(c); dst.set(src.subarray(s1, s2)); }
 
       // Show a quick modal spinner/note while rendering
@@ -333,7 +328,7 @@
       // Compose new AudioBuffer: pre + rendered + post
       const renderedLen = rendered.length;
       const newLen = s1 + renderedLen + (totalLen - s2);
-      const newBuf = tempCtx.createBuffer(ch, Math.max(1,newLen), sr);
+      const newBuf = new AudioBuffer({ length: Math.max(1, newLen), numberOfChannels: ch, sampleRate: sr });
       for (let c=0;c<ch;c++){
         const dst = newBuf.getChannelData(c);
         // pre
@@ -345,7 +340,7 @@
       }
 
       // Close temp ctx if possible
-      try { if (typeof tempCtx.close === 'function') await tempCtx.close(); } catch(e){}
+      
 
       // Replace global buffer
       globalThis._spectroAudioBuffer = newBuf;
@@ -370,17 +365,17 @@
 
         // Heuristic fallback threshold (same as spectrogram helper): delegate decision there too
         if (sel) {
-          if (typeof window._spectrogram_recomputeFrames === 'function') {
+          if (typeof window.spectrogramRecomputeFFTAndUpload === 'function') {
             try {
               if (prevNote) prevNote.textContent = 'Recomputing spectrogram image for edited region...';
-              await window._spectrogram_recomputeFrames(frameStart, frameEnd, { progressCb: (p) => { try { if (prevNote) prevNote.textContent = 'Recomputing spectrogram: ' + p + '%'; } catch(e){} } });
+              await window.spectrogramRecomputeFFTAndUpload(frameStart, frameEnd, { progressCb: (p) => { try { if (prevNote) prevNote.textContent = 'Recomputing spectrogram: ' + p + '%'; } catch(e){} } });
               try { if (prevNote) prevNote.textContent = 'Spectrogram region updated.'; } catch(e){}
             } catch (e) {
               console.warn('incremental spectrogram recompute failed, falling back', e);
-              try { if (typeof window._rebuildAllTilesFromSpectra === 'function') await window._rebuildAllTilesFromSpectra(); } catch(e2){}
+              try { if (typeof globalThis._uploadSpectraToWebGL === 'function') await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1); } catch(e2){}
             }
-          } else if (typeof window._rebuildAllTilesFromSpectra === 'function') {
-            try { if (prevNote) prevNote.textContent = 'Rebuilding spectrogram...'; await window._rebuildAllTilesFromSpectra(); } catch(e){}
+          } else if (typeof globalThis._uploadSpectraToWebGL === 'function') {
+            try { if (prevNote) prevNote.textContent = 'Rebuilding spectrogram...'; await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1); } catch(e){}
           }
         } else {
           // whole-file edit: recompute spectra from the (modified) audio buffer and rebuild the image.
@@ -394,11 +389,11 @@
                 if (totalFrames > 0 && bins > 0) globalThis._spectroSpectra = new Float32Array(totalFrames * bins);
               } } catch(e){}
 
-              if (typeof window._spectrogram_recomputeFrames === 'function' && totalFrames > 0) {
-                await window._spectrogram_recomputeFrames(0, Math.max(0, totalFrames - 1), { progressCb: (p) => { try { if (prevNote) prevNote.textContent = 'Recomputing spectrogram: ' + p + '%'; } catch(e){} } });
-              } else if (typeof window._rebuildAllTilesFromSpectra === 'function') {
+              if (typeof window.spectrogramRecomputeFFTAndUpload === 'function' && totalFrames > 0) {
+                await window.spectrogramRecomputeFFTAndUpload(0, Math.max(0, totalFrames - 1), { progressCb: (p) => { try { if (prevNote) prevNote.textContent = 'Recomputing spectrogram: ' + p + '%'; } catch(e){} } });
+              } else if (typeof globalThis._uploadSpectraToWebGL === 'function') {
                 // fallback: if recompute helper not present, rebuild tiles from existing spectra
-                try { await window._rebuildAllTilesFromSpectra(); } catch(e){}
+                try { await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1); } catch(e){}
               }
               try { if (prevNote) prevNote.textContent = 'Full spectrogram rebuilt.'; } catch(e){}
             } catch(e) {
@@ -568,6 +563,21 @@
         try {
           // Show global wait overlay (index.html contains markup; spectrogram.js wires show/hide)
           try { window.__spectroWait && window.__spectroWait.show({ etaText: 'Applying silence...', titleText: 'Applying silence', bodyText: 'Inserting silence into the audio buffer and updating visuals.' }); } catch(e){}
+          // Anchor viewport to correct timestamp after silence
+          const scrollArea = document.getElementById('scrollArea');
+          const vpLeftPx = scrollArea && typeof scrollArea.scrollLeft === 'number' ? scrollArea.scrollLeft : 0;
+          const vpLeftSec = (globalThis._spectroPxPerSec > 0) ? vpLeftPx / globalThis._spectroPxPerSec : 0;
+          const opStart = sel.start;
+          const opEnd = mode === 'replace' ? sel.end : sel.start;
+          const cutDur = opEnd - opStart;
+          const shiftDur = silenceSec - cutDur;
+          let targetLeftSec = vpLeftSec;
+          if (opEnd <= vpLeftSec) {
+            targetLeftSec = Math.max(0, vpLeftSec + shiftDur);
+          } else if (opStart < vpLeftSec) {
+            targetLeftSec = opStart;
+          }
+
           await captureSnapshot({ type: 'silence', selection: { start: sel.start, end: sel.end }, silenceSeconds: silenceSec });
           wasPlaying = await pausePlaybackIfNeeded();
 
@@ -583,23 +593,20 @@
           if (silenceInput) silenceInput.value = silenceSec.toFixed(3);
           const deltaSec = silenceSec - selectedDuration;
           const insertSamples = Math.max(1, Math.round(silenceSec * sr));
-          const CtxClass = window.AudioContext || window.webkitAudioContext;
-          let tempCtx = null;
-          try { tempCtx = new CtxClass(); } catch(e) { tempCtx = null; }
-          if (!tempCtx) { throw new Error('AudioContext not available'); }
+          
           
           let keepStartSample = startSample;
           let keepEndSample = mode === 'insert' ? startSample : endSample;
           
           const newTotalSamples = keepStartSample + insertSamples + (totalLen - keepEndSample);
-          const newBuf = tempCtx.createBuffer(ch, Math.max(1, newTotalSamples), sr);
+            const newBuf = new AudioBuffer({ length: Math.max(1, newTotalSamples), numberOfChannels: ch, sampleRate: sr });
           for (let c=0;c<ch;c++){
             const src = audioBuf.getChannelData(c);
             const dst = newBuf.getChannelData(c);
             if (keepStartSample > 0) dst.set(src.subarray(0, keepStartSample), 0);
             if (keepEndSample < totalLen) dst.set(src.subarray(keepEndSample), keepStartSample + insertSamples);
           }
-          try { if (typeof tempCtx.close === 'function') await tempCtx.close(); } catch(e){}
+          
 
           const newDuration = newBuf.length / sr;
           const fps = Math.max(1e-6, globalThis._spectroFramesPerSec || (sr / Math.max(1, (globalThis._spectroFFTSize || 2048) / 2)));
@@ -665,11 +672,11 @@
           } catch(e){}
           try { if (globalThis._spectroLastGen) { globalThis._spectroLastGen.numFrames = newFrames; globalThis._spectroLastGen.duration = newDuration; } } catch(e){}
 
-          const scrollArea = document.getElementById('scrollArea');
+          // scrollArea is already cached above
           if (scrollArea) {
-            const vpW = scrollArea.clientWidth || 0;
-            const maxScroll = Math.max(0, (globalThis._spectroImageWidth || 0) - vpW);
-            scrollArea.scrollLeft = Math.max(0, Math.min(maxScroll, scrollArea.scrollLeft || 0));
+            const newPx = targetLeftSec * (globalThis._spectroPxPerSec || 1);
+            scrollArea.scrollLeft = Math.round(newPx);
+            setTimeout(()=>{ try { if(scrollArea) scrollArea.scrollLeft = Math.round(newPx); } catch(e){} }, 0);
           }
           const spacer = document.getElementById('spectroSpacer');
           if (spacer) {
@@ -682,15 +689,15 @@
           }
 
           try {
-            if (!fallbackFullRebuild && typeof window._rebuildAllTilesFromSpectra === 'function') {
+            if (!fallbackFullRebuild && typeof globalThis._uploadSpectraToWebGL === 'function') {
               if (noteEl) noteEl.textContent = 'Rebuilding spectrogram tiles...';
-              await window._rebuildAllTilesFromSpectra();
-            } else if (typeof window._spectrogram_recomputeFrames === 'function' && globalThis._spectroNumFrames > 0) {
+              await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1);
+            } else if (typeof window.spectrogramRecomputeFFTAndUpload === 'function' && globalThis._spectroNumFrames > 0) {
               if (noteEl) noteEl.textContent = 'Recomputing spectrogram...';
-              await window._spectrogram_recomputeFrames(0, Math.max(0, globalThis._spectroNumFrames - 1));
-            } else if (typeof window._rebuildAllTilesFromSpectra === 'function') {
+              await window.spectrogramRecomputeFFTAndUpload(0, Math.max(0, globalThis._spectroNumFrames - 1));
+            } else if (typeof globalThis._uploadSpectraToWebGL === 'function') {
               if (noteEl) noteEl.textContent = 'Rebuilding spectrogram tiles...';
-              await window._rebuildAllTilesFromSpectra();
+              await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1);
             }
           } finally {
             try { window.__spectroWait && window.__spectroWait.hide(); } catch(e){}
@@ -709,7 +716,9 @@
           } else {
             try { globalThis._spectroCurrentSelection = { start: sel.start, end: sel.start + silenceSec }; } catch(e){}
           }
-          if (typeof globalThis.disarmCutMode === 'function') {
+          if (typeof globalThis.clearCutSelection === 'function') {
+            try { globalThis.clearCutSelection(); } catch(e){}
+          } else if (typeof globalThis.disarmCutMode === 'function') {
             try { globalThis.disarmCutMode(false); } catch(e){}
           }
           try { window.updateCutButtonEnabled && window.updateCutButtonEnabled(); } catch(e){}
@@ -738,3 +747,8 @@
     init();
   }
 })();
+
+
+
+
+

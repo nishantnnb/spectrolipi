@@ -216,8 +216,8 @@
   async function recomputeSpectrogramForSamples(startSample, endSample, options = {}){
     const totalFrames = Math.max(0, globalThis._spectroNumFrames || 0);
     if (!totalFrames) {
-      if (typeof window._rebuildAllTilesFromSpectra === 'function') {
-        await window._rebuildAllTilesFromSpectra();
+      if (typeof globalThis._uploadSpectraToWebGL === 'function') {
+        await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1);
       }
       return;
     }
@@ -229,43 +229,19 @@
     const frameSpan = frameEnd - frameStart + 1;
     if (frameSpan <= 0) return;
 
-    if (typeof window._spectrogram_recomputeFrames !== 'function') {
-      if (typeof window._rebuildAllTilesFromSpectra === 'function') {
-        await window._rebuildAllTilesFromSpectra();
+    if (typeof window.spectrogramRecomputeFFTAndUpload !== 'function') {
+      if (typeof globalThis._uploadSpectraToWebGL === 'function') {
+        await globalThis._uploadSpectraToWebGL(0, (globalThis._spectroNumFrames || 1) - 1);
       }
       return;
     }
 
-    if (totalFrames <= 4) {
-      await window._spectrogram_recomputeFrames(frameStart, frameEnd, {
-        progressCb: options.progressCb ? (p)=>{ try { options.progressCb(Math.max(0, Math.min(100, p))); } catch(e){} } : undefined
-      });
-      return;
-    }
-
-    const maxChunk = Math.max(1, Math.floor(totalFrames * 0.24));
-    let processed = 0;
-    for (let cursor = frameStart; cursor <= frameEnd;) {
-      let chunkEnd = Math.min(frameEnd, cursor + maxChunk - 1);
-      if ((chunkEnd - cursor + 1) / totalFrames >= 0.25 && totalFrames > 4) {
-        chunkEnd = Math.min(frameEnd, cursor + Math.max(1, maxChunk - 1));
-      }
-      const localCount = chunkEnd - cursor + 1;
-      await window._spectrogram_recomputeFrames(cursor, chunkEnd, {
-        progressCb: options.progressCb ? (percent) => {
-          const clamped = Math.max(0, Math.min(100, percent || 0));
-          const chunkProgress = clamped / 100;
-          const overall = Math.round(100 * (processed + chunkProgress * localCount) / Math.max(1, frameSpan));
-          try { options.progressCb(overall); } catch(e){}
-        } : undefined
-      });
-      processed += localCount;
-      if (options.progressCb) {
-        const overall = Math.round(100 * processed / Math.max(1, frameSpan));
-        try { options.progressCb(Math.max(0, Math.min(100, overall))); } catch(e){}
-      }
-      cursor = chunkEnd + 1;
-    }
+    // Call it exactly once, letting the multi-core engine handle all the chunking internally!
+    await window.spectrogramRecomputeFFTAndUpload(frameStart, frameEnd, {
+      progressCb: options.progressCb ? (p) => { 
+        try { options.progressCb(Math.max(0, Math.min(100, p))); } catch(e){} 
+      } : undefined
+    });
   }
 
   async function performNormalization(targetDb){
@@ -302,17 +278,13 @@
       
       // Create a new AudioBuffer (matching the pattern used in filters.js and cut operations)
       // This allows the snapshot system to just store a reference to the old buffer without deep-copying it.
-      const CtxClass = window.AudioContext || window.webkitAudioContext;
-      let tempCtx = null;
-      try { tempCtx = new CtxClass(); } catch(e) { tempCtx = null; }
-      if (!tempCtx) { throw new Error('AudioContext not available'); }
-      const newBuf = tempCtx.createBuffer(channels, Math.max(1, totalLen), sr);
+      const newBuf = new AudioBuffer({ length: Math.max(1, totalLen), numberOfChannels: channels, sampleRate: sr });
       
       // First, copy the original audio into the new buffer
       for (let c = 0; c < channels; c++) {
         newBuf.getChannelData(c).set(audioBuf.getChannelData(c));
       }
-      try { if (typeof tempCtx.close === 'function') await tempCtx.close(); } catch(e){}
+      
 
       let peak = 0;
       for (let c = 0; c < channels; c++) {
@@ -448,3 +420,4 @@
     init();
   }
 })();
+

@@ -253,6 +253,13 @@
         return; // let overlay handle wheel normally
       }
 
+      const AXIS_TOP = 12;
+      const imgH = globalThis._spectroImageHeight || (r.height - AXIS_TOP - 44);
+      const yLocal = ev.clientY - r.top;
+      if (yLocal > AXIS_TOP + imgH) {
+        return; // Hovering over the timeline - allow X-zoom handlers to run
+      }
+
       // Ensure panning only occurs with pure scrolling (no modifier keys)
       if (ev.ctrlKey || ev.shiftKey || ev.metaKey || ev.altKey) {
         return;
@@ -260,22 +267,24 @@
 
       // Normalize delta to pixels
       let deltaY = ev.deltaY;
-      if (ev.deltaMode === 1) deltaY *= 16;
-      else if (ev.deltaMode === 2) deltaY *= window.innerHeight;
+      let deltaX = ev.deltaX;
+      if (ev.deltaMode === 1) { deltaY *= 16; deltaX *= 16; }
+      else if (ev.deltaMode === 2) { deltaY *= window.innerHeight; deltaX *= window.innerWidth; }
 
       const SCROLL_FACTOR = 3;
+      let scrollDelta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : (deltaY * SCROLL_FACTOR);
 
       // If edit overlay exists, forward and swallow to avoid dead zones
       const editLayer = document.getElementById(EDIT_LAYER_ID);
       if (editLayer) {
-        scrollArea.scrollLeft += deltaY * SCROLL_FACTOR;
+        scrollArea.scrollLeft += scrollDelta;
         ev.preventDefault();
         ev.stopPropagation();
         return;
       }
 
       // Create/default: forward but don't stop propagation (preserve other handlers)
-      scrollArea.scrollLeft += deltaY * SCROLL_FACTOR;
+      scrollArea.scrollLeft += scrollDelta;
       ev.preventDefault();
     }
 
